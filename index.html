@@ -69,7 +69,7 @@ details{margin-top:16px}
 <section id="p1">
  <div class="row">
   <select id="dept"><option value="R">المطعم / Restaurant</option><option value="C">الكانتين / Canteen</option><option value="L">المغسلة / Laundry</option><option value="H">خدمات الغرف / Room Service</option></select>
-  <button class="btn alt" id="addDept">+ قسم / Dept</button><input type="search" id="srch" placeholder="ابحث / Search">
+  <button class="btn alt" id="addDept">+ قسم / Dept</button><button class="btn alt" id="delDept">− حذف قسم / Delete Dept</button><input type="search" id="srch" placeholder="ابحث / Search">
  </div>
  <div class="row"><input type="text" id="newItem" placeholder="أضف صنف جديد (عربي أو English) / Add new item" style="flex:1;min-width:160px"><button class="btn" id="addBtn">إضافة / Add</button></div>
  <div id="list"></div>
@@ -120,7 +120,7 @@ details{margin-top:16px}
 const $=s=>document.querySelector(s);
 const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
 const D={R:'المطعم / Restaurant',C:'الكانتين / Canteen',L:'المغسلة / Laundry',H:'خدمات الغرف / Room Service'};
-try{Object.assign(D,JSON.parse(LS('depts')||'{}'))}catch(e){}
+try{const sv=JSON.parse(LS('depts')||'null');if(sv&&Object.keys(sv).length){Object.keys(D).forEach(k=>delete D[k]);Object.assign(D,sv)}}catch(e){}
 const DEF=`كحول طبي 5 لتر|Medical Alcohol 5 L
 ملمع ستانلس ستيل 550 مل|Stainless Steel Polish 550 ml
 مزيل دهون 550 مل|Degreaser 550 ml
@@ -641,6 +641,15 @@ async function renew(){
 }
 $('#rnBtn').onclick=renew;$('#pin').onkeydown=e=>{if(e.key==='Enter')renew()};
 $('#rn').onclick=()=>licUI(true);$('#rnX').onclick=()=>licUI(false);
+
+$('#delDept').onclick=()=>{
+ const c=$('#dept').value;
+ if(Object.keys(D).length<2)return toast('لا يمكن حذف آخر قسم / Cannot delete the last department');
+ if(!confirm('حذف القسم؟ / Delete department: '+D[c]+' ?\n(الطلبات المحفوظة لا تتأثر / Saved orders are not affected)'))return;
+ delete D[c];LS('depts',JSON.stringify(D));
+ if(LS('fix')===c){LS('fix','');$('#fixDept').value=''}
+ fillDepts();applyFix();renderSaved();toast('تم حذف القسم / Department deleted');
+};
 
 /* ---------- الكاميرا ---------- */
 let stream=null,scanning=false;
