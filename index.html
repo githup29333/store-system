@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>منظومة الصرف / Issuance System — QR</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{--bg:#e9edf0;--card:#fff;--ink:#16222c;--mut:#5d6b78;--ac:#0b5c7a;--ok:#1d7a4f;--warn:#b4531a;--ln:#cfd7de}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Tajawal,Tahoma,Arial,sans-serif}
+header{background:var(--ac);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:20px}
+nav{display:flex;gap:6px;padding:10px 12px 0;max-width:900px;margin:auto}
+nav button{flex:1;padding:10px;border:0;border-radius:8px 8px 0 0;background:#d3dbe1;font:inherit;font-weight:700;color:var(--mut)}
+nav button.on{background:var(--card);color:var(--ac)}
+main{max-width:900px;margin:auto;background:var(--card);padding:14px;min-height:60vh}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+select,input,textarea,button{font:inherit}
+select,input[type=text],input[type=search],textarea{padding:8px 10px;border:1px solid var(--ln);border-radius:8px;background:#fff;color:var(--ink)}
+input[type=search]{flex:1;min-width:140px}
+textarea{width:100%}
+.btn{padding:9px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;cursor:pointer}
+.btn.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+.btn.ok{background:var(--ok)}
+.item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--ln)}
+.item .nm{flex:1}.item small{color:var(--mut)}
+.q{display:flex;align-items:center;gap:6px}
+.q button{width:34px;height:34px;border:1px solid var(--ln);border-radius:8px;background:#f4f7f9;font-size:20px;line-height:1}
+.q b{min-width:26px;text-align:center}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--ln);padding:6px 8px;text-align:right}
+th{background:#eef2f5}
+td input[type=number]{width:70px;padding:5px}
+.off td{opacity:.4;text-decoration:line-through}
+.qrs{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
+.qrs figure{margin:0;text-align:center}
+.qrs svg{width:5cm;height:5cm}
+code{display:block;direction:ltr;text-align:left;font-size:11px;word-break:break-all;background:#f1f4f6;padding:6px;border-radius:6px;margin-top:6px}
+.st{padding:8px 10px;border-radius:8px;background:#eef2f5;margin:8px 0}
+.st.bad{background:#fbe9dd;color:var(--warn)}
+#camBox{margin:10px 0}
+#vid{width:100%;max-height:300px;background:#000;border-radius:8px}
+#toast{position:fixed;bottom:16px;inset-inline:16px;margin:auto;max-width:420px;background:var(--ink);color:#fff;padding:10px 14px;border-radius:8px;text-align:center;display:none}
+details{margin-top:16px}
+[hidden]{display:none!important}
+.pg{margin-top:14px}
+.sig{display:flex;gap:30px;margin-top:18px}
+.sig div{flex:1;border-top:1px solid var(--ink);padding-top:4px;font-size:14px}
+@media print{
+ header,nav,#p2,#p1>*:not(#sheetWrap),.np{display:none!important}
+ body{background:#fff}
+ main{padding:0;min-height:0}
+ .pg{margin:0;break-after:page;page-break-after:always}
+ .pg:last-child{break-after:auto;page-break-after:auto}
+}
+</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="flex:1">منظومة الصرف / Issuance System</h1><small id="lic"></small><button class="btn alt" id="rn" style="margin:0;padding:5px 10px">🔑</button></header>
+<nav>
+ <button id="t1" class="on">طلب القسم / Order</button>
+ <button id="t2">استلام وصرف / Issue</button>
+</nav>
+<main>
+<section id="p1">
+ <div class="row">
+  <select id="dept"><option value="R">المطعم / Restaurant</option><option value="C">الكانتين / Canteen</option><option value="L">المغسلة / Laundry</option><option value="H">خدمات الغرف / Room Service</option></select>
+  <button class="btn alt" id="addDept">+ قسم / Dept</button><input type="search" id="srch" placeholder="ابحث / Search">
+ </div>
+ <div class="row"><input type="text" id="newItem" placeholder="أضف صنف جديد (عربي أو English) / Add new item" style="flex:1;min-width:160px"><button class="btn" id="addBtn">إضافة / Add</button></div>
+ <div id="list"></div>
+ <div class="row" style="margin-top:12px">
+  <button class="btn" id="mk">إنشاء ورقة الطلب / Create Order Sheet</button>
+  <button class="btn alt" id="clr">تفريغ الاختيار / Clear</button>
+  <span id="cnt"></span>
+ </div>
+ <div id="sheetWrap" hidden></div>
+ <details>
+  <summary>إعدادات الجهاز / Device settings</summary>
+  <div class="row" style="margin-top:8px"><input type="text" id="devCode" maxlength="6" placeholder="K1" style="width:100px"><select id="fixDept"><option value="">كل الأقسام / Any department</option><option value="R">المطعم / Restaurant</option><option value="C">الكانتين / Canteen</option><option value="L">المغسلة / Laundry</option><option value="H">خدمات الغرف / Room Service</option></select><button class="btn alt" id="saveSet">حفظ / Save</button></div>
+  <p class="st">رمز الجهاز يدخل في رقم كل طلب (مثل K1-0007) ليبقى فريداً. أعطِ كل جهاز رمزاً مختلفاً، ويمكنك تثبيت القسم.<br>Give each device a different code. You can lock the department.</p>
+ </details>
+ <details>
+  <summary>قائمة الأصناف / Item list</summary><p class="st">بصمة القائمة / Catalog ID: <b id="hs"></b></p><div class="row"><button class="btn alt" id="exCat">تصدير / Export</button><label class="btn alt">استيراد / Import<input type="file" id="imCat" accept=".txt" hidden></label></div>
+  <p class="st">اكتب كل صنف في سطر: <b>عربي|English</b>. رقم الصنف هو ترتيبه في القائمة، فأضف الجديد في آخر القائمة ولا تغيّر الترتيب بعد الطباعة.<br>One item per line: Arabic|English. The item number is its position in the list; add new items at the end and never reorder after printing.</p>
+  <textarea id="catTxt" rows="8"></textarea>
+  <div class="row" style="margin-top:8px"><button class="btn alt" id="saveCat">حفظ القائمة / Save List</button></div>
+ </details>
+</section>
+
+<section id="p2" hidden>
+ <div class="row">
+  <button class="btn" id="cam">مسح بالكاميرا / Scan with Camera</button>
+  <button class="btn alt" id="stopCam" hidden>إيقاف الكاميرا / Stop Camera</button>
+ </div>
+ <div id="camBox" hidden><video id="vid" playsinline muted></video></div>
+ <textarea id="paste" rows="3" placeholder="أو الصق الكود هنا (كل جزء في سطر) / Or paste the code here (one part per line)"></textarea>
+ <div class="row" style="margin-top:8px"><button class="btn alt" id="load">تحميل الطلب / Load Order</button></div>
+ <div id="issue"></div>
+ <h3 style="margin-top:22px">الطلبات المحفوظة / Saved orders</h3>
+ <input type="search" id="ordSrch" placeholder="ابحث برقم الطلب / Search order no." style="width:100%;margin-bottom:8px">
+ <div id="saved"></div>
+</section>
+</main>
+<div id="lock" hidden style="position:fixed;inset:0;z-index:99;background:#16222c;display:flex;align-items:center;justify-content:center;padding:16px">
+ <div style="background:#fff;border-radius:12px;padding:22px;max-width:380px;width:100%;text-align:center">
+  <h2 style="margin:0 0 6px">انتهت صلاحية المنظومة<br><small>System license expired</small></h2>
+  <p id="lmsg" class="st"></p>
+  <input type="password" id="pin" inputmode="numeric" autocomplete="off" placeholder="رمز التجديد / Renewal code" style="width:100%;text-align:center;padding:10px;border:1px solid var(--ln);border-radius:8px">
+  <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="rnBtn">تجديد / Renew</button><button class="btn alt" id="rnX" hidden>إغلاق / Close</button></div>
+ </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
+const D={R:'المطعم / Restaurant',C:'الكانتين / Canteen',L:'المغسلة / Laundry',H:'خدمات الغرف / Room Service'};
+try{Object.assign(D,JSON.parse(LS('depts')||'{}'))}catch(e){}
+const DEF=`كحول طبي 5 لتر|Medical Alcohol 5 L
+ملمع ستانلس ستيل 550 مل|Stainless Steel Polish 550 ml
+مزيل دهون 550 مل|Degreaser 550 ml
+منظف أبيض 3 لتر|White Cleaner 3 L
+رول أكياس تفريغ هواء 17*500|Vacuum Bags Roll 17*500
+رول أكياس تفريغ هواء 20*500|Vacuum Bags Roll 20*500
+رول أكياس تفريغ هواء 22*1500|Vacuum Bags Roll 22*1500
+مسحوق غسيل 2.5 كجم (4 قطع/كرتون)|Laundry Powder 2.5 kg (4 pcs/ctn)
+كلوركس 950 مل (12 قطع/كرتون)|Clorox 950 ml (12 pcs/ctn)
+لاميس 900 مل (12 قطع/كرتون)|Lamis 900 ml (12 pcs/ctn)
+قفازات|Gloves
+قبعة شيف (100 قطعة)|Chef Hat (100 pcs)
+قبعة شيف كبيرة (20 قطعة)|Large Chef Hat (20 pcs)
+منظف أرضيات 1 لتر|Floor Cleaner 1 L
+معطر جو 300 مل|Air Freshener 300 ml
+منظف زجاج 500 مل|Glass Cleaner 500 ml
+إسفنج (48 قطعة/باك)|Sponge (48 pcs/pack)
+غطاء حذاء (100 قطعة)|Shoe Cover (100 pcs)
+ليفة ستانلس ستيل (3 قطع/باك)|Steel Scourer (3 pcs/pack)
+رداء واقي|Protective Gown
+أكياس قمامة 80×55|Garbage Bags 80×55
+أكياس قمامة كبيرة|Large Garbage Bags
+ملح أقراص 25 كجم|Salt Tablets 25 kg
+TCL Dip In 16 Kg|TCL Dip In 16 Kg
+TCL Ovac 20 Kg|TCL Ovac 20 Kg
+ورق ألومنيوم 450 مم|Aluminium Foil 450 mm
+سلوفان (غلاف بلاستيكي شفاف)|Cellophane (Clear Plastic Wrap)
+فحم ابيض 5 كيلو|White Charcoal 5 kg
+ورق الزبدة 45×70 سم|Baking Paper 45×70 cm
+اعود خشبي|Wooden Sticks
+حليب الصويا 1 لتر|Soy Milk 1 L
+حليب فراولة 1 لتر|Strawberry Milk 1 L
+حليب تمر 1 لتر|Date Milk 1 L
+حليب موز 1 لتر|Banana Milk 1 L
+حليب شوكولاتة 1 لتر|Chocolate Milk 1 L
+زبدة 400 غرام|Butter 400 g
+حليب لوز 1 لتر|Almond Milk 1 L
+شراب لوز مركز 1 لتر|Almond Syrup Concentrate 1 L
+جبنة كريمية 350 غرام|Cream Cheese 350 g
+جبنة كريمية 2 كغ|Cream Cheese 2 kg
+طحينة 200 غرام|Tahini 200 g
+لبنة 500 غرام|Labneh 500 g
+جبنة بيضاء 500 غرام|White Cheese 500 g
+جبنة بيضاء 900 غرام|White Cheese 900 g
+مارجرين 500 غرام|Margarine 500 g
+كريمة حلوة 1 لتر|Sweet Cream 1 L
+زيتون مشوي|Grilled Olives
+زيتون مشوي 4 كغ|Grilled Olives 4 kg
+كرات لبنة 4.5 كغ|Labneh Balls 4.5 kg
+مارجرين 2.5 كغ|Margarine 2.5 kg
+كتلة مارجرين 2 كغ|Margarine Block 2 kg
+تورتيلا 25 سم|Tortilla 25 cm
+سلامي عجل|Veal Salami
+جبنة إدامر 248 غرام|Edam Cheese 248 g
+جبنة حلوم 225 غرام|Halloumi Cheese 225 g
+جبنة زرقاء|Blue Cheese
+جبنة جودة|Gouda Cheese
+جبنة شيدر|Cheddar Cheese
+جبنة بالزيتون|Olive Cheese
+جبنة بالفلفل|Pepper Cheese
+جبنة مدخنة|Smoked Cheese
+جبنة الماعز|Goat Cheese
+جبنة موزاريلا 2.5 كغ|Mozzarella Cheese 2.5 kg
+جبنة كشكوان 400 غرام|Kashkaval Cheese 400 g
+مناديل مبللة (500 قطعة/علبة)|Wet Wipes (500 pcs/box)
+وقود جل 165 غرام|Gel Fuel 165 g
+ماء طبيعي 330 مل (زجاج)|Still Water 330 ml (Glass)
+ماء غازية 330 مل (24 قطعة/علبة)|Sparkling Water 330 ml (24 pcs/box)
+ماء طبيعي 500 مل (بلاستيك)|Still Water 500 ml (Plastic)
+أعواد أسنان (500 قطعة)|Toothpicks (500 pcs)
+مصاصات (100 قطعة)|Straws (100 pcs)
+ماء غازية 750 مل|Sparkling Water 750 ml
+شاي التوت الأحمر (15 كيس)|Red Berry Tea (15 bags)
+شاي النعناع (15 كيس)|Mint Tea (15 bags)
+شاي النعناع (20 كيس)|Mint Tea (20 bags)
+شاي التوت الأحمر (20 كيس)|Red Berry Tea (20 bags)
+شاي منزوع الكافيين (20 كيس)|Decaf Tea (20 bags)
+ورق تغليف مطاطي 450 مم|Stretch Film 450 mm
+ذرة حلوة مجمدة 400 غرام|Frozen Sweet Corn 400 g
+فراولة مجمدة 900 غرام|Frozen Strawberry 900 g
+فراولة مجمدة 1 كغ|Frozen Strawberry 1 kg
+فراولة مجمدة 2.5 كغ|Frozen Strawberry 2.5 kg
+سمبوسة 1 كغ|Samosa 1 kg
+بطاطس مقلية 10 كغ|French Fries 10 kg
+كنافة مجمدة 500 غرام|Frozen Kunafa 500 g
+عجينة مورقة 400 غرام|Puff Pastry 400 g
+عجينة بقلاوة 500 غرام|Baklava Dough 500 g
+عجينة جلاش 500 غرام|Phyllo Dough 500 g
+فاصوليا خضراء مجمدة 400 غرام|Frozen Green Beans 400 g
+مانجو مجمدة 1 كغ|Frozen Mango 1 kg
+كرواسون كلاسيك (180 قطعة)|Classic Croissant (180 pcs)
+كرواسون حبوب كاملة (54 قطعة)|Whole Grain Croissant (54 pcs)
+ذرة حلوة مجمدة 900 غرام|Frozen Sweet Corn 900 g
+توت أزرق مجمد 300 غرام|Frozen Blueberries 300 g
+توت العليق مجمد 300 غرام|Frozen Raspberries 300 g
+دجاجة كاملة 12 كجم|Whole Chicken 12 kg
+أفخاذ دجاج 10 كجم|Chicken Thighs 10 kg
+مياه طبيعية 500 مل (بلاستيك) VIP|Still Water 500 ml (Plastic) VIP
+صلصة ورشسترشاير 295 مل|Worcestershire Sauce 295 ml
+صلصة المحار 810 مل|Oyster Sauce 810 ml
+صلصة الفلفل الحلو 710 مل|Sweet Chili Sauce 710 ml
+خل بلسميك 500 مل|Balsamic Vinegar 500 ml
+صلصة سريراتشا الحارة 495 غرام|Sriracha Hot Sauce 495 g
+زيت الكمأة 250 مل|Truffle Oil 250 ml
+شراب القيقب 355 مل|Maple Syrup 355 ml
+سكر بودرة 400 غرام|Powdered Sugar 400 g
+سكر 1 كجم (20 قطعة/عبوة)|Sugar 1 kg (20 pcs/pack)
+رقائق الذرة (كيلوقز) 400 غرام|Corn Flakes (Kellogg's) 400 g
+بسكويت أصابع الست 400 غرام|Ladyfinger Biscuits 400 g
+كاتشب 5 كجم|Ketchup 5 kg
+زيت نخيل17 لتر|Palm Oil 17 L
+مكرونة بيني ليسي 500 غرام|Penne Lisce Pasta 500 g
+مكرونة بيني ريغاتي 500 غرام|Penne Rigate Pasta 500 g
+مكرونة فارفاليـني بارّيلا 500 غرام|Farfalline Barilla Pasta 500 g
+مكرونة بيني من الأرز البني 500 غرام (خالٍ من الغلوتين)|Brown Rice Penne 500 g (Gluten Free)
+مكرونة بيني ريغاتي (ديفيلا) 500 غرام|Penne Rigate (De Cecco) 500 g
+مكرونة فوسيلي 500 غرام|Fusilli Pasta 500 g
+مكرونة فيتوتشيني 500 غرام|Fettuccine Pasta 500 g
+نودلز 500 غرام|Noodles 500 g
+دقيق كامل الحبة 1 كجم|Whole Wheat Flour 1 kg
+حليب باريستا 1 لتر (12 قطعة/صندوق)|Barista Milk 1 L (12 pcs/box)
+حليب مبخر 385 مل|Evaporated Milk 385 ml
+حليب مكثف محلى 397 غرام|Sweetened Condensed Milk 397 g
+شاي أخضر أحمد 20 كيس|Ahmad Green Tea 20 bags
+شاي البابونج والليمون 10 أكياس|Chamomile & Lemon Tea 10 bags
+شاي إيرل غراي 20 كيس|Earl Grey Tea 20 bags
+إسبريسو 1 كجم (باربارو)|Espresso 1 kg (Barbaro)
+كاكاو داكن 1 كجم|Dark Cocoa 1 kg
+كاكاو بالحليب 500 غرام|Milk Cocoa 500 g
+سكر بني (1000 كيس)|Brown Sugar (1000 sachets)
+سكر بني (100 كيس)|Brown Sugar (100 sachets)
+سكر أبيض (100 كيس)|White Sugar (100 sachets)
+هاينكن 330 مل (0% كحول)|Heineken 330 ml (0% Alcohol)
+عصير البرتقال 1 لتر|Orange Juice 1 L
+عصير المانجو 1 لتر|Mango Juice 1 L
+مشروب العنب الأبيض غازي 1 لتر|Sparkling White Grape Drink 1 L
+حليب جوز الهند 400 مل|Coconut Milk 400 ml
+فانتا 250 مل|Fanta 250 ml
+شويبس رمان 300 مل|Schweppes Pomegranate 300 ml
+ميرندا 330 مل|Mirinda 330 ml
+بيبسي دايت 330 مل|Diet Pepsi 330 ml
+بيبسي 330 مل|Pepsi 330 ml
+كوكاكولا 250 مل|Coca-Cola 250 ml
+سبرايت 250 مل|Sprite 250 ml
+افيس بيير 330 مل|Avis Beer 330 ml
+7 أب 330 مل|7UP 330 ml
+دقيق فارين 1 كجم (10 قطع/عبوة)|Farine Flour 1 kg (10 pcs/pack)
+زيت دوار الشمس 850 مل|Sunflower Oil 850 ml
+زيت الذرة 850 مل|Corn Oil 850 ml
+زيتون أسود بدون نوى 430 غرام|Pitted Black Olives 430 g
+زيتون أخضر بدون نوى 430 غرام|Pitted Green Olives 430 g
+زيتون أخضر كامل 335 غرام|Whole Green Olives 335 g
+فلفل هالابينو مخلل 650 غرام|Pickled Jalapeño 650 g
+مخلل مشكل 320 غرام|Mixed Pickles 320 g
+مخلل خيار 340 غرام|Cucumber Pickles 340 g
+فاصوليا حمراء 425 غرام|Red Kidney Beans 425 g
+فول مدمس 400 غرام|Fava Beans (Foul) 400 g
+فاصوليا مطبوخة 800 غرام|Baked Beans 800 g
+تاباسكو 59 مل|Tabasco 59 ml
+خل التفاح 1 لتر|Apple Cider Vinegar 1 L
+خل أبيض 1 لتر|White Vinegar 1 L
+خل نبيذ 1 لتر|Wine Vinegar 1 L
+كبر 100 غرام|Capers 100 g
+شرائح الأنشوفة 45 غرام|Anchovy Fillets 45 g
+حليب 1 لتر|Milk 1 L
+كمون مطحون 200 غرام|Ground Cumin 200 g
+كركم مطحون 200 غرام|Ground Turmeric 200 g
+صلصة البيستو 190 غرام|Pesto Sauce 190 g
+سميد ناعم 1 كجم|Fine Semolina 1 kg
+سميد خشن 1 كجم|Coarse Semolina 1 kg
+جيلي مانجو 4.5 كجم|Mango Jelly 4.5 kg
+موسلي 375 غرام|Muesli 375 g
+شوفان 500 غرام|Oats 500 g
+جرانولا 500 غرام|Granola 500 g
+كينوا 454 غرام|Quinoa 454 g
+سكر ستيفيانا (100 كيس)|Stevia Sugar (100 sachets)
+خميرة فورية 450 غرام|Instant Yeast 450 g
+مربى الفراولة 750 غرام|Strawberry Jam 750 g
+مربى التوت الأحمر 750 غرام|Red Berry Jam 750 g
+مربى المشمش 750 غرام|Apricot Jam 750 g
+مربى التوت الأحمر 380 غرام|Red Berry Jam 380 g
+عسل 30 غرام|Honey 30 g
+كريمة الفستق 5 كجم|Pistachio Cream 5 kg
+سكر فانيليا 1 كجم|Vanilla Sugar 1 kg
+نوتيلا1 كجم|Nutella 1 kg
+عسل برتقال 28 غرام|Orange Honey 28 g
+عسل فراولة 28 غرام|Strawberry Honey 28 g
+عسل كرز 28 غرام|Cherry Honey 28 g
+بيكربونات الصوديوم 150 غرام|Baking Soda 150 g
+مشمش مجفف|Dried Apricot
+تين مجفف 300 غرام|Dried Figs 300 g
+معجون سكر بني 500 غرام|Brown Sugar Paste 500 g
+معجون سكر أبيض 1000غرام|White Sugar Paste 1000 g
+شراب جوز الهند 700 مل|Coconut Syrup 700 ml
+شراب النعناع 700 مل|Mint Syrup 700 ml
+بذور الشيا|Chia Seeds
+جوز (عين الجمل)|Walnuts
+لوز|Almonds
+فول سوداني|Peanuts
+كاجو|Cashews
+فستق مقشور|Shelled Pistachios
+بيكنج باودر (100 كيس)|Baking Powder (100 sachets)
+شراب بلو كوراكاو 700 مل|Blue Curaçao Syrup 700 ml
+شراب علكة 700 مل|Bubble Gum Syrup 700 ml
+شراب التوت الأزرق 700 مل|Blueberry Syrup 700 ml
+شراب الفراولة 700 مل|Strawberry Syrup 700 ml
+شراب فاكهة باشن 700 مل|Passion Fruit Syrup 700 ml
+شراب البطيخ 700 مل|Watermelon Syrup 700 ml
+شراب الرمان (غرينادين) 700 مل|Grenadine (Pomegranate) Syrup 700 ml
+شراب كراميل كلاسيك 750 مل|Classic Caramel Syrup 750 ml
+شراب كراميل كلاسيك 750 مل (خالي من السكر)|Classic Caramel Syrup 750 ml (Sugar Free)
+شراب القهوة 850 مل|Coffee Syrup 850 ml
+مهروس الكيوي 1.25 غرام|Kiwi Puree 1.25 g
+مهروس الخوخ 1.25 غرام|Peach Puree 1.25 g
+مهروس الفراولة 1 لتر|Strawberry Puree 1 L
+مهروس التوت الأزرق 1 لتر|Blueberry Puree 1 L
+مهروس المانجو 1 لتر|Mango Puree 1 L
+أكواب ورقية (صندوق)|Paper Cups (box)
+وقود جل للتسخين 165 غرام|Heating Gel Fuel 165 g
+أرز قصير الحبة 1 كجم|Short Grain Rice 1 kg
+أرز طويل الحبة 900 غرام|Long Grain Rice 900 g
+أرز طويل الحبة 1 كجم|Long Grain Rice 1 kg
+عسل 3 كجم|Honey 3 kg
+مكرونة فارفالي 500 غرام (فيرارا)|Farfalle Pasta 500 g (Ferrara)
+كسكس 1 كجم|Couscous 1 kg
+كسكس 800 غرام|Couscous 800 g
+فاصوليا بيضاء 1 كجم|White Beans 1 kg
+فاصوليا بيضاء 500 غرام|White Beans 500 g
+طماطم معلبة 400 غرام|Canned Tomatoes 400 g
+لسان عصفور 400 جرام|Orzo Pasta 400 g
+سباغيتي 400 غرام|Spaghetti 400 g
+مكرونة حلقات عربية 400 غرام|Ring Pasta (Arabic) 400 g
+رقائق الذرة 1 كجم|Corn Flakes 1 kg
+تونة بزيت دوار الشمس 160 غرام|Tuna in Sunflower Oil 160 g
+زيت زيتون 1 لتر|Olive Oil 1 L
+شاي أحمر (100 كيس)|Black Tea (100 bags)
+شاي أخضر (25 كيس)|Green Tea (25 bags)
+قهوة عربية 500 غرام|Arabic Coffee 500 g
+طيحنية 800 جرام|Tahini 800 g
+بذر الكتان|Flax Seeds
+تتبيلة كاجون 130 غرام|Cajun Seasoning 130 g
+بودرة بصل 270 غرام|Onion Powder 270 g
+ملح الهيمالايا 1 كغ|Himalayan Salt 1 kg
+بهارات مشكلة 200 غرام|Mixed Spices 200 g
+بهارات مشاوي اللحم 100 غرام|Meat Grill Spices 100 g
+كسبر حب 100 جرام|Coriander Seeds 100 g
+بودرة ريحان3 كيلو|Basil Powder 3 kg
+بودرة كسبر 70 غرام|Coriander Powder 70 g
+بودرة قرنفل 60 غرام|Clove Powder 60 g
+بودرة كاري 70 غرام|Curry Powder 70 g
+بودرة فلفل أبيض 50 غرام|White Pepper Powder 50 g
+بودرة زعتر1 كيلو|Thyme Powder 1 kg
+يانسون نجمي 60 غرام|Star Anise 60 g
+قرفة عيدان 10 غرام|Cinnamon Sticks 10 g
+بودرة فلفل أسود|Black Pepper Powder
+ملح 1.8كغ|Salt 1.8 kg
+بودرة فلفل أحمر حار200 غرام|Hot Red Pepper Powder 200 g
+نشا الذرة 1 كغ|Corn Starch 1 kg
+دقيق الذرة 4 كغ|Corn Flour 4 kg
+فلفل ملون مشكل 5 كغ|Mixed Colored Peppers 5 kg
+زعفران 0.5 غرام|Saffron 0.5 g
+سمسم 5 كغ|Sesame 5 kg
+ورق غار 1 كغ|Bay Leaves 1 kg
+فلفل احمر 5 كيلو|Red Pepper 5 kg
+بودرة فلفل أسود 250 غرام|Black Pepper Powder 250 g
+جيلاتين 1 كغ|Gelatin 1 kg
+جوز الهند المبشور 1 كغ|Desiccated Coconut 1 kg
+جوز الهند المبشور 250 غرام|Desiccated Coconut 250 g
+بودرة فلفل أبيض 500 غرام|White Pepper Powder 500 g
+بودرة قرفة 500 غرام|Cinnamon Powder 500 g
+بودرة فستق 500 غرام|Pistachio Powder 500 g
+بودرة جيلاتين 500 غرام|Gelatin Powder 500 g
+باستا بينه 400غرام|Penne Pasta 400 g
+اصابع صمغ|Gum Sticks
+سيروب فانيليا  0.7لتر|Vanilla Syrup 0.7 L
+سيروب بندق 0.7 لتر|Hazelnut Syrup 0.7 L
+سيروب زوج الهند 0.7 لتر|Coconut Syrup 0.7 L
+سيروب قارديان 0.7 لتر|Guardian Syrup 0.7 L
+ميراندا 220 ملي|Mirinda 220 ml
+حبوب شوكلاته بيضاء  5 كيلو|White Chocolate Chips 5 kg
+زيت زيتون 2 لتر|Olive Oil 2 L
+لوز مزلط 1 كيلو|Peeled Almonds 1 kg
+مربى مشمش 380غرام|Apricot Jam 380 g
+لبن عيران 1 لتر|Ayran 1 L
+جبنة مثلثات 108 غرام|Triangle Cheese 108 g
+لبن عادي 1 لتر|Plain Yogurt Drink 1 L
+مايونيز 3 كجم|Mayonnaise 3 kg
+كتشب0.3 كيلو|Ketchup 0.3 kg
+ماستردا 5 كيلو|Mustard 5 kg
+كريم الخفق 1 لتر|Whipping Cream 1 L
+زيتون قطع اسود 370 غرام|Sliced Black Olives 370 g
+كمون حوت 200 غرام|Cumin Seeds 200 g
+فاصوليا بيضاء|White Beans
+عدس احمر|Red Lentils
+تورتيلا 30سم|Tortilla 30 cm
+حبوب الكزبرة|Coriander Seeds
+حبوب الصويا|Soybeans
+صلصة الصويا 500ملي|Soy Sauce 500 ml
+نسكافيه كلاسيك  200غرام|Nescafé Classic 200 g
+ريد بول 220 ملي|Red Bull 220 ml
+ميراميه 5 غرام|Sage 5 g
+ميراميه 10 غرام|Sage 10 g
+فلفل اسود|Black Pepper
+اوفتالين 400 غرام|Ovaltine 400 g
+شاي احمد 20 كيس|Ahmad Tea 20 bags
+راوخ اناناس|Rauch Pineapple Juice
+كمامات|Face Masks
+كرسبي فيوتن|Crispy Fuiten
+محسن خبز|Bread Improver
+حليب بودرة 5كيلو|Powdered Milk 5 kg
+سامولينا 5 كيلو|Semolina 5 kg
+برقوق مجفف|Dried Plums
+زبيب مجفف|Raisins
+اناناس مجفف|Dried Pineapple
+موسلي بالفواكه  450 غرام|Fruit Muesli 450 g
+مناديل رول|Tissue Rolls
+هايكين|Heineken`;
+let cat=[],q={},o=null,last='';
+const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
+const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
+function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});$('#hs').textContent=hash()+' · '+cat.length}
+function tab(n){$('#p1').hidden=n!=1;$('#p2').hidden=n!=2;$('#t1').className=n==1?'on':'';$('#t2').className=n==2?'on':'';if(n!=2)stopCam()}
+$('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);
+
+/* ---------- طلب القسم ---------- */
+function renderList(){
+ const s=$('#srch').value.trim();
+ $('#list').innerHTML=cat.map((c,i)=>({c,id:i+1})).filter(x=>!s||(x.c.n+' '+x.c.u).toLowerCase().includes(s.toLowerCase())).map(x=>
+  `<div class="item"><div class="nm">${x.c.n} <small>${x.c.u}</small></div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><b>${q[x.id]||0}</b><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
+ const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':'';
+}
+$('#list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=b.dataset.i;q[i]=Math.max(0,(q[i]||0)+ +b.dataset.d);renderList()};
+$('#srch').oninput=renderList;
+$('#clr').onclick=()=>{q={};renderList();$('#sheetWrap').hidden=true};
+async function tr(t){const p=/[\u0600-\u06FF]/.test(t)?'ar|en':'en|ar';try{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair='+p);const j=await r.json();return (j.responseData.translatedText||'').trim()}catch(e){return ''}}
+$('#addBtn').onclick=async()=>{
+ const t=$('#newItem').value.trim();if(!t)return;
+ const ar=/[\u0600-\u06FF]/.test(t);toast('جارٍ الترجمة… Translating…');
+ let x=await tr(t);
+ if(!x)x=prompt('تعذّرت الترجمة، اكتبها يدوياً / Translation failed, type it:','')||'';
+ const [a,e]=ar?[t,x]:[x||t,t];
+ const tx=$('#catTxt');tx.value=tx.value.trimEnd()+'\n'+a+'|'+e;LS('cat2',tx.value);loadCat();
+ q[cat.length]=1;$('#newItem').value='';renderList();toast(a+' / '+e)};
+$('#saveCat').onclick=()=>{LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم حفظ القائمة / List saved')};
+
+function makeSheet(){if(!chk())return;
+ const ids=Object.keys(q).filter(i=>q[i]>0).map(Number).sort((a,b)=>a-b);
+ if(!ids.length)return toast('اختر صنفاً واحداً على الأقل / Select at least one item');
+ const n=(+LS('cnt')||0)+1;LS('cnt',n);
+ const no=(LS('dev')||'X')+'-'+String(n).padStart(4,'0'),d=new Date();
+ const ds=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+ const dept=$('#dept').value,parts=[],PG=30;
+ for(let i=0;i<ids.length;i+=PG)parts.push(ids.slice(i,i+PG));
+ const codes=parts.map((p,i)=>['EBR1',dept,no,ds,(i+1)+'/'+parts.length,hash(),p.map(k=>k+':'+q[k]).join(','),D[dept]].join('|'));
+ const dt=`20${ds.slice(0,2)}-${ds.slice(2,4)}-${ds.slice(4)}`;
+ const pages=parts.map((p,i)=>{
+  const g=qrcode(0,'M');g.addData(codes[i]);g.make();
+  const rows=p.map((k,j)=>`<tr><td>${i*PG+j+1}</td><td>${cat[k-1].n}</td><td>${cat[k-1].u}</td><td>${q[k]}</td><td></td></tr>`).join('');
+  return `<div class="pg"><h2 style="margin:6px 0">طلب صرف / Issue Request — ${D[dept]}</h2><p>رقم الطلب / Order No.: <b>${no}</b> &nbsp; التاريخ / Date: <b>${dt}</b> &nbsp; ورقة / Sheet: <b>${i+1} / ${parts.length}</b></p><table><tr><th>#</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table><div class="qrs"><figure>${g.createSvgTag({cellSize:4,margin:2,scalable:true})}<code class="np">${codes[i]}</code><button class="btn alt np" data-copy="${i}">نسخ الكود / Copy code</button></figure></div><div class="sig"><div>توقيع مقدّم الطلب / Requested by</div><div>توقيع أمين المخزن / Storekeeper</div></div></div>`}).join('');
+ const w=$('#sheetWrap');w.hidden=false;w.dataset.codes=JSON.stringify(codes);
+ w.innerHTML=`<hr class="np">${pages}<div class="row np" style="margin-top:12px"><button class="btn ok" onclick="print()">طباعة / Print (${parts.length} ${parts.length>1?'أوراق / sheets':'ورقة / sheet'})</button></div>`;
+ w.scrollIntoView({behavior:'smooth'});
+}
+$('#mk').onclick=makeSheet;
+$('#sheetWrap').onclick=e=>{const b=e.target.closest('[data-copy]');if(!b)return;const c=JSON.parse($('#sheetWrap').dataset.codes)[b.dataset.copy];navigator.clipboard.writeText(c).then(()=>toast('تم نسخ الكود / Code copied'),()=>toast('انسخ الكود يدوياً / Copy it manually'))};
+
+/* ---------- استلام وصرف ---------- */
+function ingest(txt){if(!chk())return;
+ const lines=txt.split(/\s+/).filter(l=>l.startsWith('EBR1|'));
+ if(!lines.length)return toast('الكود غير صالح / Invalid code');
+ let bad=false;
+ for(const l of lines){
+  const f=l.split('|');if(f.length<7)continue;
+  const [,dept,no,ds,pt,h,items,dn]=f,key=dept+no+ds,[pi,pn]=pt.split('/');if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
+  if(!o||o.key!==key)o=ORD()[key]||{key,dept,no,ds,total:+pn,parts:{},items:{},hash:h};
+  if(h!==hash())bad=true;
+  o.parts[pi]=1;
+  items.split(',').forEach(s=>{const [id,qt]=s.split(':');if(!o.items[id])o.items[id]={req:+qt,iss:+qt,on:true}});
+ }
+ renderIssue();
+ toast(bad?'تنبيه: قائمة الأصناف تختلف عن قائمة القسم / Warning: item list differs from the department\'s':'تم تحميل الطلب / Order loaded');
+}
+function renderIssue(){
+ if(!o)return;save();
+ const got=Object.keys(o.parts).length,miss=got<o.total;
+ const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
+ const rows=ids.map(id=>{const it=o.items[id],c=cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
+  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}></td><td>${c.n}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
+ $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
+ <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table>
+ <div class="row" style="margin-top:12px"><button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button></div>`;
+}
+$('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}renderIssue()};
+$('#issue').onclick=e=>{if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml()};
+$('#load').onclick=()=>ingest($('#paste').value);
+
+const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
+const dstr=()=>`20${o.ds.slice(0,2)}-${o.ds.slice(2,4)}-${o.ds.slice(4)}`;
+const fname=()=>`Issue_${o.dept}_${o.no}.xlsx`;
+async function xbook(){
+ const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Issue',{views:[{rightToLeft:true,state:'frozen',ySplit:5}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,printTitlesRow:'5:5',margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
+ ws.columns=[{width:6},{width:38},{width:36},{width:12},{width:12},{width:16}];
+ const th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th},F='Tahoma';
+ const put=(ref,v,o={})=>{const c=ws.getCell(ref);c.value=v;c.font={name:F,size:o.sz||11,bold:!!o.b,color:{argb:o.fc||'FF16222C'}};if(o.bg)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.bg}};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};if(o.bd)c.border=BD;return c};
+ ws.mergeCells('A1:F1');put('A1','Ebreaze Hotel',{sz:16,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=30;
+ ws.mergeCells('A2:F2');put('A2','إذن صرف مخزني / Stores Issue Note',{sz:13,b:1,bg:'FFE4EEF3'});ws.getRow(2).height=24;
+ ws.mergeCells('A3:B3');put('A3','القسم / Department: '+D[o.dept],{b:1,bd:1,h:'right'});
+ put('C3','رقم الطلب / Order No.: '+o.no,{b:1,bd:1});
+ ws.mergeCells('D3:F3');put('D3','التاريخ / Date: '+dstr(),{b:1,bd:1});ws.getRow(3).height=24;
+ ws.getRow(4).height=6;
+ ['#','الصنف','Item','المطلوب\nRequested','المصروف\nIssued','ملاحظات\nRemarks'].forEach((t,i)=>put('ABCDEF'[i]+'5',t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1}));
+ ws.getRow(5).height=34;
+ const L=lines();let r=6;
+ L.forEach((x,i)=>{const c=cat[x.id-1]||{n:'#'+x.id,u:''},bg=i%2?'FFF4F8FA':null,sh=x.iss<x.req;
+  put('A'+r,i+1,{bd:1,bg});put('B'+r,c.n,{bd:1,bg,h:'right'});put('C'+r,c.u,{bd:1,bg,h:'left'});
+  put('D'+r,x.req,{bd:1,bg});put('E'+r,x.iss,{bd:1,bg,b:1});
+  put('F'+r,sh?'ناقص / Short':'',{bd:1,bg,b:sh,fc:sh?'FFB4531A':null});r++});
+ ws.mergeCells(`A${r}:F${r}`);put('A'+r,'إجمالي الأصناف المصروفة / Total issued items: '+L.length,{b:1,bg:'FFE4EEF3',bd:1});ws.getRow(r).height=22;r+=2;
+ ws.mergeCells(`A${r}:C${r}`);put('A'+r,'مقدّم الطلب / Requested by\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});
+ ws.mergeCells(`D${r}:F${r}`);put('D'+r,'أمين المخزن / Storekeeper\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});ws.getRow(r).height=62;r++;
+ ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الأصناف غير المصروفة محذوفة من هذا النموذج / Unissued items are not listed',{sz:9,fc:'FF5D6B78'});
+ return wb.xlsx.writeBuffer();
+}
+const b64=buf=>{let t='',u=new Uint8Array(buf);for(let i=0;i<u.length;i+=0x8000)t+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(t)};
+function dl(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5e3)}
+function ready(){if(!chk()||!o)return false;if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return false;if(!lines().length){toast('لا يوجد أي سطر مصروف / No issued lines');return false}return true}
+async function dlXlsx(){if(ready())dl(fname(),new Blob([await xbook()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
+const b64u=s=>btoa(unescape(encodeURIComponent(s)));
+const wrap=s=>s.replace(/(.{76})/g,'$1\r\n');
+async function dlEml(){
+ if(!ready())return;
+ const file=b64(await xbook()),fn=fname(),B='----EBR'+Date.now();
+ const subj=`صرف / Issue ${D[o.dept]} - طلب / Order ${o.no} - ${dstr()}`;
+ const body=`مرفق ملف الصرف الخاص بـ${D[o.dept]} (طلب ${o.no} بتاريخ ${dstr()}).\nالأصناف التي لم تُصرف تم حذفها من الملف.\n\nAttached is the issue note for ${D[o.dept]} (order ${o.no}, ${dstr()}). Unissued items have been removed from the file.`;
+ const m=['X-Unsent: 1','Subject: =?UTF-8?B?'+b64u(subj)+'?=','MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${B}"`,'',`--${B}`,'Content-Type: text/plain; charset=utf-8','Content-Transfer-Encoding: base64','',wrap(b64u(body)),`--${B}`,`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; name="${fn}"`,'Content-Transfer-Encoding: base64',`Content-Disposition: attachment; filename="${fn}"`,'',wrap(file),`--${B}--`,''].join('\r\n');
+ dl(fn.replace('.xlsx','.eml'),new Blob([m],{type:'message/rfc822'}));
+ toast('افتح ملف .eml بالضغط عليه مرتين في Outlook');
+}
+
+/* ---------- الطلبات المحفوظة والإعدادات ---------- */
+const ORD=()=>{try{return JSON.parse(LS('ords')||'{}')}catch(e){return{}}};
+function save(){if(!o)return;const m=ORD();m[o.key]=o;LS('ords',JSON.stringify(m));renderSaved()}
+function renderSaved(){
+ const s=($('#ordSrch').value||'').trim().toLowerCase();
+ const m=Object.values(ORD()).filter(x=>!s||(x.no+' '+(D[x.dept]||'')).toLowerCase().includes(s)).sort((a,b)=>b.ds.localeCompare(a.ds)||b.no.localeCompare(a.no));
+ $('#saved').innerHTML=m.map(x=>`<div class="item"><div class="nm"><b>${x.no}</b> — ${D[x.dept]||x.dept} <small>20${x.ds.slice(0,2)}-${x.ds.slice(2,4)}-${x.ds.slice(4)} · ${Object.keys(x.parts).length}/${x.total}</small></div><button class="btn alt" data-open="${x.key}">فتح / Open</button><button class="btn alt" data-del="${x.key}">حذف / Delete</button></div>`).join('')||'<p>لا توجد طلبات / No orders</p>';
+}
+$('#ordSrch').oninput=renderSaved;
+$('#saved').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.open){o=ORD()[b.dataset.open];renderIssue();$('#issue').scrollIntoView({behavior:'smooth'})}
+ else if(b.dataset.del&&confirm('حذف الطلب؟ / Delete this order?')){const m=ORD();delete m[b.dataset.del];LS('ords',JSON.stringify(m));if(o&&o.key===b.dataset.del){o=null;$('#issue').innerHTML=''}renderSaved()}};
+function applyFix(){const f=LS('fix')||'';if(f)$('#dept').value=f;$('#dept').disabled=!!f}
+function initDev(){
+ let d=LS('dev');
+ if(!d){d=(prompt('رمز هذا الجهاز أو القسم (حروف/أرقام، مثل K1) / Device code (e.g. K1):','')||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6)||('D'+Math.random().toString(36).slice(2,5).toUpperCase());LS('dev',d)}
+ $('#devCode').value=d;$('#fixDept').value=LS('fix')||'';applyFix();
+}
+$('#saveSet').onclick=()=>{const d=$('#devCode').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6);if(!d)return toast('اكتب رمزاً / Enter a code');LS('dev',d);LS('fix',$('#fixDept').value);applyFix();toast('تم الحفظ / Saved: '+d)};
+$('#exCat').onclick=()=>dl('catalog.txt',new Blob([$('#catTxt').value],{type:'text/plain;charset=utf-8'}));
+$('#imCat').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#catTxt').value=await f.text();LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم استيراد القائمة / Imported');e.target.value=''};
+
+/* ---------- الأقسام ---------- */
+function fillDepts(){
+ const h=Object.entries(D).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+ const a=$('#dept').value,b=$('#fixDept').value;
+ $('#dept').innerHTML=h;$('#fixDept').innerHTML='<option value="">كل الأقسام / Any department</option>'+h;
+ if(D[a])$('#dept').value=a;$('#fixDept').value=D[b]?b:'';
+}
+$('#addDept').onclick=async()=>{
+ const t=(prompt('اسم القسم (عربي أو English) / Department name:','')||'').replace(/[|,]/g,' ').trim();if(!t)return;
+ const ar=/[\u0600-\u06FF]/.test(t);toast('جارٍ الترجمة… Translating…');
+ let x=await tr(t);
+ if(!x)x=prompt('تعذّرت الترجمة، اكتبها / Type the translation:','')||'';
+ x=x.replace(/[|,]/g,' ').trim();
+ const [a,e]=ar?[t,x]:[x||t,t];
+ let n=1;while(D['D'+n])n++;
+ const c='D'+n;D[c]=a+' / '+e;LS('depts',JSON.stringify(D));fillDepts();$('#dept').value=c;
+ toast('تمت إضافة القسم / Added: '+D[c]);
+};
+
+/* ---------- الصلاحية ---------- */
+const SALT='10011384921c3eef416356832b344024',PH='b2950de27dbad822a6c3fe214b637bf75e3484790809916b94b9f30796bc50d9',BASE_EXP='2026-11-16',IT=250000;
+const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const td=()=>fmt(new Date());
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+const unhex=h=>new Uint8Array(h.match(/../g).map(x=>parseInt(x,16)));
+const sha=async t=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)));
+async function pk(pin){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);return hex(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:unhex(SALT),iterations:IT},k,256))}
+let LIC=false,EXP=BASE_EXP,CLK=false;
+async function licInit(){
+ try{
+  let e=BASE_EXP;const r=JSON.parse(LS('lic')||'null');
+  if(r&&r.e>e&&r.s===await sha(r.e+'|'+SALT))e=r.e;
+  EXP=e;const t=td(),ls=LS('ls')||'';
+  CLK=!!ls&&t<ls&&(new Date(ls+'T12:00:00')-new Date(t+'T12:00:00'))>86400000;
+  if(!CLK&&t>ls)LS('ls',t);
+  LIC=!CLK&&t<=e;
+ }catch(x){LIC=false}
+ licUI();
+}
+function licUI(show){
+ $('#lic').textContent=LIC?'صالحة حتى / Valid until '+EXP:'';
+ $('#lock').hidden=LIC&&!show;$('#rnX').hidden=!LIC;
+ $('#lmsg').textContent=CLK?'ساعة الجهاز غير صحيحة / Device clock is incorrect':LIC?'أدخل رمز التجديد لتمديد الصلاحية / Enter the code to extend':'أدخل رمز التجديد للمتابعة / Enter the renewal code to continue';
+}
+const chk=()=>{if(LIC)return true;licUI();return false};
+async function renew(){
+ const pin=$('#pin').value.trim(),tr=+LS('tr')||0;
+ if(tr>=5&&Date.now()<(+LS('tu')||0))return toast('حاول بعد قليل / Try again in a few minutes');
+ if(!window.crypto||!crypto.subtle)return toast('افتح الرابط عبر HTTPS / Open the link over HTTPS');
+ if(await pk(pin)!==PH){LS('tr',tr+1);if(tr+1>=5)LS('tu',Date.now()+300000);$('#pin').value='';return toast('رمز خاطئ / Wrong code')}
+ LS('tr',0);
+ const n=Math.min(366,parseInt(prompt('عدد أيام التجديد / Days to add:','30'))||0);
+ if(n<1)return;
+ const base=EXP>td()?EXP:td(),d=new Date(base+'T12:00:00');d.setDate(d.getDate()+n);
+ const e=fmt(d);LS('lic',JSON.stringify({e,s:await sha(e+'|'+SALT)}));
+ $('#pin').value='';await licInit();toast('تم التجديد حتى / Renewed until '+e);
+}
+$('#rnBtn').onclick=renew;$('#pin').onkeydown=e=>{if(e.key==='Enter')renew()};
+$('#rn').onclick=()=>licUI(true);$('#rnX').onclick=()=>licUI(false);
+
+/* ---------- الكاميرا ---------- */
+let stream=null,scanning=false;
+const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+async function startCam(){
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  const v=$('#vid');v.srcObject=stream;await v.play();$('#camBox').hidden=false;$('#stopCam').hidden=false;scanning=true;tick()}
+ catch(e){toast('تعذّر فتح الكاميرا — الصق الكود بدلاً منها / Camera unavailable — paste the code instead')}
+}
+function stopCam(){scanning=false;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;$('#camBox').hidden=true;$('#stopCam').hidden=true}
+function tick(){
+ if(!scanning)return;const v=$('#vid');
+ if(v.readyState>=2){cv.width=v.videoWidth;cv.height=v.videoHeight;cx.drawImage(v,0,0);
+  const im=cx.getImageData(0,0,cv.width,cv.height),r=jsQR(im.data,im.width,im.height);
+  if(r&&r.data.startsWith('EBR1|')&&r.data!==last){last=r.data;ingest(r.data)}}
+ requestAnimationFrame(tick);
+}
+$('#cam').onclick=startCam;$('#stopCam').onclick=stopCam;
+
+loadCat();fillDepts();initDev();renderList();renderSaved();licInit();
+if(/[?&]m=order/.test(location.search))$('#t2').hidden=true;
+</script>
+</body>
+</html>
