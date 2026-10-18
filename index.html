@@ -438,6 +438,7 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 موسلي بالفواكه  450 غرام|Fruit Muesli 450 g
 مناديل رول|Tissue Rolls
 هايكين|Heineken`;
+const WM=/[?&]m=worker/.test(location.search);
 let cat=[],q={},o=null,last='';
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
 const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
@@ -489,14 +490,15 @@ $('#sheetWrap').onclick=e=>{const b=e.target.closest('[data-copy]');if(!b)return
 
 /* ---------- استلام وصرف ---------- */
 function ingest(txt){if(!chk())return;
- const lines=txt.split(/\s+/).filter(l=>l.startsWith('EBR1|'));
+ const lines=txt.split(/\s+/).filter(l=>/^EBR1F?\|/.test(l));
  if(!lines.length)return toast('الكود غير صالح / Invalid code');
  let bad=false;
  for(const l of lines){
   const f=l.split('|');if(f.length<7)continue;
-  const [,dept,no,ds,pt,h,items,dn]=f,key=dept+no+ds,[pi,pn]=pt.split('/');if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
+  const fin=f[0]==='EBR1F',[,dept,no,ds,pt,h,items,dn,wk]=f,key=dept+no+ds,[pi,pn]=fin?[0,pt]:pt.split('/');if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
   if(!o||o.key!==key)o=ORD()[key]||{key,dept,no,ds,total:+pn,parts:{},items:{},hash:h};
   if(h!==hash())bad=true;
+  if(fin){for(let i=1;i<=+pn;i++)o.parts[i]=1;o.total=+pn;o.worker=wk||'';items.split(',').forEach(s=>{const [id,rq,is]=s.split(':');o.items[id]={req:+rq,iss:+is,on:+is>0}});continue}
   o.parts[pi]=1;
   items.split(',').forEach(s=>{const [id,qt]=s.split(':');if(!o.items[id])o.items[id]={req:+qt,iss:+qt,on:true}});
  }
@@ -509,12 +511,12 @@ function renderIssue(){
  const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
  const rows=ids.map(id=>{const it=o.items[id],c=cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}></td><td>${c.n}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
- $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
+ $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table>
- <div class="row" style="margin-top:12px"><button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button></div>`;
+ <div class="row" style="margin-top:12px">${WM?'<button class="btn ok" id="fc">نسخ الكود النهائي / Copy final code</button>':'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button>'}</div>`;
 }
 $('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}renderIssue()};
-$('#issue').onclick=e=>{if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml()};
+$('#issue').onclick=e=>{if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc')copyFinal()};
 $('#load').onclick=()=>ingest($('#paste').value);
 
 const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
@@ -651,6 +653,14 @@ $('#delDept').onclick=()=>{
  fillDepts();applyFix();renderSaved();toast('تم حذف القسم / Department deleted');
 };
 
+function copyFinal(){
+ if(!chk()||!o)return;
+ if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
+ const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)}).join(',');
+ const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||''].join('|');
+ navigator.clipboard.writeText(code).then(()=>toast('تم نسخ الكود النهائي — أرسله للمشرف / Final code copied — send it to the supervisor'),()=>prompt('انسخ الكود / Copy the code:',code));
+}
+
 /* ---------- الكاميرا ---------- */
 let stream=null,scanning=false;
 const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
@@ -671,6 +681,7 @@ $('#cam').onclick=startCam;$('#stopCam').onclick=stopCam;
 
 loadCat();fillDepts();initDev();renderList();renderSaved();licInit();
 if(/[?&]m=order/.test(location.search))$('#t2').hidden=true;
+if(WM){document.querySelector('nav').hidden=true;$('#rn').hidden=true;tab(2)}
 </script>
 </body>
 </html>
