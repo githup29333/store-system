@@ -439,10 +439,14 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 مناديل رول|Tissue Rolls
 هايكين|Heineken`;
 const WM=/[?&]m=worker/.test(location.search);
+const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',SBH={apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98'};
 let cat=[],q={},o=null,last='';
+const BASE_N=DEF.split('\n').filter(Boolean).length;
+const item=id=>(o&&o.names&&o.names[id])||cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
+const cn=t=>String(t).replace(/[|;~]/g,' ');
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
 const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
-function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});$('#hs').textContent=hash()+' · '+cat.length}
+function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});applyShared();$('#hs').textContent=hash()+' · '+cat.length}
 function tab(n){$('#p1').hidden=n!=1;$('#p2').hidden=n!=2;$('#t1').className=n==1?'on':'';$('#t2').className=n==2?'on':'';if(n!=2)stopCam()}
 $('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);
 
@@ -458,13 +462,31 @@ $('#srch').oninput=renderList;
 $('#clr').onclick=()=>{q={};renderList();$('#sheetWrap').hidden=true};
 async function tr(t){const p=/[\u0600-\u06FF]/.test(t)?'ar|en':'en|ar';try{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair='+p);const j=await r.json();return (j.responseData.translatedText||'').trim()}catch(e){return ''}}
 $('#addBtn').onclick=async()=>{
- const t=$('#newItem').value.trim();if(!t)return;
+ const t=cn($('#newItem').value.trim());if(!t)return;
+ const dup=cat.findIndex(c=>c&&(c.n.trim().toLowerCase()===t.toLowerCase()||c.u.trim().toLowerCase()===t.toLowerCase()));
+ if(dup>=0){q[dup+1]=1;$('#newItem').value='';renderList();return toast('الصنف موجود وتم اختياره / Item exists — selected')}
  const ar=/[\u0600-\u06FF]/.test(t);toast('جارٍ الترجمة… Translating…');
  let x=await tr(t);
- if(!x)x=prompt('تعذّرت الترجمة، اكتبها يدوياً / Translation failed, type it:','')||'';
+ if(!x)x=prompt('تعذّرت الترجمة، اكتبها / Translation failed, type it:','')||'';
+ x=cn(x).trim();
  const [a,e]=ar?[t,x]:[x||t,t];
- const tx=$('#catTxt');tx.value=tx.value.trimEnd()+'\n'+a+'|'+e;LS('cat2',tx.value);loadCat();
- q[cat.length]=1;$('#newItem').value='';renderList();toast(a+' / '+e)};
+ try{
+  const r=await fetch(SB_URL+'/rest/v1/items',{method:'POST',headers:{...SBH,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({ar:a,en:e})});
+  if(!r.ok)throw 0;
+  const [row]=await r.json(),sh=JSON.parse(LS('shared')||'[]');sh.push(row);LS('shared',JSON.stringify(sh));applyShared();
+  q[row.id]=1;$('#newItem').value='';renderList();toast('تمت الإضافة للجميع / Added for everyone: '+a+' / '+e);
+ }catch(err){toast('تعذّرت الإضافة، تحقق من الإنترنت / Could not add — check the internet')}
+};
+function applyShared(){
+ cat.length=Math.min(cat.length,BASE_N);
+ try{JSON.parse(LS('shared')||'[]').forEach(r=>{cat[r.id-1]={n:r.ar,u:r.en||''}})}catch(e){}
+}
+async function syncShared(){
+ try{const r=await fetch(SB_URL+'/rest/v1/items?select=id,ar,en&order=id.asc&limit=2000',{headers:SBH});
+  if(!r.ok)throw 0;LS('shared',JSON.stringify(await r.json()));applyShared();$('#hs').textContent=hash()+' · '+cat.length;renderList();
+ }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncShared()});
 $('#saveCat').onclick=()=>{LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم حفظ القائمة / List saved')};
 
 function makeSheet(){if(!chk())return;
@@ -475,7 +497,7 @@ function makeSheet(){if(!chk())return;
  const ds=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
  const dept=$('#dept').value,parts=[],PG=30;
  for(let i=0;i<ids.length;i+=PG)parts.push(ids.slice(i,i+PG));
- const codes=parts.map((p,i)=>['EBR1',dept,no,ds,(i+1)+'/'+parts.length,hash(),p.map(k=>k+':'+q[k]).join(','),D[dept]].join('|'));
+ const codes=parts.map((p,i)=>['EBR1',dept,no,ds,(i+1)+'/'+parts.length,hash(),p.map(k=>k+':'+q[k]).join(','),D[dept],p.filter(k=>k>BASE_N&&cat[k-1]).map(k=>k+'~'+cn(cat[k-1].n)+'~'+cn(cat[k-1].u)).join(';')].join('|'));
  const dt=`20${ds.slice(0,2)}-${ds.slice(2,4)}-${ds.slice(4)}`;
  const pages=parts.map((p,i)=>{
   const g=qrcode(0,'M');g.addData(codes[i]);g.make();
@@ -495,9 +517,10 @@ function ingest(txt){if(!chk())return;
  let bad=false;
  for(const l of lines){
   const f=l.split('|');if(f.length<7)continue;
-  const fin=f[0]==='EBR1F',[,dept,no,ds,pt,h,items,dn,wk]=f,key=dept+no+ds,[pi,pn]=fin?[0,pt]:pt.split('/');if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
+  const fin=f[0]==='EBR1F',[,dept,no,ds,pt,h,items,dn,x8,x9]=f,wk=fin?x8:'',nms=(fin?x9:x8)||'',key=dept+no+ds,[pi,pn]=fin?[0,pt]:pt.split('/');if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
   if(!o||o.key!==key)o=ORD()[key]||{key,dept,no,ds,total:+pn,parts:{},items:{},hash:h};
   if(h!==hash())bad=true;
+  nms.split(';').filter(Boolean).forEach(t=>{const [id,a,b]=t.split('~');o.names=o.names||{};o.names[id]={n:a,u:b||''}});
   if(fin){for(let i=1;i<=+pn;i++)o.parts[i]=1;o.total=+pn;o.worker=wk||'';items.split(',').forEach(s=>{const [id,rq,is]=s.split(':');o.items[id]={req:+rq,iss:+is,on:+is>0}});continue}
   o.parts[pi]=1;
   items.split(',').forEach(s=>{const [id,qt]=s.split(':');if(!o.items[id])o.items[id]={req:+qt,iss:+qt,on:true}});
@@ -509,7 +532,7 @@ function renderIssue(){
  if(!o)return;save();
  const got=Object.keys(o.parts).length,miss=got<o.total;
  const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
- const rows=ids.map(id=>{const it=o.items[id],c=cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
+ const rows=ids.map(id=>{const it=o.items[id],c=item(id);
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}></td><td>${c.n}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
  $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table>
@@ -536,7 +559,7 @@ async function xbook(){
  ['#','الصنف','Item','المطلوب\nRequested','المصروف\nIssued','ملاحظات\nRemarks'].forEach((t,i)=>put('ABCDEF'[i]+'5',t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1}));
  ws.getRow(5).height=34;
  const L=lines();let r=6;
- L.forEach((x,i)=>{const c=cat[x.id-1]||{n:'#'+x.id,u:''},bg=i%2?'FFF4F8FA':null,sh=x.iss<x.req;
+ L.forEach((x,i)=>{const c=item(x.id),bg=i%2?'FFF4F8FA':null,sh=x.iss<x.req;
   put('A'+r,i+1,{bd:1,bg});put('B'+r,c.n,{bd:1,bg,h:'right'});put('C'+r,c.u,{bd:1,bg,h:'left'});
   put('D'+r,x.req,{bd:1,bg});put('E'+r,x.iss,{bd:1,bg,b:1});
   put('F'+r,sh?'ناقص / Short':'',{bd:1,bg,b:sh,fc:sh?'FFB4531A':null});r++});
@@ -657,7 +680,7 @@ function copyFinal(){
  if(!chk()||!o)return;
  if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
  const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)}).join(',');
- const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||''].join('|');
+ const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
  navigator.clipboard.writeText(code).then(()=>toast('تم نسخ الكود النهائي — أرسله للمشرف / Final code copied — send it to the supervisor'),()=>prompt('انسخ الكود / Copy the code:',code));
 }
 
@@ -679,7 +702,7 @@ function tick(){
 }
 $('#cam').onclick=startCam;$('#stopCam').onclick=stopCam;
 
-loadCat();fillDepts();initDev();renderList();renderSaved();licInit();
+loadCat();fillDepts();initDev();renderList();renderSaved();licInit();syncShared();
 if(/[?&]m=order/.test(location.search))$('#t2').hidden=true;
 if(WM){document.querySelector('nav').hidden=true;$('#rn').hidden=true;tab(2)}
 </script>
