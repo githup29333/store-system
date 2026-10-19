@@ -483,8 +483,11 @@ function applyShared(){
 }
 async function syncShared(){
  try{const r=await fetch(SB_URL+'/rest/v1/items?select=id,ar,en&order=id.asc&limit=2000',{headers:SBH});
-  if(!r.ok)throw 0;LS('shared',JSON.stringify(await r.json()));applyShared();$('#hs').textContent=hash()+' · '+cat.length;renderList();
- }catch(e){}
+  if(!r.ok)throw 'HTTP '+r.status;
+  const j=await r.json();if(!Array.isArray(j))throw 'bad response';
+  LS('shared',JSON.stringify(j));applyShared();renderList();
+  $('#hs').textContent=hash()+' · '+cat.length+' · مشترك / shared: '+j.length;
+ }catch(e){$('#hs').textContent=hash()+' · '+cat.length+' · فشل المزامنة / sync failed: '+e}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncShared()});
 $('#saveCat').onclick=()=>{LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم حفظ القائمة / List saved')};
