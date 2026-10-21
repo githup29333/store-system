@@ -64,6 +64,7 @@ details{margin-top:16px}
 <nav>
  <button id="t1" class="on">طلب القسم / Order</button>
  <button id="t2">استلام وصرف / Issue</button>
+ <button id="t3">نتيجة الطلب / Result</button>
 </nav>
 <main>
 <section id="p1">
@@ -82,6 +83,7 @@ details{margin-top:16px}
  <details>
   <summary>إعدادات الجهاز / Device settings</summary>
   <div class="row" style="margin-top:8px"><input type="text" id="devCode" maxlength="6" placeholder="K1" style="width:100px"><select id="fixDept"><option value="">كل الأقسام / Any department</option><option value="R">المطعم / Restaurant</option><option value="C">الكانتين / Canteen</option><option value="L">المغسلة / Laundry</option><option value="H">خدمات الغرف / Room Service</option></select><button class="btn alt" id="saveSet">حفظ / Save</button></div>
+  <textarea id="rcpt" rows="2" placeholder="المستلمون الثابتون للإيميل (افصل بفاصلة) / Fixed email recipients (comma separated)" style="margin-top:8px"></textarea>
   <p class="st">رمز الجهاز يدخل في رقم كل طلب (مثل K1-0007) ليبقى فريداً. أعطِ كل جهاز رمزاً مختلفاً، ويمكنك تثبيت القسم.<br>Give each device a different code. You can lock the department.</p>
  </details>
  <details>
@@ -103,7 +105,14 @@ details{margin-top:16px}
  <div id="issue"></div>
  <h3 style="margin-top:22px">الطلبات المحفوظة / Saved orders</h3>
  <input type="search" id="ordSrch" placeholder="ابحث برقم الطلب / Search order no." style="width:100%;margin-bottom:8px">
+ <div class="row" id="selBar"><button class="btn alt" id="selAll">تحديد الكل / Select all</button><button class="btn alt" id="selNone">إلغاء التحديد / Clear</button><button class="btn" id="selX">تصدير المحدد (ملف واحد) / Export selected (one file)</button><button class="btn ok" id="selE">إيميل للمحدد / Email selected</button></div>
  <div id="saved"></div>
+</section>
+<section id="p3" hidden>
+ <p class="st">الصق كود الرد القادم من المخزن لتعرف ما وصلك وما لم يتوفر.<br>Paste the reply code from the store to see what was delivered and what was not available.</p>
+ <textarea id="resTxt" rows="3" placeholder="EBR1F|..."></textarea>
+ <div class="row" style="margin-top:8px"><button class="btn" id="resBtn">عرض النتيجة / Show Result</button></div>
+ <div id="resOut"></div>
 </section>
 </main>
 <div id="lock" hidden style="position:fixed;inset:0;z-index:99;background:#16222c;display:flex;align-items:center;justify-content:center;padding:16px">
@@ -447,8 +456,8 @@ const cn=t=>String(t).replace(/[|;~]/g,' ');
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
 const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
 function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});applyShared();$('#hs').textContent=hash()+' · '+cat.length}
-function tab(n){$('#p1').hidden=n!=1;$('#p2').hidden=n!=2;$('#t1').className=n==1?'on':'';$('#t2').className=n==2?'on':'';if(n!=2)stopCam()}
-$('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);
+function tab(n){[1,2,3].forEach(i=>{$('#p'+i).hidden=n!=i;$('#t'+i).className=n==i?'on':''});if(n!=2)stopCam()}
+$('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);$('#t3').onclick=()=>tab(3);
 
 /* ---------- طلب القسم ---------- */
 function renderList(){
@@ -539,7 +548,7 @@ function renderIssue(){
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}></td><td>${c.n}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
  $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table>
- <div class="row" style="margin-top:12px">${WM?'<button class="btn ok" id="fc">نسخ الكود النهائي / Copy final code</button>':'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button>'}</div>`;
+ <div class="row" style="margin-top:12px">${WM?'<button class="btn ok" id="fc">نسخ الكود النهائي / Copy final code</button>':'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button>'}</div>`;
 }
 $('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}renderIssue()};
 $('#issue').onclick=e=>{if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc')copyFinal()};
@@ -548,21 +557,25 @@ $('#load').onclick=()=>ingest($('#paste').value);
 const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
 const dstr=()=>`20${o.ds.slice(0,2)}-${o.ds.slice(2,4)}-${o.ds.slice(4)}`;
 const fname=()=>`Issue_${o.dept}_${o.no}.xlsx`;
-async function xbook(){
- const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Issue',{views:[{rightToLeft:true,state:'frozen',ySplit:5}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,printTitlesRow:'5:5',margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
+const linesOf=ord=>Object.keys(ord.items).map(Number).sort((a,b)=>a-b).filter(id=>ord.items[id].on&&ord.items[id].iss>0).map(id=>({id,req:ord.items[id].req,iss:ord.items[id].iss}));
+const dstrOf=ord=>'20'+ord.ds.slice(0,2)+'-'+ord.ds.slice(2,4)+'-'+ord.ds.slice(4);
+const itemOf=(ord,id)=>(ord.names&&ord.names[id])||cat[id-1]||{n:'#'+id,u:''};
+const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+function addSheet(wb,ord,name){
+ const ws=wb.addWorksheet(name,{views:[{rightToLeft:true,state:'frozen',ySplit:5}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,printTitlesRow:'5:5',margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
  ws.columns=[{width:6},{width:38},{width:36},{width:12},{width:12},{width:16}];
  const th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th},F='Tahoma';
  const put=(ref,v,o={})=>{const c=ws.getCell(ref);c.value=v;c.font={name:F,size:o.sz||11,bold:!!o.b,color:{argb:o.fc||'FF16222C'}};if(o.bg)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.bg}};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};if(o.bd)c.border=BD;return c};
  ws.mergeCells('A1:F1');put('A1','Ebreaze Hotel',{sz:16,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=30;
  ws.mergeCells('A2:F2');put('A2','إذن صرف مخزني / Stores Issue Note',{sz:13,b:1,bg:'FFE4EEF3'});ws.getRow(2).height=24;
- ws.mergeCells('A3:B3');put('A3','القسم / Department: '+D[o.dept],{b:1,bd:1,h:'right'});
- put('C3','رقم الطلب / Order No.: '+o.no,{b:1,bd:1});
- ws.mergeCells('D3:F3');put('D3','التاريخ / Date: '+dstr(),{b:1,bd:1});ws.getRow(3).height=24;
+ ws.mergeCells('A3:B3');put('A3','القسم / Department: '+D[ord.dept],{b:1,bd:1,h:'right'});
+ put('C3','رقم الطلب / Order No.: '+ord.no,{b:1,bd:1});
+ ws.mergeCells('D3:F3');put('D3','التاريخ / Date: '+dstrOf(ord),{b:1,bd:1});ws.getRow(3).height=24;
  ws.getRow(4).height=6;
  ['#','الصنف','Item','المطلوب\nRequested','المصروف\nIssued','ملاحظات\nRemarks'].forEach((t,i)=>put('ABCDEF'[i]+'5',t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1}));
  ws.getRow(5).height=34;
- const L=lines();let r=6;
- L.forEach((x,i)=>{const c=item(x.id),bg=i%2?'FFF4F8FA':null,sh=x.iss<x.req;
+ const L=linesOf(ord);let r=6;
+ L.forEach((x,i)=>{const c=itemOf(ord,x.id),bg=i%2?'FFF4F8FA':null,sh=x.iss<x.req;
   put('A'+r,i+1,{bd:1,bg});put('B'+r,c.n,{bd:1,bg,h:'right'});put('C'+r,c.u,{bd:1,bg,h:'left'});
   put('D'+r,x.req,{bd:1,bg});put('E'+r,x.iss,{bd:1,bg,b:1});
   put('F'+r,sh?'ناقص / Short':'',{bd:1,bg,b:sh,fc:sh?'FFB4531A':null});r++});
@@ -570,6 +583,21 @@ async function xbook(){
  ws.mergeCells(`A${r}:C${r}`);put('A'+r,'مقدّم الطلب / Requested by\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});
  ws.mergeCells(`D${r}:F${r}`);put('D'+r,'أمين المخزن / Storekeeper\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});ws.getRow(r).height=62;r++;
  ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الأصناف غير المصروفة محذوفة من هذا النموذج / Unissued items are not listed',{sz:9,fc:'FF5D6B78'});
+ return ws;
+}
+async function xbook(){const wb=new ExcelJS.Workbook();addSheet(wb,o,'Issue');return wb.xlsx.writeBuffer()}
+async function xmulti(list){
+ const wb=new ExcelJS.Workbook(),sm=wb.addWorksheet('Summary',{views:[{rightToLeft:true}]});
+ sm.columns=[{width:16},{width:30},{width:14},{width:14},{width:14}];
+ const hd=['رقم الطلب\nOrder No.','القسم\nDepartment','التاريخ\nDate','الأصناف المطلوبة\nRequested lines','الأصناف المصروفة\nIssued lines'];
+ sm.addRow(hd).eachCell(c=>{c.font={name:'Tahoma',bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B5C7A'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true}});
+ sm.getRow(1).height=34;
+ const used=new Set();
+ list.sort((a,b)=>a.ds.localeCompare(b.ds)||a.no.localeCompare(b.no)).forEach(ord=>{
+  let nm=String(ord.no).replace(/[\[\]:*?\/\\]/g,'-').slice(0,28),k=2;while(used.has(nm))nm=nm.slice(0,25)+'_'+k++;used.add(nm);
+  addSheet(wb,ord,nm);
+  sm.addRow([ord.no,D[ord.dept]||ord.dept,dstrOf(ord),Object.keys(ord.items).length,linesOf(ord).length]).eachCell(c=>{c.font={name:'Tahoma'};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}});
+ });
  return wb.xlsx.writeBuffer();
 }
 const b64=buf=>{let t='',u=new Uint8Array(buf);for(let i=0;i<u.length;i+=0x8000)t+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(t)};
@@ -578,25 +606,42 @@ function ready(){if(!chk()||!o)return false;if(Object.keys(o.parts).length<o.tot
 async function dlXlsx(){if(ready())dl(fname(),new Blob([await xbook()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
 const b64u=s=>btoa(unescape(encodeURIComponent(s)));
 const wrap=s=>s.replace(/(.{76})/g,'$1\r\n');
+function mkEml(subj,body,fn,file){
+ const B='----EBR'+Date.now(),to=[...new Set((LS('rcpt')||'').split(/[\s,;]+/).filter(x=>/@/.test(x)))];
+ const m=['X-Unsent: 1',...(to.length?['To: '+to.join(', ')]:[]),'Subject: =?UTF-8?B?'+b64u(subj)+'?=','MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${B}"`,'',`--${B}`,'Content-Type: text/plain; charset=utf-8','Content-Transfer-Encoding: base64','',wrap(b64u(body)),`--${B}`,`Content-Type: ${XL}; name="${fn}"`,'Content-Transfer-Encoding: base64',`Content-Disposition: attachment; filename="${fn}"`,'',wrap(file),`--${B}--`,''].join('\r\n');
+ dl(fn.replace('.xlsx','.eml'),new Blob([m],{type:'message/rfc822'}));
+ toast('افتح ملف .eml بالضغط عليه مرتين في Outlook / Double-click the .eml file to open it in Outlook');
+}
 async function dlEml(){
  if(!ready())return;
- const file=b64(await xbook()),fn=fname(),B='----EBR'+Date.now();
  const subj=`صرف / Issue ${D[o.dept]} - طلب / Order ${o.no} - ${dstr()}`;
  const body=`مرفق ملف الصرف الخاص بـ${D[o.dept]} (طلب ${o.no} بتاريخ ${dstr()}).\nالأصناف التي لم تُصرف تم حذفها من الملف.\n\nAttached is the issue note for ${D[o.dept]} (order ${o.no}, ${dstr()}). Unissued items have been removed from the file.`;
- const m=['X-Unsent: 1','Subject: =?UTF-8?B?'+b64u(subj)+'?=','MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${B}"`,'',`--${B}`,'Content-Type: text/plain; charset=utf-8','Content-Transfer-Encoding: base64','',wrap(b64u(body)),`--${B}`,`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; name="${fn}"`,'Content-Transfer-Encoding: base64',`Content-Disposition: attachment; filename="${fn}"`,'',wrap(file),`--${B}--`,''].join('\r\n');
- dl(fn.replace('.xlsx','.eml'),new Blob([m],{type:'message/rfc822'}));
- toast('افتح ملف .eml بالضغط عليه مرتين في Outlook');
+ mkEml(subj,body,fname(),b64(await xbook()));
+}
+async function expSel(mode){
+ if(!chk())return;
+ const list=[...SEL].map(k=>ORD()[k]).filter(Boolean);
+ if(!list.length)return toast('اختر طلباً واحداً على الأقل / Select at least one order');
+ const buf=await xmulti(list),fn='Issue_multi_'+td()+'.xlsx';
+ if(mode==='x')return dl(fn,new Blob([buf],{type:XL}));
+ mkEml(`صرف مجمّع / Combined issues - ${list.length} - ${td()}`,`مرفق ملف واحد فيه ${list.length} طلبات صرف (ورقة لكل طلب وورقة ملخص).\n\nAttached is one file with ${list.length} issue notes (one sheet per order plus a summary sheet).`,fn,b64(buf));
 }
 
+
 /* ---------- الطلبات المحفوظة والإعدادات ---------- */
+const SEL=new Set();
 const ORD=()=>{try{return JSON.parse(LS('ords')||'{}')}catch(e){return{}}};
 function save(){if(!o)return;const m=ORD();m[o.key]=o;LS('ords',JSON.stringify(m));renderSaved()}
 function renderSaved(){
  const s=($('#ordSrch').value||'').trim().toLowerCase();
  const m=Object.values(ORD()).filter(x=>!s||(x.no+' '+(D[x.dept]||'')).toLowerCase().includes(s)).sort((a,b)=>b.ds.localeCompare(a.ds)||b.no.localeCompare(a.no));
- $('#saved').innerHTML=m.map(x=>`<div class="item"><div class="nm"><b>${x.no}</b> — ${D[x.dept]||x.dept} <small>20${x.ds.slice(0,2)}-${x.ds.slice(2,4)}-${x.ds.slice(4)} · ${Object.keys(x.parts).length}/${x.total}</small></div><button class="btn alt" data-open="${x.key}">فتح / Open</button><button class="btn alt" data-del="${x.key}">حذف / Delete</button></div>`).join('')||'<p>لا توجد طلبات / No orders</p>';
+ $('#saved').innerHTML=m.map(x=>`<div class="item"><input type="checkbox" data-sel="${x.key}" ${SEL.has(x.key)?'checked':''}><div class="nm"><b>${x.no}</b> — ${D[x.dept]||x.dept} <small>20${x.ds.slice(0,2)}-${x.ds.slice(2,4)}-${x.ds.slice(4)} · ${Object.keys(x.parts).length}/${x.total}</small></div><button class="btn alt" data-open="${x.key}">فتح / Open</button><button class="btn alt" data-del="${x.key}">حذف / Delete</button></div>`).join('')||'<p>لا توجد طلبات / No orders</p>';
 }
 $('#ordSrch').oninput=renderSaved;
+$('#saved').onchange=e=>{const k=e.target.dataset.sel;if(!k)return;e.target.checked?SEL.add(k):SEL.delete(k)};
+$('#selAll').onclick=()=>{Object.keys(ORD()).forEach(k=>SEL.add(k));renderSaved()};
+$('#selNone').onclick=()=>{SEL.clear();renderSaved()};
+$('#selX').onclick=()=>expSel('x');$('#selE').onclick=()=>expSel('e');
 $('#saved').onclick=e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.open){o=ORD()[b.dataset.open];renderIssue();$('#issue').scrollIntoView({behavior:'smooth'})}
  else if(b.dataset.del&&confirm('حذف الطلب؟ / Delete this order?')){const m=ORD();delete m[b.dataset.del];LS('ords',JSON.stringify(m));if(o&&o.key===b.dataset.del){o=null;$('#issue').innerHTML=''}renderSaved()}};
@@ -604,9 +649,9 @@ function applyFix(){const f=LS('fix')||'';if(f)$('#dept').value=f;$('#dept').dis
 function initDev(){
  let d=LS('dev');
  if(!d){d=(prompt('رمز هذا الجهاز أو القسم (حروف/أرقام، مثل K1) / Device code (e.g. K1):','')||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6)||('D'+Math.random().toString(36).slice(2,5).toUpperCase());LS('dev',d)}
- $('#devCode').value=d;$('#fixDept').value=LS('fix')||'';applyFix();
+ $('#devCode').value=d;$('#fixDept').value=LS('fix')||'';$('#rcpt').value=LS('rcpt')||'';applyFix();
 }
-$('#saveSet').onclick=()=>{const d=$('#devCode').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6);if(!d)return toast('اكتب رمزاً / Enter a code');LS('dev',d);LS('fix',$('#fixDept').value);applyFix();toast('تم الحفظ / Saved: '+d)};
+$('#saveSet').onclick=()=>{const d=$('#devCode').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6);if(!d)return toast('اكتب رمزاً / Enter a code');LS('dev',d);LS('fix',$('#fixDept').value);LS('rcpt',$('#rcpt').value.trim());applyFix();toast('تم الحفظ / Saved: '+d)};
 $('#exCat').onclick=()=>dl('catalog.txt',new Blob([$('#catTxt').value],{type:'text/plain;charset=utf-8'}));
 $('#imCat').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#catTxt').value=await f.text();LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم استيراد القائمة / Imported');e.target.value=''};
 
@@ -686,6 +731,29 @@ function copyFinal(){
  const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
  navigator.clipboard.writeText(code).then(()=>toast('تم نسخ الكود النهائي — أرسله للمشرف / Final code copied — send it to the supervisor'),()=>prompt('انسخ الكود / Copy the code:',code));
 }
+
+function parseFinal(t){
+ const l=t.split(/\s+/).find(x=>x.startsWith('EBR1F|'));if(!l)return null;
+ const f=l.split('|');if(f.length<7)return null;
+ const [,dept,no,ds,total,h,items,dn,wk,nms]=f,names={};
+ (nms||'').split(';').filter(Boolean).forEach(t=>{const [id,a,b]=t.split('~');names[id]={n:a,u:b||''}});
+ return{dept,no,ds,dn,names,items:items.split(',').map(x=>{const [id,rq,is]=x.split(':');return{id:+id,req:+rq,iss:+is}})};
+}
+function showResult(){
+ if(!chk())return;
+ const r=parseFinal($('#resTxt').value);
+ if(!r)return toast('كود الرد غير صالح / Invalid reply code');
+ const nm=id=>r.names[id]||cat[id-1]||{n:'صنف '+id,u:''};
+ const st=x=>x.iss<=0?0:x.iss<x.req?1:2;
+ const L=r.items.slice().sort((a,b)=>st(a)-st(b)||a.id-b.id),c=[0,0,0];L.forEach(x=>c[st(x)]++);
+ const lab=[['غير متوفر','Not available','#b4231a','#fbe9e7'],['جزئي','Partial','#b4531a','#fff4e5'],['تم','Fulfilled','#1d7a4f','']];
+ const rows=L.map(x=>{const n=nm(x.id),b=lab[st(x)];return `<tr style="background:${b[3]}"><td>${n.n}<br><small dir="ltr">${n.u}</small></td><td>${x.req}</td><td>${Math.max(0,x.iss)}</td><td style="color:${b[2]};font-weight:700">${b[0]}<br><small dir="ltr">${b[1]}</small></td></tr>`}).join('');
+ $('#resOut').innerHTML=`<div class="st">طلب / Order <b>${r.no}</b> — ${r.dn||D[r.dept]||r.dept} — 20${r.ds.slice(0,2)}-${r.ds.slice(2,4)}-${r.ds.slice(4)}</div>
+ <div class="st">✔ ${c[2]} تم / Fulfilled &nbsp;·&nbsp; ◐ ${c[1]} جزئي / Partial &nbsp;·&nbsp; ✖ ${c[0]} غير متوفر / Not available</div>
+ <table><tr><th>الصنف<br>Item</th><th>المطلوب<br>Requested</th><th>وصل<br>Delivered</th><th>الحالة<br>Status</th></tr>${rows}</table>`;
+}
+$('#resBtn').onclick=showResult;
+if(WM)$('#selBar').hidden=true;
 
 /* ---------- الكاميرا ---------- */
 let stream=null,scanning=false;
