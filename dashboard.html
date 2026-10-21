@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>لوحة التحكم</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9edf0;--card:#fff;--ink:#16222c;--mut:#5d6b78;--ac:#0b5c7a;--ok:#1d7a4f;--warn:#b4531a;--bad:#b4231a;--ln:#cfd7de}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Tajawal,Tahoma,Arial,sans-serif}
+header{background:var(--ac);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+header h1{margin:0;font-size:19px;flex:1}
+nav{display:flex;gap:6px;padding:10px 12px 0;max-width:1000px;margin:auto;overflow-x:auto}
+nav button{flex:1;white-space:nowrap;padding:9px 12px;border:0;border-radius:8px 8px 0 0;background:#d3dbe1;font:inherit;font-weight:700;color:var(--mut)}
+nav button.on{background:var(--card);color:var(--ac)}
+main{max-width:1000px;margin:auto;background:var(--card);padding:14px;min-height:70vh}
+input,button,select{font:inherit}
+input[type=text],input[type=email],input[type=password],input[type=search],select{padding:8px 10px;border:1px solid var(--ln);border-radius:8px;background:#fff;color:var(--ink)}
+.btn{padding:7px 12px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;cursor:pointer}
+.btn.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+.btn.bad{background:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:#f3f6f8;border-radius:10px;padding:12px;text-align:center}
+.kpi b{display:block;font-size:26px;color:var(--ac)}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--ln);padding:6px 8px;text-align:right;vertical-align:middle}
+th{background:#eef2f5}
+.wrap{overflow-x:auto}
+.bar{display:flex;align-items:center;gap:8px;margin:4px 0}
+.bar span{min-width:130px;font-size:13px}
+.bar i{display:block;height:14px;background:var(--ac);border-radius:4px}
+.bar em{font-style:normal;font-size:13px;color:var(--mut)}
+h3{margin:18px 0 6px}
+.tag{padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700}
+.t-ok{background:#dff3e8;color:var(--ok)}.t-w{background:#fff0dc;color:var(--warn)}
+#login{max-width:340px;margin:60px auto;background:#fff;padding:22px;border-radius:12px}
+#login input{width:100%;margin-bottom:10px}
+#modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;padding:14px}
+#modal>div{background:#fff;border-radius:12px;padding:16px;max-width:640px;width:100%;max-height:85vh;overflow:auto}
+[hidden]{display:none!important}
+#msg{color:var(--bad);min-height:1.5em}
+</style>
+</head>
+<body>
+<div id="login">
+ <h2 style="margin-top:0">لوحة التحكم</h2>
+ <input type="email" id="em" placeholder="البريد الإلكتروني" autocomplete="username">
+ <input type="password" id="pw" placeholder="كلمة المرور" autocomplete="current-password">
+ <button class="btn" id="go" style="width:100%">دخول</button>
+ <p id="msg"></p>
+</div>
+<div id="app" hidden>
+ <header><h1>لوحة التحكم — منظومة الصرف</h1><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
+ <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button></nav>
+ <main>
+  <section id="s"></section>
+  <section id="o" hidden></section>
+  <section id="i" hidden></section>
+  <section id="l" hidden></section>
+ </main>
+</div>
+<div id="modal" hidden><div id="mb"></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[];
+try{S=JSON.parse(sessionStorage.getItem('s')||'null')}catch(e){}
+const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dt=ds=>'20'+ds.slice(0,2)+'-'+ds.slice(2,4)+'-'+ds.slice(4);
+async function auth(body,gt){
+ const r=await fetch(SB+'/auth/v1/token?grant_type='+gt,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ if(!r.ok)throw new Error('bad');
+ const j=await r.json();S={a:j.access_token,r:j.refresh_token};
+ try{sessionStorage.setItem('s',JSON.stringify(S))}catch(e){}
+}
+async function api(path,opt={},retry=true){
+ const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json',...(opt.headers||{})}});
+ if(r.status===401&&retry&&S&&S.r){try{await auth({refresh_token:S.r},'refresh_token');return api(path,opt,false)}catch(e){logout();throw e}}
+ if(!r.ok)throw new Error(await r.text());
+ return r.status===204?null:r.json();
+}
+function logout(){S=null;try{sessionStorage.removeItem('s')}catch(e){}$('#app').hidden=true;$('#login').hidden=false}
+$('#go').onclick=async()=>{
+ $('#msg').textContent='';
+ try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');$('#pw').value='';start()}
+ catch(e){$('#msg').textContent='بيانات الدخول غير صحيحة'}
+};
+$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+$('#lo').onclick=logout;$('#rf').onclick=()=>load();
+document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
+ document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
+ ['s','o','i','l'].forEach(i=>$('#'+i).hidden=i!==t)};
+
+function parse(r){
+ const f=r.code.split('|'),fin=f[0]==='EBR1F';
+ const it=(f[6]||'').split(',').filter(Boolean).map(x=>{const a=x.split(':');return fin?{id:+a[0],req:+a[1],iss:+a[2]}:{id:+a[0],req:+a[1]}});
+ ((fin?f[9]:f[8])||'').split(';').filter(Boolean).forEach(t=>{const [id,n,u]=t.split('~');NM[id]={n,u:u||''}});
+ return{fin,dept:f[1],no:f[2],ds:f[3],dn:f[7]||f[1],wk:fin?f[8]:'',it,at:r.created_at,dev:r.device};
+}
+function build(rows){
+ const m={};
+ rows.slice().sort((a,b)=>a.created_at<b.created_at?-1:1).forEach(r=>{
+  const p=parse(r),k=p.dept+'|'+p.no+'|'+p.ds;
+  const o=m[k]||(m[k]={k,dept:p.dept,no:p.no,ds:p.ds,dn:p.dn,req:{},fin:null,at:p.at,dev:p.dev});
+  o.at=p.at;
+  if(p.fin)o.fin={it:p.it,wk:p.wk||p.dev};else{p.it.forEach(x=>o.req[x.id]=x.req);o.dev=p.dev}
+ });
+ return Object.values(m).sort((a,b)=>a.at<b.at?1:-1);
+}
+const nm=id=>NM[id]||SH[id]||(BASE[id-1]?{n:BASE[id-1][0],u:BASE[id-1][1]||''}:{n:'صنف #'+id,u:''});
+const lines=o=>o.fin?o.fin.it:Object.keys(o.req).map(id=>({id:+id,req:o.req[id]}));
+
+async function load(){
+ try{
+  const [orders,items]=await Promise.all([api('orders?select=*&order=created_at.desc&limit=3000'),api('items?select=*&order=id.asc&limit=2000')]);
+  ITEMS=items;SH={};items.forEach(x=>SH[x.id]={n:x.ar,u:x.en});
+  O=build(orders);
+ }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
+ drawS();drawO();drawI();drawL();
+}
+async function start(){
+ $('#login').hidden=true;$('#app').hidden=false;
+ try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}
+ load();
+}
+const bars=(arr,col)=>{const mx=Math.max(1,...arr.map(a=>a[1]));return arr.map(a=>`<div class="bar"><span>${esc(a[0])}</span><i style="width:${Math.round(a[1]*100/mx)}%;max-width:60%;min-width:3px${col?';background:'+col:''}"></i><em>${a[1]}</em></div>`).join('')||'<p>لا توجد بيانات</p>'};
+const top=(m,n)=>Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n);
+
+function drawS(){
+ const fin=O.filter(o=>o.fin),pend=O.length-fin.length;
+ let rq=0,dv=0;const na={},rqd={},dep={},day={};
+ O.forEach(o=>{dep[o.dn]=(dep[o.dn]||0)+1;day[o.ds]=(day[o.ds]||0)+1;lines(o).forEach(x=>{rqd[x.id]=(rqd[x.id]||0)+1})});
+ fin.forEach(o=>o.fin.it.forEach(x=>{rq+=x.req;dv+=Math.min(x.req,Math.max(0,x.iss));if(x.iss<=0)na[x.id]=(na[x.id]||0)+1}));
+ const days=Object.keys(day).sort().slice(-14).map(d=>[dt(d).slice(5),day[d]]);
+ $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${O.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div></div>
+ <h3>الطلبات حسب القسم</h3>${bars(top(dep,10))}
+ <h3>آخر 14 يوم</h3>${bars(days)}
+ <h3>الأكثر طلباً</h3>${bars(top(rqd,10).map(([id,c])=>[nm(id).n,c]))}
+ <h3>الأكثر عدم توفراً</h3>${bars(top(na,10).map(([id,c])=>[nm(id).n,c]),'#b4231a')}`;
+}
+function drawO(){
+ $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"></div><div class="wrap"><table><tr><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
+ const f=()=>{const q=$('#oq').value.trim().toLowerCase();
+  $('#ob').innerHTML=O.filter(o=>!q||(o.no+' '+o.dn).toLowerCase().includes(q)).map(o=>`<tr><td><b>${esc(o.no)}</b></td><td>${esc(o.dn)}</td><td>${dt(o.ds)}</td><td><span class="tag ${o.fin?'t-ok':'t-w'}">${o.fin?'تم الصرف':'بانتظار الصرف'}</span></td><td>${lines(o).length}</td><td>${esc(o.fin?o.fin.wk:o.dev)}</td><td><button class="btn alt" data-v="${esc(o.k)}">تفاصيل</button> <button class="btn bad" data-d="${esc(o.k)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد طلبات</td></tr>'};
+ $('#oq').oninput=f;f();
+}
+$('#o').onclick=async e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.v){const o=O.find(x=>x.k===b.dataset.v);
+  const rows=lines(o).map(x=>{const n=nm(x.id),st=o.fin?(x.iss<=0?'غير متوفر':x.iss<x.req?'جزئي':'تم'):'—';return `<tr><td>${esc(n.n)}<br><small dir="ltr">${esc(n.u)}</small></td><td>${x.req}</td><td>${o.fin?Math.max(0,x.iss):'—'}</td><td>${st}</td></tr>`}).join('');
+  $('#mb').innerHTML=`<h3 style="margin-top:0">طلب ${esc(o.no)} — ${esc(o.dn)} — ${dt(o.ds)}</h3><table><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th><th>الحالة</th></tr>${rows}</table><p><button class="btn" onclick="$('#modal').hidden=true">إغلاق</button></p>`;$('#modal').hidden=false}
+ if(b.dataset.d){const o=O.find(x=>x.k===b.dataset.d);
+  if(!confirm('حذف الطلب '+o.no+' من لوحة التحكم؟ (لا يحذف نسخ الأجهزة)'))return;
+  try{await api('orders?dept=eq.'+encodeURIComponent(o.dept)+'&no=eq.'+encodeURIComponent(o.no),{method:'DELETE'});load()}catch(err){alert('تعذّر الحذف: '+err.message)}}
+};
+function drawI(){
+ $('#i').innerHTML=`<p>أصناف القائمة الأساسية (1–${BASE.length||317}) مخزنة داخل ملف المنظومة، وهنا الأصناف المشتركة المضافة من الأجهزة.</p><div class="row"><input type="search" id="iq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>#</th><th>عربي</th><th>English</th><th></th></tr><tbody id="ib"></tbody></table></div>`;
+ const f=()=>{const q=$('#iq').value.trim().toLowerCase();
+  $('#ib').innerHTML=ITEMS.filter(x=>!q||(x.ar+' '+x.en).toLowerCase().includes(q)).map(x=>`<tr><td>${x.id}</td><td><input type="text" value="${esc(x.ar)}" data-a="${x.id}" style="width:100%"></td><td><input type="text" value="${esc(x.en)}" data-e="${x.id}" style="width:100%;direction:ltr"></td><td><button class="btn" data-s="${x.id}">حفظ</button> <button class="btn bad" data-x="${x.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="4">لا توجد أصناف مشتركة</td></tr>'};
+ $('#iq').oninput=f;f();
+}
+$('#i').onclick=async e=>{
+ const b=e.target.closest('button');if(!b)return;
+ try{
+  if(b.dataset.s){const id=b.dataset.s;await api('items?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({ar:document.querySelector(`[data-a="${id}"]`).value.trim(),en:document.querySelector(`[data-e="${id}"]`).value.trim()})});b.textContent='تم ✓';setTimeout(load,600)}
+  if(b.dataset.x){if(!confirm('حذف الصنف نهائياً؟ الأجهزة تختفي منها بعد التحديث.'))return;await api('items?id=eq.'+b.dataset.x,{method:'DELETE'});load()}
+ }catch(err){alert('تعذّر التنفيذ: '+err.message)}
+};
+function drawL(){
+ const base=location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,'');
+ const L=[['رابط المشرف (أنت)',base],['رابط الأقسام (طلب فقط)',base+'?m=order'],['رابط العامل',base+'?m=worker'],['لوحة التحكم',base+'dashboard.html'],['مشروع Supabase','https://supabase.com/dashboard/project/xthhojjcblknukwgksxw'],['مستودع GitHub','https://github.com/githup29333/store-system']];
+ $('#l').innerHTML=L.map(([t,u])=>`<div class="row"><b style="min-width:160px">${t}</b><input type="text" readonly value="${esc(u)}" style="flex:1;direction:ltr"><button class="btn alt" data-c="${esc(u)}">نسخ</button><a class="btn" href="${esc(u)}" target="_blank" rel="noopener" style="text-decoration:none">فتح</a></div>`).join('');
+}
+$('#l').onclick=e=>{const b=e.target.closest('[data-c]');if(b)navigator.clipboard.writeText(b.dataset.c).then(()=>{b.textContent='تم ✓';setTimeout(()=>b.textContent='نسخ',1200)})};
+$('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').hidden=true};
+if(S)start();
+</script>
+</body>
+</html>

@@ -511,6 +511,7 @@ function makeSheet(){if(!chk())return;
  for(let i=0;i<ids.length;i+=PG)parts.push(ids.slice(i,i+PG));
  const codes=parts.map((p,i)=>['EBR1',dept,no,ds,(i+1)+'/'+parts.length,hash(),p.map(k=>k+':'+q[k]).join(','),D[dept],p.filter(k=>k>BASE_N&&cat[k-1]).map(k=>k+'~'+cn(cat[k-1].n)+'~'+cn(cat[k-1].u)).join(';')].join('|'));
  const dt=`20${ds.slice(0,2)}-${ds.slice(2,4)}-${ds.slice(4)}`;
+ logOrder('request',codes);
  const pages=parts.map((p,i)=>{
   const g=qrcode(0,'M');g.addData(codes[i]);g.make();
   const rows=p.map((k,j)=>`<tr><td>${i*PG+j+1}</td><td>${cat[k-1].n}</td><td>${cat[k-1].u}</td><td>${q[k]}</td><td></td></tr>`).join('');
@@ -724,11 +725,15 @@ $('#delDept').onclick=()=>{
  fillDepts();applyFix();renderSaved();toast('تم حذف القسم / Department deleted');
 };
 
+function logOrder(kind,codes){
+ [].concat(codes).forEach(c=>{try{const f=c.split('|');fetch(SB_URL+'/rest/v1/orders',{method:'POST',headers:{...SBH,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({kind,code:c,dept:f[1],no:f[2],device:LS('dev')||''})}).catch(()=>{})}catch(e){}})
+}
 function copyFinal(){
  if(!chk()||!o)return;
  if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
  const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)}).join(',');
  const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
+ logOrder('final',code);
  navigator.clipboard.writeText(code).then(()=>toast('تم نسخ الكود النهائي — أرسله للمشرف / Final code copied — send it to the supervisor'),()=>prompt('انسخ الكود / Copy the code:',code));
 }
 
