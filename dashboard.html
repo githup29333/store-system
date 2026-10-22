@@ -93,7 +93,7 @@ $('#go').onclick=async()=>{
  finally{b.disabled=false;b.textContent='دخول'}
 };
 $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
-$('#lo').onclick=logout;$('#rf').onclick=()=>load();
+$('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
  ['s','o','i','l'].forEach(i=>$('#'+i).hidden=i!==t)};
@@ -131,7 +131,7 @@ async function start(){
  load();
 }
 const bars=(arr,col)=>{const mx=Math.max(1,...arr.map(a=>a[1]));return arr.map(a=>`<div class="bar"><span>${esc(a[0])}</span><i style="width:${Math.round(a[1]*100/mx)}%;max-width:60%;min-width:3px${col?';background:'+col:''}"></i><em>${a[1]}</em></div>`).join('')||'<p>لا توجد بيانات</p>'};
-const top=(m,n)=>Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n);
+const topN=(m,n)=>Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n);
 
 function drawS(){
  const fin=O.filter(o=>o.fin),pend=O.length-fin.length;
@@ -140,10 +140,10 @@ function drawS(){
  fin.forEach(o=>o.fin.it.forEach(x=>{rq+=x.req;dv+=Math.min(x.req,Math.max(0,x.iss));if(x.iss<=0)na[x.id]=(na[x.id]||0)+1}));
  const days=Object.keys(day).sort().slice(-14).map(d=>[dt(d).slice(5),day[d]]);
  $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${O.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div></div>
- <h3>الطلبات حسب القسم</h3>${bars(top(dep,10))}
+ <h3>الطلبات حسب القسم</h3>${bars(topN(dep,10))}
  <h3>آخر 14 يوم</h3>${bars(days)}
- <h3>الأكثر طلباً</h3>${bars(top(rqd,10).map(([id,c])=>[nm(id).n,c]))}
- <h3>الأكثر عدم توفراً</h3>${bars(top(na,10).map(([id,c])=>[nm(id).n,c]),'#b4231a')}`;
+ <h3>الأكثر طلباً</h3>${bars(topN(rqd,10).map(([id,c])=>[nm(id).n,c]))}
+ <h3>الأكثر عدم توفراً</h3>${bars(topN(na,10).map(([id,c])=>[nm(id).n,c]),'#b4231a')}`;
 }
 function drawO(){
  $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"></div><div class="wrap"><table><tr><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
