@@ -70,23 +70,27 @@ let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[];
 try{S=JSON.parse(sessionStorage.getItem('s')||'null')}catch(e){}
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dt=ds=>'20'+ds.slice(0,2)+'-'+ds.slice(2,4)+'-'+ds.slice(4);
+const ERR={'Invalid login credentials':'البريد أو كلمة المرور غير صحيحة','Email not confirmed':'البريد غير مفعّل — فعّله من Supabase (Authentication ثم Users)','Email logins are disabled':'تسجيل الدخول بالبريد معطّل في إعدادات Supabase'};
 async function auth(body,gt){
- const r=await fetch(SB+'/auth/v1/token?grant_type='+gt,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
- if(!r.ok)throw new Error('bad');
+ let r;
+ try{r=await fetch(SB+'/auth/v1/token?grant_type='+gt,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)})}
+ catch(e){throw new Error('تعذّر الاتصال بالخادم، قد تكون الشبكة تحجب Supabase ('+e.message+')')}
+ if(!r.ok){let j={};try{j=await r.json()}catch(e){}const m=j.error_description||j.msg||j.message||('HTTP '+r.status);throw new Error(ERR[m]||m)}
  const j=await r.json();S={a:j.access_token,r:j.refresh_token};
  try{sessionStorage.setItem('s',JSON.stringify(S))}catch(e){}
 }
 async function api(path,opt={},retry=true){
  const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json',...(opt.headers||{})}});
- if(r.status===401&&retry&&S&&S.r){try{await auth({refresh_token:S.r},'refresh_token');return api(path,opt,false)}catch(e){logout();throw e}}
+ if(r.status===401&&retry&&S&&S.r){try{await auth({refresh_token:S.r},'refresh_token');return api(path,opt,false)}catch(e){logout('انتهت الجلسة، سجّل الدخول من جديد');throw e}}
  if(!r.ok)throw new Error(await r.text());
  return r.status===204?null:r.json();
 }
-function logout(){S=null;try{sessionStorage.removeItem('s')}catch(e){}$('#app').hidden=true;$('#login').hidden=false}
+function logout(m){S=null;try{sessionStorage.removeItem('s')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||''}
 $('#go').onclick=async()=>{
- $('#msg').textContent='';
- try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');$('#pw').value='';start()}
- catch(e){$('#msg').textContent='بيانات الدخول غير صحيحة'}
+ const b=$('#go');$('#msg').textContent='';b.disabled=true;b.textContent='جاري الدخول…';
+ try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');$('#pw').value='';await start()}
+ catch(e){$('#msg').textContent=e.message||'فشل الدخول'}
+ finally{b.disabled=false;b.textContent='دخول'}
 };
 $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lo').onclick=logout;$('#rf').onclick=()=>load();
@@ -157,9 +161,9 @@ $('#o').onclick=async e=>{
   try{await api('orders?dept=eq.'+encodeURIComponent(o.dept)+'&no=eq.'+encodeURIComponent(o.no),{method:'DELETE'});load()}catch(err){alert('تعذّر الحذف: '+err.message)}}
 };
 function drawI(){
- $('#i').innerHTML=`<p>أصناف القائمة الأساسية (1–${BASE.length||317}) مخزنة داخل ملف المنظومة، وهنا الأصناف المشتركة المضافة من الأجهزة.</p><div class="row"><input type="search" id="iq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>#</th><th>عربي</th><th>English</th><th></th></tr><tbody id="ib"></tbody></table></div>`;
+ $('#i').innerHTML=`<p>أصناف القائمة الأساسية (1–${BASE.length||317}) مخزنة داخل ملف المنظومة، وهنا الأصناف المشتركة المضافة من الأجهزة.</p><div class="row"><input type="search" id="iq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>#</th><th>كود Odoo</th><th>عربي</th><th>English</th><th></th></tr><tbody id="ib"></tbody></table></div>`;
  const f=()=>{const q=$('#iq').value.trim().toLowerCase();
-  $('#ib').innerHTML=ITEMS.filter(x=>!q||(x.ar+' '+x.en).toLowerCase().includes(q)).map(x=>`<tr><td>${x.id}</td><td><input type="text" value="${esc(x.ar)}" data-a="${x.id}" style="width:100%"></td><td><input type="text" value="${esc(x.en)}" data-e="${x.id}" style="width:100%;direction:ltr"></td><td><button class="btn" data-s="${x.id}">حفظ</button> <button class="btn bad" data-x="${x.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="4">لا توجد أصناف مشتركة</td></tr>'};
+  $('#ib').innerHTML=ITEMS.filter(x=>!q||(x.ar+' '+x.en+' '+(x.code||'')).toLowerCase().includes(q)).map(x=>`<tr><td>${x.id}</td><td dir="ltr">${esc(x.code||'')}</td><td><input type="text" value="${esc(x.ar)}" data-a="${x.id}" style="width:100%"></td><td><input type="text" value="${esc(x.en)}" data-e="${x.id}" style="width:100%;direction:ltr"></td><td><button class="btn" data-s="${x.id}">حفظ</button> <button class="btn bad" data-x="${x.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="5">لا توجد أصناف مشتركة</td></tr>'};
  $('#iq').oninput=f;f();
 }
 $('#i').onclick=async e=>{
