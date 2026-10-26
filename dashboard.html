@@ -54,19 +54,21 @@ h3{margin:18px 0 6px}
 </div>
 <div id="app" hidden>
  <header><h1>لوحة التحكم — منظومة الصرف</h1><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button></nav>
+ <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="k">الصلاحية</button></nav>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
   <section id="i" hidden></section>
   <section id="l" hidden></section>
+  <section id="k" hidden></section>
  </main>
 </div>
 <div id="modal" hidden><div id="mb"></div></div>
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[];
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null;
+const fmtD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 try{S=JSON.parse(sessionStorage.getItem('s')||'null')}catch(e){}
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dt=ds=>'20'+ds.slice(0,2)+'-'+ds.slice(2,4)+'-'+ds.slice(4);
@@ -96,7 +98,7 @@ $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l'].forEach(i=>$('#'+i).hidden=i!==t)};
+ ['s','o','i','l','k'].forEach(i=>$('#'+i).hidden=i!==t)};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
@@ -122,8 +124,9 @@ async function load(){
   const [orders,items]=await Promise.all([api('orders?select=*&order=created_at.desc&limit=3000'),api('items?select=*&order=id.asc&limit=2000')]);
   ITEMS=items;SH={};items.forEach(x=>SH[x.id]={n:x.ar,u:x.en});
   O=build(orders);
+  LICROW=await api('license?select=*&id=eq.1').then(r=>r[0]||null).catch(()=>null);
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
- drawS();drawO();drawI();drawL();
+ drawS();drawO();drawI();drawL();drawK();
 }
 async function start(){
  $('#login').hidden=true;$('#app').hidden=false;
@@ -179,6 +182,23 @@ function drawL(){
  $('#l').innerHTML=L.map(([t,u])=>`<div class="row"><b style="min-width:160px">${t}</b><input type="text" readonly value="${esc(u)}" style="flex:1;direction:ltr"><button class="btn alt" data-c="${esc(u)}">نسخ</button><a class="btn" href="${esc(u)}" target="_blank" rel="noopener" style="text-decoration:none">فتح</a></div>`).join('');
 }
 $('#l').onclick=e=>{const b=e.target.closest('[data-c]');if(b)navigator.clipboard.writeText(b.dataset.c).then(()=>{b.textContent='تم ✓';setTimeout(()=>b.textContent='نسخ',1200)})};
+function drawK(){
+ const e=LICROW&&LICROW.expires_at;
+ if(!e){$('#k').innerHTML='<p style="color:#b4231a">جدول الصلاحية غير موجود. نفّذ ملف license.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
+ const t=fmtD(new Date()),left=Math.round((new Date(e+'T12:00:00')-new Date(t+'T12:00:00'))/864e5);
+ $('#k').innerHTML=`<div class="grid"><div class="kpi"><b>${e}</b>تاريخ الانتهاء</div><div class="kpi"><b style="color:${left<0?'#b4231a':left<8?'#b4531a':'#1d7a4f'}">${Math.abs(left)}</b>${left<0?'يوم منذ الانتهاء':'يوم متبقي'}</div></div>
+ <p>التمديد يسري على <b>كل الأجهزة</b> عند فتح المنظومة أو الرجوع لها. وبدون إنترنت تعمل حسب آخر تاريخ حفظته.</p>
+ <div class="row"><button class="btn" data-add="7">+7 أيام</button><button class="btn" data-add="30">+30 يوم</button><button class="btn" data-add="90">+90 يوم</button><button class="btn" data-add="365">+سنة</button></div>
+ <div class="row"><input type="date" id="kd" value="${e}"><button class="btn alt" id="kset">تحديد التاريخ</button></div>`;
+}
+async function setExp(d){
+ try{await api('license?id=eq.1',{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({expires_at:d,updated_at:new Date().toISOString()})});await load();alert('تم. الصلاحية حتى '+d)}
+ catch(e){alert('تعذّر التحديث: '+e.message)}
+}
+$('#k').onclick=e=>{const b=e.target.closest('button');if(!b||!LICROW)return;
+ if(b.dataset.add){const t=fmtD(new Date()),base=LICROW.expires_at>t?LICROW.expires_at:t,d=new Date(base+'T12:00:00');d.setDate(d.getDate()+ +b.dataset.add);setExp(fmtD(d))}
+ if(b.id==='kset'){const v=$('#kd').value;if(/^\d{4}-\d\d-\d\d$/.test(v))setExp(v)}
+};
 $('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').hidden=true};
 if(S)start();
 </script>

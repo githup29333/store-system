@@ -60,7 +60,7 @@ details{margin-top:16px}
 </style>
 </head>
 <body>
-<header style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="flex:1">منظومة الصرف / Issuance System</h1><small id="lic"></small><button class="btn alt" id="rn" style="margin:0;padding:5px 10px">🔑</button></header>
+<header style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="flex:1">منظومة الصرف / Issuance System</h1><small id="lic"></small></header>
 <nav>
  <button id="t1" class="on">طلب القسم / Order</button>
  <button id="t2">استلام وصرف / Issue</button>
@@ -120,8 +120,7 @@ details{margin-top:16px}
  <div style="background:#fff;border-radius:12px;padding:22px;max-width:380px;width:100%;text-align:center">
   <h2 style="margin:0 0 6px">انتهت صلاحية المنظومة<br><small>System license expired</small></h2>
   <p id="lmsg" class="st"></p>
-  <input type="password" id="pin" inputmode="numeric" autocomplete="off" placeholder="رمز التجديد / Renewal code" style="width:100%;text-align:center;padding:10px;border:1px solid var(--ln);border-radius:8px">
-  <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="rnBtn">تجديد / Renew</button><button class="btn alt" id="rnX" hidden>إغلاق / Close</button></div>
+  <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="rnBtn">إعادة المحاولة / Retry</button></div>
  </div>
 </div>
 <div id="toast"></div>
@@ -677,18 +676,16 @@ $('#addDept').onclick=async()=>{
 };
 
 /* ---------- الصلاحية ---------- */
-const SALT='10011384921c3eef416356832b344024',PH='b2950de27dbad822a6c3fe214b637bf75e3484790809916b94b9f30796bc50d9',BASE_EXP='2026-11-16',IT=250000;
+const BASE_EXP='2026-11-16';
 const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const td=()=>fmt(new Date());
-const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
-const unhex=h=>new Uint8Array(h.match(/../g).map(x=>parseInt(x,16)));
-const sha=async t=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)));
-async function pk(pin){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);return hex(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:unhex(SALT),iterations:IT},k,256))}
 let LIC=false,EXP=BASE_EXP,CLK=false;
 async function licInit(){
  try{
-  let e=BASE_EXP;const r=JSON.parse(LS('lic')||'null');
-  if(r&&r.e>e&&r.s===await sha(r.e+'|'+SALT))e=r.e;
+  let e=null;
+  try{const r=await fetch(SB_URL+'/rest/v1/license?select=expires_at&id=eq.1',{headers:SBH});
+   if(r.ok){const j=await r.json();if(j[0]&&j[0].expires_at){e=j[0].expires_at;LS('licx',e)}}}catch(x){}
+  if(!e)e=LS('licx')||BASE_EXP;
   EXP=e;const t=td(),ls=LS('ls')||'';
   CLK=!!ls&&t<ls&&(new Date(ls+'T12:00:00')-new Date(t+'T12:00:00'))>86400000;
   if(!CLK&&t>ls)LS('ls',t);
@@ -696,26 +693,14 @@ async function licInit(){
  }catch(x){LIC=false}
  licUI();
 }
-function licUI(show){
+function licUI(){
  $('#lic').textContent=LIC?'صالحة حتى / Valid until '+EXP:'';
- $('#lock').hidden=LIC&&!show;$('#rnX').hidden=!LIC;
- $('#lmsg').textContent=CLK?'ساعة الجهاز غير صحيحة / Device clock is incorrect':LIC?'أدخل رمز التجديد لتمديد الصلاحية / Enter the code to extend':'أدخل رمز التجديد للمتابعة / Enter the renewal code to continue';
+ $('#lock').hidden=LIC;
+ $('#lmsg').textContent=CLK?'ساعة الجهاز غير صحيحة / Device clock is incorrect':'تواصل مع المشرف للتجديد / Contact the supervisor to renew';
 }
 const chk=()=>{if(LIC)return true;licUI();return false};
-async function renew(){
- const pin=$('#pin').value.trim(),tr=+LS('tr')||0;
- if(tr>=5&&Date.now()<(+LS('tu')||0))return toast('حاول بعد قليل / Try again in a few minutes');
- if(!window.crypto||!crypto.subtle)return toast('افتح الرابط عبر HTTPS / Open the link over HTTPS');
- if(await pk(pin)!==PH){LS('tr',tr+1);if(tr+1>=5)LS('tu',Date.now()+300000);$('#pin').value='';return toast('رمز خاطئ / Wrong code')}
- LS('tr',0);
- const n=Math.min(366,parseInt(prompt('عدد أيام التجديد / Days to add:','30'))||0);
- if(n<1)return;
- const base=EXP>td()?EXP:td(),d=new Date(base+'T12:00:00');d.setDate(d.getDate()+n);
- const e=fmt(d);LS('lic',JSON.stringify({e,s:await sha(e+'|'+SALT)}));
- $('#pin').value='';await licInit();toast('تم التجديد حتى / Renewed until '+e);
-}
-$('#rnBtn').onclick=renew;$('#pin').onkeydown=e=>{if(e.key==='Enter')renew()};
-$('#rn').onclick=()=>licUI(true);$('#rnX').onclick=()=>licUI(false);
+$('#rnBtn').onclick=()=>licInit();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)licInit()});
 
 $('#delDept').onclick=()=>{
  const c=$('#dept').value;
@@ -834,7 +819,7 @@ $('#cam').onclick=startCam;$('#stopCam').onclick=stopCam;
 
 loadCat();fillDepts();initDev();renderList();renderSaved();licInit();syncShared();
 if(/[?&]m=order/.test(location.search))$('#t2').hidden=true;
-if(WM){document.querySelector('nav').hidden=true;$('#rn').hidden=true;tab(2)}
+if(WM){document.querySelector('nav').hidden=true;tab(2)}
 </script>
 </body>
 </html>
