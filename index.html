@@ -498,7 +498,7 @@ async function syncShared(){
   $('#hs').textContent=hash()+' · '+cat.length+' · مشترك / shared: '+j.length;
  }catch(e){$('#hs').textContent=hash()+' · '+cat.length+' · فشل المزامنة / sync failed: '+e}
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncShared()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){syncShared();flushLog()}});
 $('#saveCat').onclick=()=>{LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم حفظ القائمة / List saved')};
 
 function makeSheet(){if(!chk())return;
@@ -712,8 +712,24 @@ $('#delDept').onclick=()=>{
 };
 
 function logOrder(kind,codes){
- [].concat(codes).forEach(c=>{try{const f=c.split('|');fetch(SB_URL+'/rest/v1/orders',{method:'POST',headers:{...SBH,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({kind,code:c,dept:f[1],no:f[2],device:LS('dev')||''})}).catch(()=>{})}catch(e){}})
+ let q0=[];try{q0=JSON.parse(LS('outq')||'[]')}catch(e){}
+ [].concat(codes).forEach(c=>{const f=c.split('|');q0.push({kind,code:c,dept:f[1],no:f[2],device:LS('dev')||''})});
+ LS('outq',JSON.stringify(q0));flushLog();
 }
+let flushing=false;
+async function flushLog(){
+ if(flushing)return;flushing=true;
+ try{
+  let q0=JSON.parse(LS('outq')||'[]');
+  while(q0.length){
+   const r=await fetch(SB_URL+'/rest/v1/orders',{method:'POST',headers:{...SBH,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(q0[0])});
+   if(!r.ok&&r.status!==400&&r.status!==422)throw r.status;
+   q0.shift();LS('outq',JSON.stringify(q0));
+  }
+ }catch(e){}
+ flushing=false;
+}
+addEventListener('online',flushLog);setInterval(flushLog,60000);
 function copyFinal(){
  if(!chk()||!o)return;
  if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
@@ -817,7 +833,7 @@ function tick(){
 }
 $('#cam').onclick=startCam;$('#stopCam').onclick=stopCam;
 
-loadCat();fillDepts();initDev();renderList();renderSaved();licInit();syncShared();
+loadCat();fillDepts();initDev();renderList();renderSaved();licInit();syncShared();flushLog();
 if(/[?&]m=order/.test(location.search))$('#t2').hidden=true;
 if(WM){document.querySelector('nav').hidden=true;tab(2)}
 </script>
