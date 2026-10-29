@@ -118,9 +118,10 @@ details{margin-top:16px}
 </main>
 <div id="lock" hidden style="position:fixed;inset:0;z-index:99;background:#16222c;display:flex;align-items:center;justify-content:center;padding:16px">
  <div style="background:#fff;border-radius:12px;padding:22px;max-width:380px;width:100%;text-align:center">
-  <h2 style="margin:0 0 6px">انتهت صلاحية المنظومة<br><small>System license expired</small></h2>
+  <h2 id="lh" style="margin:0 0 6px">انتهت صلاحية المنظومة<br><small>System license expired</small></h2>
   <p id="lmsg" class="st"></p>
-  <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="rnBtn">إعادة المحاولة / Retry</button></div>
+  <p id="linfo" style="font-size:12px;color:#5d6b78;direction:ltr;margin:6px 0"></p>
+  <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="rnBtn">إعادة المحاولة / Retry</button><button class="btn alt" id="clkBtn" hidden>تم ضبط الساعة / Clock fixed</button></div>
  </div>
 </div>
 <div id="toast"></div>
@@ -679,27 +680,36 @@ $('#addDept').onclick=async()=>{
 const BASE_EXP='2026-11-16';
 const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const td=()=>fmt(new Date());
-let LIC=false,EXP=BASE_EXP,CLK=false;
+let LIC=false,EXP=BASE_EXP,CLK=false,INFO=null;
 async function licInit(){
+ let e=null,src='',sd=null;
  try{
-  let e=null;
-  try{const r=await fetch(SB_URL+'/rest/v1/license?select=expires_at&id=eq.1',{headers:SBH});
-   if(r.ok){const j=await r.json();if(j[0]&&j[0].expires_at){e=j[0].expires_at;LS('licx',e)}}}catch(x){}
-  if(!e)e=LS('licx')||BASE_EXP;
-  EXP=e;const t=td(),ls=LS('ls')||'';
-  CLK=!!ls&&t<ls&&(new Date(ls+'T12:00:00')-new Date(t+'T12:00:00'))>86400000;
-  if(!CLK&&t>ls)LS('ls',t);
-  LIC=!CLK&&t<=e;
- }catch(x){LIC=false}
+  const r=await fetch(SB_URL+'/rest/v1/license?select=expires_at&id=eq.1',{headers:SBH,cache:'no-store'});
+  if(r.ok){
+   const j=await r.json();if(j[0]&&j[0].expires_at){e=j[0].expires_at;LS('licx',e);src='server'}
+   const h=r.headers&&r.headers.get('date');if(h){const d=new Date(h);if(!isNaN(d))sd=fmt(d)}
+  }
+ }catch(x){}
+ if(!e){e=LS('licx');src=e?'cache':'base';if(!e)e=BASE_EXP}
+ EXP=e;
+ const dev=td(),ls=LS('ls')||'';let t=dev;CLK=false;
+ if(sd){t=sd;LS('ls',sd)}   // تاريخ السيرفر لما يكون الإنترنت شغّال: لا نعتمد على ساعة الجهاز
+ else{CLK=!!ls&&dev<ls&&(new Date(ls+'T12:00:00')-new Date(dev+'T12:00:00'))>86400000;if(!CLK&&dev>ls)LS('ls',dev)}
+ LIC=!CLK&&t<=e;
+ INFO={dev,sd,ls,e,src};
  licUI();
 }
 function licUI(){
  $('#lic').textContent=LIC?'صالحة حتى / Valid until '+EXP:'';
  $('#lock').hidden=LIC;
- $('#lmsg').textContent=CLK?'ساعة الجهاز غير صحيحة / Device clock is incorrect':'تواصل مع المشرف للتجديد / Contact the supervisor to renew';
+ $('#lh').innerHTML=CLK?'ساعة الجهاز غير صحيحة<br><small>Device clock is incorrect</small>':'انتهت صلاحية المنظومة<br><small>System license expired</small>';
+ $('#lmsg').textContent=CLK?'اضبط التاريخ والوقت على "تلقائي" من إعدادات الجهاز ثم اضغط الزر / Set date & time to automatic in device settings, then tap the button':'تواصل مع المشرف للتجديد / Contact the supervisor to renew';
+ $('#linfo').textContent=INFO?'device '+INFO.dev+' | expires '+INFO.e+' ('+INFO.src+') | last seen '+(INFO.ls||'-'):'';
+ $('#clkBtn').hidden=!CLK;
 }
 const chk=()=>{if(LIC)return true;licUI();return false};
 $('#rnBtn').onclick=()=>licInit();
+$('#clkBtn').onclick=()=>{LS('ls','');licInit()};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)licInit()});
 
 $('#delDept').onclick=()=>{
