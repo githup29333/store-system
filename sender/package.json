@@ -1,0 +1,8 @@
+{
+  "name": "issuance-sender",
+  "private": true,
+  "version": "1.0.0",
+  "description": "يرسل نتائج الصرف الموافق عليها بالإيميل (Supabase + SMTP)",
+  "scripts": { "start": "node send.js" },
+  "dependencies": { "nodemailer": "^6.9.0" }
+}
