@@ -69,7 +69,7 @@ h3{margin:18px 0 6px}
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false;
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null;
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const fmtD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 try{S=JSON.parse(sessionStorage.getItem('s')||'null')}catch(e){}
@@ -128,6 +128,7 @@ async function load(){
   ITEMS=items;SH={};items.forEach(x=>SH[x.id]={n:x.ar,u:x.en});
   O=build(orders);
   LICROW=await api('license?select=*&id=eq.1').then(r=>r[0]||null).catch(()=>null);
+  GHTOK=await api('app_secrets?select=value&key=eq.gh_dispatch').then(r=>r[0]&&r[0].value||null).catch(()=>null);
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
  drawS();drawO();drawI();drawL();drawD();drawK();
@@ -233,7 +234,15 @@ function drawD(){
  $('#d').innerHTML=`<div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
  <h3>نتائج الصرف</h3><div class="wrap"><table><tr><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
  <h3>المستلمون</h3><div class="wrap"><table><tr><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
+ <h3>الإرسال الفوري (GitHub)</h3>
+ <p>${GHTOK?'<span class="tag t-ok">مفعّل</span> الضغط على "موافقة وإرسال" يشغّل الإرسال فوراً.':'<span class="tag t-bad">غير مفعّل</span> الإرسال يعتمد على الجدولة وقد يتأخر ساعات.'}</p>
+ <div class="row"><input type="text" id="gtok" placeholder="الصق مفتاح GitHub هنا" style="flex:1;direction:ltr;-webkit-text-security:disc" autocomplete="off"><button class="btn" id="gsave">حفظ المفتاح</button>${GHTOK?'<button class="btn bad" id="gdel">حذف</button>':''}<button class="btn alt" id="gnow">تشغيل الإرسال الآن</button></div>
  <div class="row" style="margin-top:10px"><select id="rk"><option value="to">To</option><option value="cc">CC</option></select><input type="text" id="rn" placeholder="الاسم" style="flex:1"><input type="email" id="re" placeholder="البريد" style="flex:1;direction:ltr"><button class="btn" id="radd">إضافة</button></div>`;
+}
+async function ghRun(){
+ if(!GHTOK)return 'no-token';
+ try{const r=await fetch('https://api.github.com/repos/githup29333/store-system/actions/workflows/send.yml/dispatches',{method:'POST',headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+GHTOK,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},body:JSON.stringify({ref:'main',inputs:{mode:'send'}})});
+  return r.status===204?'ok':'HTTP '+r.status}catch(e){return e.message}
 }
 async function ensureAuth(){try{await api('recipients?select=id&limit=1')}catch(e){}}
 async function approve(key){
@@ -248,12 +257,17 @@ async function approve(key){
   const now=new Date().toISOString();
   await api('deliveries?key=eq.'+encodeURIComponent(d.key)+'&rev=eq.'+d.rev,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,approved_at:now,updated_at:now,error:null})});
   await load();
+  const g=await ghRun();
+  alert('تمت الموافقة. '+(g==='ok'?'تم تشغيل الإرسال الآن، يصل الإيميل خلال دقيقة أو دقيقتين.':g==='no-token'?'الإرسال الفوري غير مفعّل، فسيُرسل بالجدولة (قد يتأخر ساعات).':'تعذّر تشغيل الإرسال الفوري ('+g+')، سيُرسل بالجدولة.'));
  }catch(e){alert('تعذّرت الموافقة: '+e.message)}
 }
 $('#d').onclick=async e=>{
  const b=e.target.closest('button');if(!b)return;
  try{
   if(b.dataset.ap)return approve(b.dataset.ap);
+  if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'gh_dispatch',value:v,updated_at:new Date().toISOString()})});GHTOK=v;drawD();return alert('تم حفظ المفتاح')}
+  if(b.id==='gdel'){await api('app_secrets?key=eq.gh_dispatch',{method:'DELETE'});GHTOK=null;drawD();return}
+  if(b.id==='gnow'){const g=await ghRun();return alert(g==='ok'?'تم تشغيل الإرسال الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
   if(b.dataset.sk){await api('deliveries?key=eq.'+encodeURIComponent(b.dataset.sk),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'skipped',updated_at:new Date().toISOString()})});return load()}
   if(b.dataset.rd){if(!confirm('حذف هذا المستلم؟'))return;await api('recipients?id=eq.'+b.dataset.rd,{method:'DELETE'});return load()}
   if(b.id==='radd'){const em=$('#re').value.trim();if(!/^\S+@\S+\.\S+$/.test(em))return alert('البريد غير صحيح');
