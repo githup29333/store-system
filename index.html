@@ -48,10 +48,11 @@ code{display:block;direction:ltr;text-align:left;font-size:11px;word-break:break
 details{margin-top:16px}
 [hidden]{display:none!important}
 .pg{margin-top:14px}
+.credit{margin-top:10px;font-size:11px;color:#5d6b78;text-align:center}
 .sig{display:flex;gap:30px;margin-top:18px}
 .sig div{flex:1;border-top:1px solid var(--ink);padding-top:4px;font-size:14px}
 @media print{
- header,nav,#p2,#p1>*:not(#sheetWrap),.np{display:none!important}
+ header,nav,footer,#p2,#p1>*:not(#sheetWrap),.np{display:none!important}
  body{background:#fff}
  main{padding:0;min-height:0}
  .pg{margin:0;break-after:page;page-break-after:always}
@@ -103,6 +104,12 @@ details{margin-top:16px}
  <textarea id="paste" rows="3" placeholder="أو الصق الكود هنا (كل جزء في سطر) / Or paste the code here (one part per line)"></textarea>
  <div class="row" style="margin-top:8px"><button class="btn alt" id="load">تحميل الطلب / Load Order</button></div>
  <div id="issue"></div>
+ <div id="addItem" hidden class="st">
+  <b>➕ إضافة صنف للطلب (خارجي أو غير مكتوب) / Add an item (external or unlisted)</b>
+  <div class="row" style="margin-top:8px"><input type="text" id="xName" placeholder="اسم الصنف (عربي أو English) / Item name" style="flex:1;min-width:200px" autocomplete="off"></div>
+  <div class="row" id="xSug"></div>
+  <div class="row"><label>المطلوب / Requested <input type="number" id="xReq" min="0" step="any" value="1" style="width:80px"></label><label>المصروف / Issued <input type="number" id="xIss" min="0" step="any" value="1" style="width:80px"></label><button class="btn" id="xAdd">إضافة / Add</button></div>
+ </div>
  <h3 style="margin-top:22px">الطلبات المحفوظة / Saved orders</h3>
  <input type="search" id="ordSrch" placeholder="ابحث برقم الطلب / Search order no." style="width:100%;margin-bottom:8px">
  <div class="row" id="selBar"><button class="btn alt" id="selAll">تحديد الكل / Select all</button><button class="btn alt" id="selNone">إلغاء التحديد / Clear</button><button class="btn" id="selX">تصدير المحدد (ملف واحد) / Export selected (one file)</button><button class="btn ok" id="selE">إيميل للمحدد / Email selected</button></div>
@@ -116,6 +123,7 @@ details{margin-top:16px}
  <div id="resOut"></div>
 </section>
 </main>
+<footer id="credit" style="text-align:center;color:#5d6b78;font-size:12px;padding:12px"></footer>
 <div id="lock" hidden style="position:fixed;inset:0;z-index:99;background:#16222c;display:flex;align-items:center;justify-content:center;padding:16px">
  <div style="background:#fff;border-radius:12px;padding:22px;max-width:380px;width:100%;text-align:center">
   <h2 id="lh" style="margin:0 0 6px">انتهت صلاحية المنظومة<br><small>System license expired</small></h2>
@@ -449,6 +457,7 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 مناديل رول|Tissue Rolls
 هايكين|Heineken`;
 const WM=/[?&]m=worker/.test(location.search);
+const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',SBH={apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98'};
 let cat=[],q={},o=null,last='';
 const BASE_N=DEF.split('\n').filter(Boolean).length;
@@ -516,7 +525,7 @@ function makeSheet(){if(!chk())return;
  const pages=parts.map((p,i)=>{
   const g=qrcode(0,'M');g.addData(codes[i]);g.make();
   const rows=p.map((k,j)=>`<tr><td>${i*PG+j+1}</td><td>${cat[k-1].n}</td><td>${cat[k-1].u}</td><td>${q[k]}</td><td></td></tr>`).join('');
-  return `<div class="pg"><h2 style="margin:6px 0">طلب صرف / Issue Request — ${D[dept]}</h2><p>رقم الطلب / Order No.: <b>${no}</b> &nbsp; التاريخ / Date: <b>${dt}</b> &nbsp; ورقة / Sheet: <b>${i+1} / ${parts.length}</b></p><table><tr><th>#</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table><div class="qrs"><figure>${g.createSvgTag({cellSize:4,margin:2,scalable:true})}<code class="np">${codes[i]}</code><button class="btn alt np" data-copy="${i}">نسخ الكود / Copy code</button></figure></div><div class="sig"><div>توقيع مقدّم الطلب / Requested by</div><div>توقيع أمين المخزن / Storekeeper</div></div></div>`}).join('');
+  return `<div class="pg"><h2 style="margin:6px 0">طلب صرف / Issue Request — ${D[dept]}</h2><p>رقم الطلب / Order No.: <b>${no}</b> &nbsp; التاريخ / Date: <b>${dt}</b> &nbsp; ورقة / Sheet: <b>${i+1} / ${parts.length}</b></p><table><tr><th>#</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table><div class="qrs"><figure>${g.createSvgTag({cellSize:4,margin:2,scalable:true})}<code class="np">${codes[i]}</code><button class="btn alt np" data-copy="${i}">نسخ الكود / Copy code</button></figure></div><div class="sig"><div>توقيع مقدّم الطلب / Requested by</div><div>توقيع أمين المخزن / Storekeeper</div></div><div class="credit">${CREDIT}</div></div>`}).join('');
  const w=$('#sheetWrap');w.hidden=false;w.dataset.codes=JSON.stringify(codes);
  w.innerHTML=`<hr class="np">${pages}<div class="row np" style="margin-top:12px"><button class="btn ok" onclick="print()">طباعة / Print (${parts.length} ${parts.length>1?'أوراق / sheets':'ورقة / sheet'})</button></div>`;
  w.scrollIntoView({behavior:'smooth'});
@@ -543,17 +552,17 @@ function ingest(txt){if(!chk())return;
  toast(bad?'تنبيه: قائمة الأصناف تختلف عن قائمة القسم / Warning: item list differs from the department\'s':'تم تحميل الطلب / Order loaded');
 }
 function renderIssue(){
- if(!o)return;save();
+ if(!o)return;save();$('#addItem').hidden=false;
  const got=Object.keys(o.parts).length,miss=got<o.total;
  const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
-  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}></td><td>${c.n}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
+  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${c.n}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
  $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table>
  <div class="row" style="margin-top:12px">${WM?'<button class="btn ok" id="fc">نسخ الكود النهائي / Copy final code</button>':'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button>'}</div>`;
 }
 $('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}renderIssue()};
-$('#issue').onclick=e=>{if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc')copyFinal()};
+$('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc')copyFinal()};
 $('#load').onclick=()=>ingest($('#paste').value);
 
 const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
@@ -585,6 +594,7 @@ function addSheet(wb,ord,name){
  ws.mergeCells(`A${r}:C${r}`);put('A'+r,'مقدّم الطلب / Requested by\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});
  ws.mergeCells(`D${r}:F${r}`);put('D'+r,'أمين المخزن / Storekeeper\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});ws.getRow(r).height=62;r++;
  ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الأصناف غير المصروفة محذوفة من هذا النموذج / Unissued items are not listed',{sz:9,fc:'FF5D6B78'});
+ r++;ws.mergeCells(`A${r}:F${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
  return ws;
 }
 async function xbook(){const wb=new ExcelJS.Workbook();addSheet(wb,o,'Issue');return wb.xlsx.writeBuffer()}
@@ -824,6 +834,33 @@ async function resXls(){
 }
 $('#resPng').onclick=resPng;$('#resXls').onclick=resXls;
 if(WM)$('#selBar').hidden=true;
+
+/* ---------- إضافة صنف للطلب ---------- */
+let XID=0;
+const normN=t=>String(t).toLowerCase().replace(/[\s\-–()*×\/.,]+/g,'');
+$('#xName').oninput=()=>{
+ const t=normN($('#xName').value);XID=0;$('#xSug').innerHTML='';if(t.length<2)return;
+ let n=0;cat.forEach((c,i)=>{if(c&&n<6&&(normN(c.n).includes(t)||normN(c.u).includes(t))){n++;$('#xSug').insertAdjacentHTML('beforeend',`<button class="btn alt" data-pick="${i+1}">${c.n}</button>`)}});
+};
+$('#xSug').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;XID=+b.dataset.pick;$('#xName').value=cat[XID-1].n;$('#xSug').innerHTML=''};
+$('#xAdd').onclick=async()=>{
+ if(!o)return;
+ const t=cn($('#xName').value.trim()),rq=+$('#xReq').value||0,is=+$('#xIss').value||0;
+ if(!t)return toast('اكتب اسم الصنف / Enter the item name');
+ if(rq<=0&&is<=0)return toast('أدخل الكمية / Enter a quantity');
+ let id=XID;
+ if(!id){const k=normN(t),i=cat.findIndex(c=>c&&(normN(c.n)===k||normN(c.u)===k));if(i>=0)id=i+1}
+ if(!id){
+  id=900000000+Date.now()%100000000;
+  toast('جارٍ الترجمة… Translating…');
+  const ar=/[\u0600-\u06FF]/.test(t),x=cn(await tr(t)).trim();
+  o.names=o.names||{};o.names[id]=ar?{n:t,u:x||t}:{n:x||t,u:t};
+  o.items[id]={req:rq,iss:is,on:true,ext:true};
+ }else if(o.items[id]){o.items[id].req=rq;o.items[id].iss=is;o.items[id].on=true}
+ else o.items[id]={req:rq,iss:is,on:true};
+ $('#xName').value='';XID=0;$('#xSug').innerHTML='';renderIssue();toast('تمت الإضافة / Added');
+};
+$('#credit').textContent=CREDIT;
 
 /* ---------- الكاميرا ---------- */
 let stream=null,scanning=false;

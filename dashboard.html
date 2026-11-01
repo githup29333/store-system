@@ -63,6 +63,7 @@ h3{margin:18px 0 6px}
   <section id="d" hidden></section>
   <section id="k" hidden></section>
  </main>
+ <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
 </div>
 <div id="modal" hidden><div id="mb"></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -71,6 +72,8 @@ const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
 let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null;
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
+const DSEL=new Set(),enc=encodeURIComponent;
 const fmtD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 try{S=JSON.parse(sessionStorage.getItem('s')||'null')}catch(e){}
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -88,7 +91,7 @@ async function api(path,opt={},retry=true){
  const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json',...(opt.headers||{})}});
  if(r.status===401&&retry&&S&&S.r){try{await auth({refresh_token:S.r},'refresh_token');return api(path,opt,false)}catch(e){logout('انتهت الجلسة، سجّل الدخول من جديد');throw e}}
  if(!r.ok)throw new Error(await r.text());
- return r.status===204?null:r.json();
+ const tx=await r.text();return tx?JSON.parse(tx):null;
 }
 function logout(m){S=null;try{sessionStorage.removeItem('s')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||''}
 $('#go').onclick=async()=>{
@@ -212,6 +215,7 @@ function addSheet(wb,ord,name){
  ws.mergeCells(`A${r}:C${r}`);put('A'+r,'مقدّم الطلب / Requested by\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});
  ws.mergeCells(`D${r}:F${r}`);put('D'+r,'أمين المخزن / Storekeeper\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});ws.getRow(r).height=62;r++;
  ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الأصناف غير المصروفة محذوفة من هذا النموذج / Unissued items are not listed',{sz:9,fc:'FF5D6B78'});
+ r++;ws.mergeCells(`A${r}:F${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
  return ws;
 }
 const linesOf=ord=>Object.keys(ord.items).map(Number).sort((a,b)=>a-b).filter(id=>ord.items[id].on&&ord.items[id].iss>0).map(id=>({id,req:ord.items[id].req,iss:ord.items[id].iss}));
@@ -223,16 +227,16 @@ function ordFromCode(code){
  (f[6]||'').split(',').filter(Boolean).forEach(x=>{const [id,rq,is]=x.split(':');items[id]={req:+rq,iss:+is,on:+is>0}});
  return{dept:f[1],no:f[2],ds:f[3],dn:f[7]||f[1],names,items};
 }
-const ST={pending:['بانتظار موافقتك','t-w'],approved:['موافق — بانتظار الإرسال','t-w'],sending:['قيد الإرسال','t-w'],sent:['تم الإرسال ✓','t-ok'],failed:['فشل الإرسال','t-bad'],skipped:['تم تجاهله','']};
+const ST={pending:['بانتظار موافقتك','t-w'],approved:['موافق — بانتظار الإرسال','t-w'],sending:['قيد الإرسال','t-w'],sent:['تم الإرسال ✓','t-ok'],merged:['ضُمّ لملف مجمّع',''],failed:['فشل الإرسال','t-bad'],skipped:['تم تجاهله','']};
 function drawD(){
  if(DELERR){$('#d').innerHTML='<p style="color:#b4231a">جداول الإرسال غير موجودة. نفّذ ملف delivery.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
  const cnt=s=>DEL.filter(x=>x.status===s).length;
  const rec=REC.map(r=>`<tr><td><span class="tag ${r.kind==='to'?'t-ok':'t-w'}">${r.kind==='to'?'To':'CC'}</span></td><td>${esc(r.name||'')}</td><td dir="ltr">${esc(r.email)}</td><td><button class="btn bad" data-rd="${r.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="4">لا يوجد مستلمون</td></tr>';
  const rows=DEL.map(d=>{const [lb,cl]=ST[d.status]||[d.status,''],age=(Date.now()-new Date(d.updated_at))/36e5,late=['pending','approved','sending','failed'].includes(d.status)&&age>6;
   const act=['pending','failed'].includes(d.status)?`<button class="btn" data-ap="${esc(d.key)}">موافقة وإرسال</button> <button class="btn alt" data-sk="${esc(d.key)}">تجاهل</button>`:'';
-  return `<tr><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="5">لا توجد نتائج للإرسال بعد</td></tr>';
+  return `<tr><td>${['pending','failed'].includes(d.status)&&d.dept!=='ALL'?`<input type="checkbox" data-sel="${esc(d.key)}" ${DSEL.has(d.key)?'checked':''}>`:''}</td><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد نتائج للإرسال بعد</td></tr>';
  $('#d').innerHTML=`<div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
- <h3>نتائج الصرف</h3><div class="wrap"><table><tr><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
+ <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button><button class="btn ok" id="dsMerge">دمج المحدد في ملف واحد وإرسال</button></div><div class="wrap"><table><tr><th></th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
  <h3>المستلمون</h3><div class="wrap"><table><tr><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
  <h3>الإرسال الفوري (GitHub)</h3>
  <p>${GHTOK?'<span class="tag t-ok">مفعّل</span> الضغط على "موافقة وإرسال" يشغّل الإرسال فوراً.':'<span class="tag t-bad">غير مفعّل</span> الإرسال يعتمد على الجدولة وقد يتأخر ساعات.'}</p>
@@ -244,27 +248,73 @@ async function ghRun(){
  try{const r=await fetch('https://api.github.com/repos/githup29333/store-system/actions/workflows/send.yml/dispatches',{method:'POST',headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+GHTOK,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},body:JSON.stringify({ref:'main',inputs:{mode:'send'}})});
   return r.status===204?'ok':'HTTP '+r.status}catch(e){return e.message}
 }
+$('#d').onchange=e=>{const k=e.target.dataset&&e.target.dataset.sel;if(k===undefined)return;e.target.checked?DSEL.add(k):DSEL.delete(k)};
 async function ensureAuth(){try{await api('recipients?select=id&limit=1')}catch(e){}}
+const GHMSG=g=>g==='ok'?'تم تشغيل الإرسال الآن، يصل الإيميل خلال دقيقة أو دقيقتين.':g==='no-token'?'الإرسال الفوري غير مفعّل، فسيُرسل بالجدولة (قد يتأخر ساعات).':'تعذّر تشغيل الإرسال الفوري ('+g+')، سيُرسل بالجدولة.';
+async function upload(path,buf){
+ const up=await fetch(SB+'/storage/v1/object/exports/'+path,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+S.a,'Content-Type':XL,'x-upsert':'true'},body:buf});
+ if(!up.ok)throw new Error(await up.text());
+}
+async function approveOne(d){
+ const now=new Date().toISOString(),q='deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev;
+ let path=d.file_path;
+ if(!d.code.startsWith('BATCH|')){
+  const wb=new ExcelJS.Workbook();addSheet(wb,ordFromCode(d.code),'Issue');
+  path=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_r'+d.rev+'.xlsx';
+  await upload(path,await wb.xlsx.writeBuffer());
+ }
+ await api(q,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,approved_at:now,updated_at:now,error:null})});
+}
+const needTo=()=>REC.some(r=>r.active&&r.kind==='to');
+const picked=()=>[...DSEL].map(k=>DEL.find(x=>x.key===k)).filter(d=>d&&['pending','failed'].includes(d.status)&&d.dept!=='ALL');
 async function approve(key){
  const d=DEL.find(x=>x.key===key);if(!d)return;
- if(!REC.some(r=>r.active&&r.kind==='to'))return alert('أضف مستلماً من نوع To أولاً');
+ if(!needTo())return alert('أضف مستلماً من نوع To أولاً');
+ try{await ensureAuth();await approveOne(d);await load();alert('تمت الموافقة. '+GHMSG(await ghRun()))}
+ catch(e){alert('تعذّرت الموافقة: '+e.message)}
+}
+async function bulkEach(){
+ const L=picked();if(!L.length)return alert('حدّد طلباً واحداً على الأقل');
+ if(!needTo())return alert('أضف مستلماً من نوع To أولاً');
+ try{await ensureAuth();for(const d of L)await approveOne(d);DSEL.clear();await load();alert('تمت الموافقة على '+L.length+' طلب (كل طلب بإيميل). '+GHMSG(await ghRun()))}
+ catch(e){alert('تعذّر التنفيذ: '+e.message)}
+}
+async function xmulti(list){
+ const wb=new ExcelJS.Workbook(),sm=wb.addWorksheet('Summary',{views:[{rightToLeft:true}]});
+ sm.columns=[{width:16},{width:30},{width:14},{width:14},{width:14}];
+ const hd=['رقم الطلب\nOrder No.','القسم\nDepartment','التاريخ\nDate','الأصناف المطلوبة\nRequested lines','الأصناف المصروفة\nIssued lines'];
+ sm.addRow(hd).eachCell(c=>{c.font={name:'Tahoma',bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B5C7A'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true}});
+ sm.getRow(1).height=34;
+ const used=new Set();
+ list.sort((a,b)=>a.ds.localeCompare(b.ds)||a.no.localeCompare(b.no)).forEach(ord=>{
+  let nm=String(ord.no).replace(/[\[\]:*?\/\\]/g,'-').slice(0,28),k=2;while(used.has(nm))nm=nm.slice(0,25)+'_'+k++;used.add(nm);
+  addSheet(wb,ord,nm);
+  sm.addRow([ord.no,(ord.dn||ord.dept),dstrOf(ord),Object.keys(ord.items).length,linesOf(ord).length]).eachCell(c=>{c.font={name:'Tahoma'};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}}});
+ });
+ return wb.xlsx.writeBuffer();
+}
+async function bulkMerge(){
+ const L=picked();if(L.length<2)return alert('حدّد طلبين على الأقل للدمج');
+ if(!needTo())return alert('أضف مستلماً من نوع To أولاً');
  try{
   await ensureAuth();
-  const ord=ordFromCode(d.code),wb=new ExcelJS.Workbook();addSheet(wb,ord,'Issue');
-  const buf=await wb.xlsx.writeBuffer(),path=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_r'+d.rev+'.xlsx';
-  const up=await fetch(SB+'/storage/v1/object/exports/'+path,{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+S.a,'Content-Type':XL,'x-upsert':'true'},body:buf});
-  if(!up.ok)throw new Error(await up.text());
-  const now=new Date().toISOString();
-  await api('deliveries?key=eq.'+encodeURIComponent(d.key)+'&rev=eq.'+d.rev,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,approved_at:now,updated_at:now,error:null})});
-  await load();
-  const g=await ghRun();
-  alert('تمت الموافقة. '+(g==='ok'?'تم تشغيل الإرسال الآن، يصل الإيميل خلال دقيقة أو دقيقتين.':g==='no-token'?'الإرسال الفوري غير مفعّل، فسيُرسل بالجدولة (قد يتأخر ساعات).':'تعذّر تشغيل الإرسال الفوري ('+g+')، سيُرسل بالجدولة.'));
- }catch(e){alert('تعذّرت الموافقة: '+e.message)}
+  const buf=await xmulti(L.map(d=>ordFromCode(d.code)));
+  const n=new Date(),st=fmtD(n).slice(2).replace(/-/g,'')+'-'+String(n.getHours()).padStart(2,'0')+String(n.getMinutes()).padStart(2,'0');
+  const ds=st.slice(0,6),no='BATCH-'+st,key='ALL|'+no+'|'+ds,path='ALL_'+no+'.xlsx',iso=n.toISOString();
+  await upload(path,buf);
+  await api('deliveries',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({key,dept:'ALL',no,ds,dn:'ملف مجمّع / Combined',code:'BATCH|'+L.map(d=>d.no).join(','),status:'approved',rev:1,file_path:path,approved_at:iso,updated_at:iso})});
+  for(const d of L)await api('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'merged',error:'ضُمّ في '+no,updated_at:iso})});
+  DSEL.clear();await load();alert('تم دمج '+L.length+' طلب في ملف واحد ('+no+'). '+GHMSG(await ghRun()));
+ }catch(e){alert('تعذّر الدمج: '+e.message)}
 }
 $('#d').onclick=async e=>{
  const b=e.target.closest('button');if(!b)return;
  try{
   if(b.dataset.ap)return approve(b.dataset.ap);
+  if(b.id==='dsAll'){DEL.filter(d=>['pending','failed'].includes(d.status)&&d.dept!=='ALL').forEach(d=>DSEL.add(d.key));return drawD()}
+  if(b.id==='dsNone'){DSEL.clear();return drawD()}
+  if(b.id==='dsEach')return bulkEach();
+  if(b.id==='dsMerge')return bulkMerge();
   if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'gh_dispatch',value:v,updated_at:new Date().toISOString()})});GHTOK=v;drawD();return alert('تم حفظ المفتاح')}
   if(b.id==='gdel'){await api('app_secrets?key=eq.gh_dispatch',{method:'DELETE'});GHTOK=null;drawD();return}
   if(b.id==='gnow'){const g=await ghRun();return alert(g==='ok'?'تم تشغيل الإرسال الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
@@ -292,6 +342,7 @@ $('#k').onclick=e=>{const b=e.target.closest('button');if(!b||!LICROW)return;
  if(b.id==='kset'){const v=$('#kd').value;if(/^\d{4}-\d\d-\d\d$/.test(v))setExp(v)}
 };
 $('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').hidden=true};
+document.querySelector('#credit').textContent=CREDIT;
 if(S)start();
 </script>
 </body>
