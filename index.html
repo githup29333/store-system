@@ -459,6 +459,9 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 const WM=/[?&]m=worker/.test(location.search);
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',SBH={apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98'};
+const HK=(()=>{try{const u=new URLSearchParams(location.search).get('h');if(u){LS('hk',u);return u}}catch(e){}return LS('hk')||''})();
+let HNAME=LS('hname')||'',INVALID=!HK;
+const rpc=(fn,args)=>fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{...SBH,'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'});
 let cat=[],q={},o=null,last='';
 const BASE_N=DEF.split('\n').filter(Boolean).length;
 const item=id=>(o&&o.names&&o.names[id])||cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
@@ -490,21 +493,22 @@ $('#addBtn').onclick=async()=>{
  x=cn(x).trim();
  const [a,e]=ar?[t,x]:[x||t,t];
  try{
-  const r=await fetch(SB_URL+'/rest/v1/items',{method:'POST',headers:{...SBH,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({ar:a,en:e})});
+  const r=await rpc('hotel_add_item',{k:HK,p_ar:a,p_en:e});
   if(!r.ok)throw 0;
-  const [row]=await r.json(),sh=JSON.parse(LS('shared')||'[]');sh.push(row);LS('shared',JSON.stringify(sh));applyShared();
-  q[row.id]=1;$('#newItem').value='';renderList();toast('تمت الإضافة للجميع / Added for everyone: '+a+' / '+e);
+  const [row]=await r.json(),sh=JSON.parse(LS('shared2')||'[]');if(!sh.some(x=>x.id===row.id))sh.push(row);LS('shared2',JSON.stringify(sh));applyShared();
+  q[row.id]=1;$('#newItem').value='';renderList();toast('تمت الإضافة لفندقك / Added to your hotel: '+a+' / '+e);
  }catch(err){toast('تعذّرت الإضافة، تحقق من الإنترنت / Could not add — check the internet')}
 };
 function applyShared(){
- cat.length=Math.min(cat.length,BASE_N);
- try{JSON.parse(LS('shared')||'[]').forEach(r=>{cat[r.id-1]={n:r.ar,u:r.en||''}})}catch(e){}
+ let rows=[];try{rows=JSON.parse(LS('shared2')||'[]')}catch(e){}
+ if(rows.length){cat.length=0;rows.forEach(r=>{cat[r.id-1]={n:r.ar,u:r.en||''}})}else cat.length=Math.min(cat.length,BASE_N);
 }
 async function syncShared(){
- try{const r=await fetch(SB_URL+'/rest/v1/items?select=id,ar,en&order=id.asc&limit=2000',{headers:SBH});
+ if(!HK)return;
+ try{const r=await rpc('hotel_items',{k:HK});
   if(!r.ok)throw 'HTTP '+r.status;
   const j=await r.json();if(!Array.isArray(j))throw 'bad response';
-  LS('shared',JSON.stringify(j));applyShared();renderList();
+  LS('shared2',JSON.stringify(j));applyShared();renderList();
   $('#hs').textContent=hash()+' · '+cat.length+' · مشترك / shared: '+j.length;
  }catch(e){$('#hs').textContent=hash()+' · '+cat.length+' · فشل المزامنة / sync failed: '+e}
 }
@@ -577,7 +581,7 @@ function addSheet(wb,ord,name){
  ws.columns=[{width:6},{width:38},{width:36},{width:12},{width:12},{width:16}];
  const th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th},F='Tahoma';
  const put=(ref,v,o={})=>{const c=ws.getCell(ref);c.value=v;c.font={name:F,size:o.sz||11,bold:!!o.b,color:{argb:o.fc||'FF16222C'}};if(o.bg)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.bg}};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};if(o.bd)c.border=BD;return c};
- ws.mergeCells('A1:F1');put('A1','Ebreaze Hotel',{sz:16,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=30;
+ ws.mergeCells('A1:F1');put('A1',(HNAME||'Hotel'),{sz:16,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=30;
  ws.mergeCells('A2:F2');put('A2','إذن صرف مخزني / Stores Issue Note',{sz:13,b:1,bg:'FFE4EEF3'});ws.getRow(2).height=24;
  ws.mergeCells('A3:B3');put('A3','القسم / Department: '+D[ord.dept],{b:1,bd:1,h:'right'});
  put('C3','رقم الطلب / Order No.: '+ord.no,{b:1,bd:1});
@@ -694,9 +698,9 @@ let LIC=false,EXP=BASE_EXP,CLK=false,INFO=null;
 async function licInit(){
  let e=null,src='',sd=null;
  try{
-  const r=await fetch(SB_URL+'/rest/v1/license?select=expires_at&id=eq.1',{headers:SBH,cache:'no-store'});
-  if(r.ok){
-   const j=await r.json();if(j[0]&&j[0].expires_at){e=j[0].expires_at;LS('licx',e);src='server'}
+  const r=HK?await rpc('hotel_info',{k:HK}):null;
+  if(r&&r.ok){
+   const j=await r.json();if(j&&j.expires_at){e=j.expires_at;LS('licx',e);src='server';HNAME=j.name||'';LS('hname',HNAME);INVALID=false}else INVALID=true
    const h=r.headers&&r.headers.get('date');if(h){const d=new Date(h);if(!isNaN(d))sd=fmt(d)}
   }
  }catch(x){}
@@ -705,17 +709,18 @@ async function licInit(){
  const dev=td(),ls=LS('ls')||'';let t=dev;CLK=false;
  if(sd){t=sd;LS('ls',sd)}   // تاريخ السيرفر لما يكون الإنترنت شغّال: لا نعتمد على ساعة الجهاز
  else{CLK=!!ls&&dev<ls&&(new Date(ls+'T12:00:00')-new Date(dev+'T12:00:00'))>86400000;if(!CLK&&dev>ls)LS('ls',dev)}
- LIC=!CLK&&t<=e;
+ LIC=!CLK&&!INVALID&&t<=e;
  INFO={dev,sd,ls,e,src};
  licUI();
 }
 function licUI(){
- $('#lic').textContent=LIC?'صالحة حتى / Valid until '+EXP:'';
+ $('#lic').textContent=LIC?(HNAME?HNAME+' · ':'')+'صالحة حتى / Valid until '+EXP:'';
  $('#lock').hidden=LIC;
  $('#lh').innerHTML=CLK?'ساعة الجهاز غير صحيحة<br><small>Device clock is incorrect</small>':'انتهت صلاحية المنظومة<br><small>System license expired</small>';
  $('#lmsg').textContent=CLK?'اضبط التاريخ والوقت على "تلقائي" من إعدادات الجهاز ثم اضغط الزر / Set date & time to automatic in device settings, then tap the button':'تواصل مع المشرف للتجديد / Contact the supervisor to renew';
  $('#linfo').textContent=INFO?'device '+INFO.dev+' | expires '+INFO.e+' ('+INFO.src+') | last seen '+(INFO.ls||'-'):'';
  $('#clkBtn').hidden=!CLK;
+ if(INVALID&&!LIC){$('#lh').innerHTML='رابط غير صحيح<br><small>Invalid link</small>';$('#lmsg').textContent='اطلب رابط المنظومة الصحيح من المشرف / Ask the supervisor for the correct link'}
 }
 const chk=()=>{if(LIC)return true;licUI();return false};
 $('#rnBtn').onclick=()=>licInit();
@@ -738,12 +743,12 @@ function logOrder(kind,codes){
 }
 let flushing=false;
 async function flushLog(){
- if(flushing)return;flushing=true;
+ if(flushing||!HK)return;flushing=true;
  try{
   let q0=JSON.parse(LS('outq')||'[]');
   while(q0.length){
-   const r=await fetch(SB_URL+'/rest/v1/orders',{method:'POST',headers:{...SBH,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(q0[0])});
-   if(!r.ok&&r.status!==400&&r.status!==422)throw r.status;
+   const x=q0[0],r=await rpc('hotel_log',{k:HK,p_kind:x.kind,p_code:x.code,p_dept:x.dept,p_no:x.no,p_device:x.device});
+   if(!r.ok){let t='';try{t=await r.text()}catch(e){}if(/invalid key/.test(t)||(r.status!==400&&r.status!==422))throw r.status}
    q0.shift();LS('outq',JSON.stringify(q0));
   }
  }catch(e){}
@@ -800,7 +805,7 @@ async function resPng(){
  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d'),F='Tajawal,Tahoma,Arial,sans-serif';
  g.fillStyle='#fff';g.fillRect(0,0,W,H);
  g.fillStyle='#0b5c7a';g.fillRect(0,0,W,78);
- g.direction='rtl';g.textAlign='right';g.fillStyle='#fff';g.font='700 30px '+F;g.fillText('Ebreaze Hotel — نتيجة الطلب / Order Result',W-P,50);
+ g.direction='rtl';g.textAlign='right';g.fillStyle='#fff';g.font='700 30px '+F;g.fillText((HNAME||'Hotel')+' — نتيجة الطلب / Order Result',W-P,50);
  g.fillStyle='#16222c';g.font='700 24px '+F;g.fillText('طلب / Order '+r.no+' — '+title,W-P,118);
  g.fillStyle='#5d6b78';g.font='400 20px '+F;g.fillText(date,W-P,148);
  g.fillStyle='#16222c';g.font='700 21px '+F;g.fillText('✔ '+c[2]+' تم / Fulfilled    ◐ '+c[1]+' جزئي / Partial    ✖ '+c[0]+' غير متوفر / Not available',W-P,184);
@@ -823,7 +828,7 @@ async function resXls(){
  ws.columns=[{width:6},{width:38},{width:34},{width:12},{width:12},{width:22}];
  const th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th};
  const put=(ref,v,z={})=>{const x=ws.getCell(ref);x.value=v;x.font={name:'Tahoma',size:z.sz||11,bold:!!z.b,color:{argb:z.fc||'FF16222C'}};if(z.bg)x.fill={type:'pattern',pattern:'solid',fgColor:{argb:z.bg}};x.alignment={horizontal:z.h||'center',vertical:'middle',wrapText:true};if(z.bd)x.border=BD};
- ws.mergeCells('A1:F1');put('A1','Ebreaze Hotel — نتيجة الطلب / Order Result',{sz:15,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=28;
+ ws.mergeCells('A1:F1');put('A1',(HNAME||'Hotel')+' — نتيجة الطلب / Order Result',{sz:15,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=28;
  ws.mergeCells('A2:F2');put('A2','طلب / Order '+r.no+' — '+title+' — '+date,{b:1,bg:'FFE4EEF3'});
  ws.mergeCells('A3:F3');put('A3','✔ '+c[2]+' تم / Fulfilled · ◐ '+c[1]+' جزئي / Partial · ✖ '+c[0]+' غير متوفر / Not available',{b:1});
  ['#','الصنف','Item','المطلوب\nQty','وصل\nDelivered','الحالة\nStatus'].forEach((t,i)=>put('ABCDEF'[i]+'5',t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1}));
@@ -861,6 +866,8 @@ $('#xAdd').onclick=async()=>{
  $('#xName').value='';XID=0;$('#xSug').innerHTML='';renderIssue();toast('تمت الإضافة / Added');
 };
 $('#credit').textContent=CREDIT;
+['catTxt','saveCat','exCat'].forEach(i=>{const el=$('#'+i);if(el)el.style.display='none'});$('#imCat').parentElement.style.display='none';
+[...$('#catTxt').closest('details').querySelectorAll('p.st')].forEach((p,i)=>{if(i>0)p.style.display='none'});
 
 /* ---------- الكاميرا ---------- */
 let stream=null,scanning=false;

@@ -53,8 +53,8 @@ h3{margin:18px 0 6px}
  <p id="msg"></p>
 </div>
 <div id="app" hidden>
- <header><h1>لوحة التحكم — منظومة الصرف</h1><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="k">الصلاحية</button></nav>
+ <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
+ <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="k">الفنادق والصلاحية</button></nav>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
@@ -70,10 +70,11 @@ h3{margin:18px 0 6px}
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null;
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,HOTELS=[],HSEL='';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const DSEL=new Set(),enc=encodeURIComponent;
+const OV=()=>HSEL?O.filter(o=>o.hotel===HSEL):O,DV=()=>HSEL?DEL.filter(d=>d.hotel===HSEL):DEL,RV=()=>HSEL?REC.filter(r=>r.hotel===HSEL):REC;
 const fmtD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 try{S=JSON.parse(sessionStorage.getItem('s')||'null')}catch(e){}
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -115,8 +116,8 @@ function parse(r){
 function build(rows){
  const m={};
  rows.slice().sort((a,b)=>a.created_at<b.created_at?-1:1).forEach(r=>{
-  const p=parse(r),k=p.dept+'|'+p.no+'|'+p.ds;
-  const o=m[k]||(m[k]={k,dept:p.dept,no:p.no,ds:p.ds,dn:p.dn,req:{},fin:null,at:p.at,dev:p.dev});
+  const p=parse(r),k=(r.hotel||'')+'|'+p.dept+'|'+p.no+'|'+p.ds;
+  const o=m[k]||(m[k]={k,hotel:r.hotel||'',dept:p.dept,no:p.no,ds:p.ds,dn:p.dn,req:{},fin:null,at:p.at,dev:p.dev});
   o.at=p.at;
   if(p.fin)o.fin={it:p.it,wk:p.wk||p.dev};else{p.it.forEach(x=>o.req[x.id]=x.req);o.dev=p.dev}
  });
@@ -130,7 +131,8 @@ async function load(){
   const [orders,items]=await Promise.all([api('orders?select=*&order=created_at.desc&limit=3000'),api('items?select=*&order=id.asc&limit=2000')]);
   ITEMS=items;SH={};items.forEach(x=>SH[x.id]={n:x.ar,u:x.en});
   O=build(orders);
-  LICROW=await api('license?select=*&id=eq.1').then(r=>r[0]||null).catch(()=>null);
+  HOTELS=await api('hotels?select=*&order=created_at.asc').catch(()=>[]);
+  fillHF();
   GHTOK=await api('app_secrets?select=value&key=eq.gh_dispatch').then(r=>r[0]&&r[0].value||null).catch(()=>null);
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
@@ -145,22 +147,22 @@ const bars=(arr,col)=>{const mx=Math.max(1,...arr.map(a=>a[1]));return arr.map(a
 const topN=(m,n)=>Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n);
 
 function drawS(){
- const fin=O.filter(o=>o.fin),pend=O.length-fin.length;
- const unsent=DEL.filter(x=>['pending','approved','sending','failed'].includes(x.status)).length,stale=O.filter(o=>!o.fin&&(Date.now()-new Date(o.at))>864e5).length;
+ const OO=OV(),DD=DV(),fin=OO.filter(o=>o.fin),pend=OO.length-fin.length;
+ const unsent=DD.filter(x=>['pending','approved','sending','failed'].includes(x.status)).length,stale=OO.filter(o=>!o.fin&&(Date.now()-new Date(o.at))>864e5).length;
  let rq=0,dv=0;const na={},rqd={},dep={},day={};
- O.forEach(o=>{dep[o.dn]=(dep[o.dn]||0)+1;day[o.ds]=(day[o.ds]||0)+1;lines(o).forEach(x=>{rqd[x.id]=(rqd[x.id]||0)+1})});
+ OO.forEach(o=>{dep[o.dn]=(dep[o.dn]||0)+1;day[o.ds]=(day[o.ds]||0)+1;lines(o).forEach(x=>{rqd[x.id]=(rqd[x.id]||0)+1})});
  fin.forEach(o=>o.fin.it.forEach(x=>{rq+=x.req;dv+=Math.min(x.req,Math.max(0,x.iss));if(x.iss<=0)na[x.id]=(na[x.id]||0)+1}));
  const days=Object.keys(day).sort().slice(-14).map(d=>[dt(d).slice(5),day[d]]);
- $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${O.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div><div class="kpi"><b style="color:${unsent?'#b4231a':'#1d7a4f'}">${unsent}</b>نتائج لم تُرسل</div><div class="kpi"><b style="color:${stale?'#b4531a':'#1d7a4f'}">${stale}</b>بدون كود نهائي +24س</div></div>
+ $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${OO.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div><div class="kpi"><b style="color:${unsent?'#b4231a':'#1d7a4f'}">${unsent}</b>نتائج لم تُرسل</div><div class="kpi"><b style="color:${stale?'#b4531a':'#1d7a4f'}">${stale}</b>بدون كود نهائي +24س</div></div>
  <h3>الطلبات حسب القسم</h3>${bars(topN(dep,10))}
  <h3>آخر 14 يوم</h3>${bars(days)}
  <h3>الأكثر طلباً</h3>${bars(topN(rqd,10).map(([id,c])=>[nm(id).n,c]))}
  <h3>الأكثر عدم توفراً</h3>${bars(topN(na,10).map(([id,c])=>[nm(id).n,c]),'#b4231a')}`;
 }
 function drawO(){
- $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"></div><div class="wrap"><table><tr><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
+ $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"></div><div class="wrap"><table><tr><th>الفندق</th><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
  const f=()=>{const q=$('#oq').value.trim().toLowerCase();
-  $('#ob').innerHTML=O.filter(o=>!q||(o.no+' '+o.dn).toLowerCase().includes(q)).map(o=>`<tr><td><b>${esc(o.no)}</b></td><td>${esc(o.dn)}</td><td>${dt(o.ds)}</td><td><span class="tag ${o.fin?'t-ok':'t-w'}">${o.fin?'تم الصرف':'بانتظار الصرف'}</span></td><td>${lines(o).length}</td><td>${esc(o.fin?o.fin.wk:o.dev)}</td><td><button class="btn alt" data-v="${esc(o.k)}">تفاصيل</button> <button class="btn bad" data-d="${esc(o.k)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد طلبات</td></tr>'};
+  $('#ob').innerHTML=OV().filter(o=>!q||(o.no+' '+o.dn).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.hotel)}</td><td><b>${esc(o.no)}</b></td><td>${esc(o.dn)}</td><td>${dt(o.ds)}</td><td><span class="tag ${o.fin?'t-ok':'t-w'}">${o.fin?'تم الصرف':'بانتظار الصرف'}</span></td><td>${lines(o).length}</td><td>${esc(o.fin?o.fin.wk:o.dev)}</td><td><button class="btn alt" data-v="${esc(o.k)}">تفاصيل</button> <button class="btn bad" data-d="${esc(o.k)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد طلبات</td></tr>'};
  $('#oq').oninput=f;f();
 }
 $('#o').onclick=async e=>{
@@ -173,15 +175,20 @@ $('#o').onclick=async e=>{
   try{await api('orders?dept=eq.'+encodeURIComponent(o.dept)+'&no=eq.'+encodeURIComponent(o.no),{method:'DELETE'});load()}catch(err){alert('تعذّر الحذف: '+err.message)}}
 };
 function drawI(){
- $('#i').innerHTML=`<p>أصناف القائمة الأساسية (1–${BASE.length||317}) مخزنة داخل ملف المنظومة، وهنا الأصناف المشتركة المضافة من الأجهزة.</p><div class="row"><input type="search" id="iq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>#</th><th>كود Odoo</th><th>عربي</th><th>English</th><th></th></tr><tbody id="ib"></tbody></table></div>`;
+ $('#i').innerHTML=`<p>كل الأصناف (الأساسية والمضافة). عمود <b>الفنادق</b>: فارغ = مشترك لكل الفنادق، أو أكواد مفصولة بفاصلة (مثل <span dir="ltr">EBR,H2</span>) ليظهر الصنف لهذه الفنادق فقط.</p><div class="row"><input type="search" id="iq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>#</th><th>كود Odoo</th><th>عربي</th><th>English</th><th>الفنادق</th><th></th></tr><tbody id="ib"></tbody></table></div>`;
  const f=()=>{const q=$('#iq').value.trim().toLowerCase();
-  $('#ib').innerHTML=ITEMS.filter(x=>!q||(x.ar+' '+x.en+' '+(x.code||'')).toLowerCase().includes(q)).map(x=>`<tr><td>${x.id}</td><td dir="ltr">${esc(x.code||'')}</td><td><input type="text" value="${esc(x.ar)}" data-a="${x.id}" style="width:100%"></td><td><input type="text" value="${esc(x.en)}" data-e="${x.id}" style="width:100%;direction:ltr"></td><td><button class="btn" data-s="${x.id}">حفظ</button> <button class="btn bad" data-x="${x.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="5">لا توجد أصناف مشتركة</td></tr>'};
+  $('#ib').innerHTML=ITEMS.filter(x=>!q||(x.ar+' '+x.en+' '+(x.code||'')).toLowerCase().includes(q)).map(x=>`<tr><td>${x.id}</td><td dir="ltr">${esc(x.code||'')}</td><td><input type="text" value="${esc(x.ar)}" data-a="${x.id}" style="width:100%"></td><td><input type="text" value="${esc(x.en)}" data-e="${x.id}" style="width:100%;direction:ltr"></td><td><input type="text" value="${esc((x.hotels||[]).join(','))}" data-hh="${x.id}" placeholder="مشترك" style="width:90px;direction:ltr"></td><td><button class="btn" data-s="${x.id}">حفظ</button> <button class="btn bad" data-x="${x.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="6">لا توجد أصناف</td></tr>'};
  $('#iq').oninput=f;f();
+}
+function HV(id){
+ const v=document.querySelector(`[data-hh="${id}"]`).value.split(/[\s,]+/).map(x=>x.trim().toUpperCase()).filter(Boolean),ok=HOTELS.map(h=>h.code);
+ const bad=v.filter(x=>!ok.includes(x));if(bad.length)throw new Error('فندق غير موجود: '+bad.join(','));
+ return v;
 }
 $('#i').onclick=async e=>{
  const b=e.target.closest('button');if(!b)return;
  try{
-  if(b.dataset.s){const id=b.dataset.s;await api('items?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({ar:document.querySelector(`[data-a="${id}"]`).value.trim(),en:document.querySelector(`[data-e="${id}"]`).value.trim()})});b.textContent='تم ✓';setTimeout(load,600)}
+  if(b.dataset.s){const id=b.dataset.s;await api('items?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({ar:document.querySelector(`[data-a="${id}"]`).value.trim(),en:document.querySelector(`[data-e="${id}"]`).value.trim(),hotels:HV(id)})});b.textContent='تم ✓';setTimeout(load,600)}
   if(b.dataset.x){if(!confirm('حذف الصنف نهائياً؟ الأجهزة تختفي منها بعد التحديث.'))return;await api('items?id=eq.'+b.dataset.x,{method:'DELETE'});load()}
  }catch(err){alert('تعذّر التنفيذ: '+err.message)}
 };
@@ -198,7 +205,7 @@ function addSheet(wb,ord,name){
  ws.columns=[{width:6},{width:38},{width:36},{width:12},{width:12},{width:16}];
  const th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th},F='Tahoma';
  const put=(ref,v,o={})=>{const c=ws.getCell(ref);c.value=v;c.font={name:F,size:o.sz||11,bold:!!o.b,color:{argb:o.fc||'FF16222C'}};if(o.bg)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.bg}};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};if(o.bd)c.border=BD;return c};
- ws.mergeCells('A1:F1');put('A1','Ebreaze Hotel',{sz:16,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=30;
+ ws.mergeCells('A1:F1');put('A1',(ord.hotelName||'Hotel'),{sz:16,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=30;
  ws.mergeCells('A2:F2');put('A2','إذن صرف مخزني / Stores Issue Note',{sz:13,b:1,bg:'FFE4EEF3'});ws.getRow(2).height=24;
  ws.mergeCells('A3:B3');put('A3','القسم / Department: '+(ord.dn||ord.dept),{b:1,bd:1,h:'right'});
  put('C3','رقم الطلب / Order No.: '+ord.no,{b:1,bd:1});
@@ -230,18 +237,18 @@ function ordFromCode(code){
 const ST={pending:['بانتظار موافقتك','t-w'],approved:['موافق — بانتظار الإرسال','t-w'],sending:['قيد الإرسال','t-w'],sent:['تم الإرسال ✓','t-ok'],merged:['ضُمّ لملف مجمّع',''],failed:['فشل الإرسال','t-bad'],skipped:['تم تجاهله','']};
 function drawD(){
  if(DELERR){$('#d').innerHTML='<p style="color:#b4231a">جداول الإرسال غير موجودة. نفّذ ملف delivery.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
- const cnt=s=>DEL.filter(x=>x.status===s).length;
- const rec=REC.map(r=>`<tr><td><span class="tag ${r.kind==='to'?'t-ok':'t-w'}">${r.kind==='to'?'To':'CC'}</span></td><td>${esc(r.name||'')}</td><td dir="ltr">${esc(r.email)}</td><td><button class="btn bad" data-rd="${r.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="4">لا يوجد مستلمون</td></tr>';
- const rows=DEL.map(d=>{const [lb,cl]=ST[d.status]||[d.status,''],age=(Date.now()-new Date(d.updated_at))/36e5,late=['pending','approved','sending','failed'].includes(d.status)&&age>6;
+ const cnt=s=>DV().filter(x=>x.status===s).length;
+ const rec=RV().map(r=>`<tr><td>${esc(r.hotel||'')}</td><td><span class="tag ${r.kind==='to'?'t-ok':'t-w'}">${r.kind==='to'?'To':'CC'}</span></td><td>${esc(r.name||'')}</td><td dir="ltr">${esc(r.email)}</td><td><button class="btn bad" data-rd="${r.id}">حذف</button></td></tr>`).join('')||'<tr><td colspan="5">لا يوجد مستلمون</td></tr>';
+ const rows=DV().map(d=>{const [lb,cl]=ST[d.status]||[d.status,''],age=(Date.now()-new Date(d.updated_at))/36e5,late=['pending','approved','sending','failed'].includes(d.status)&&age>6;
   const act=['pending','failed'].includes(d.status)?`<button class="btn" data-ap="${esc(d.key)}">موافقة وإرسال</button> <button class="btn alt" data-sk="${esc(d.key)}">تجاهل</button>`:'';
-  return `<tr><td>${['pending','failed'].includes(d.status)&&d.dept!=='ALL'?`<input type="checkbox" data-sel="${esc(d.key)}" ${DSEL.has(d.key)?'checked':''}>`:''}</td><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد نتائج للإرسال بعد</td></tr>';
+  return `<tr><td>${['pending','failed'].includes(d.status)&&d.dept!=='ALL'?`<input type="checkbox" data-sel="${esc(d.key)}" ${DSEL.has(d.key)?'checked':''}>`:''}</td><td>${esc(d.hotel||'')}</td><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="7">لا توجد نتائج للإرسال بعد</td></tr>';
  $('#d').innerHTML=`<div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
- <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button><button class="btn ok" id="dsMerge">دمج المحدد في ملف واحد وإرسال</button></div><div class="wrap"><table><tr><th></th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
- <h3>المستلمون</h3><div class="wrap"><table><tr><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
+ <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button><button class="btn ok" id="dsMerge">دمج المحدد في ملف واحد وإرسال</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
+ <h3>المستلمون</h3><div class="wrap"><table><tr><th>الفندق</th><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
  <h3>الإرسال الفوري (GitHub)</h3>
  <p>${GHTOK?'<span class="tag t-ok">مفعّل</span> الضغط على "موافقة وإرسال" يشغّل الإرسال فوراً.':'<span class="tag t-bad">غير مفعّل</span> الإرسال يعتمد على الجدولة وقد يتأخر ساعات.'}</p>
  <div class="row"><input type="text" id="gtok" placeholder="الصق مفتاح GitHub هنا" style="flex:1;direction:ltr;-webkit-text-security:disc" autocomplete="off"><button class="btn" id="gsave">حفظ المفتاح</button>${GHTOK?'<button class="btn bad" id="gdel">حذف</button>':''}<button class="btn alt" id="gnow">تشغيل الإرسال الآن</button></div>
- <div class="row" style="margin-top:10px"><select id="rk"><option value="to">To</option><option value="cc">CC</option></select><input type="text" id="rn" placeholder="الاسم" style="flex:1"><input type="email" id="re" placeholder="البريد" style="flex:1;direction:ltr"><button class="btn" id="radd">إضافة</button></div>`;
+ <div class="row" style="margin-top:10px"><select id="rh">${HOTELS.map(h=>`<option value="${esc(h.code)}" ${h.code===HSEL?'selected':''}>${esc(h.code)}</option>`).join('')}</select><select id="rk"><option value="to">To</option><option value="cc">CC</option></select><input type="text" id="rn" placeholder="الاسم" style="flex:1"><input type="email" id="re" placeholder="البريد" style="flex:1;direction:ltr"><button class="btn" id="radd">إضافة</button></div>`;
 }
 async function ghRun(){
  if(!GHTOK)return 'no-token';
@@ -259,23 +266,24 @@ async function approveOne(d){
  const now=new Date().toISOString(),q='deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev;
  let path=d.file_path;
  if(!d.code.startsWith('BATCH|')){
-  const wb=new ExcelJS.Workbook();addSheet(wb,ordFromCode(d.code),'Issue');
+  const wb=new ExcelJS.Workbook();addSheet(wb,ordH(d),'Issue');
   path=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_r'+d.rev+'.xlsx';
   await upload(path,await wb.xlsx.writeBuffer());
  }
  await api(q,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,approved_at:now,updated_at:now,error:null})});
 }
-const needTo=()=>REC.some(r=>r.active&&r.kind==='to');
+const ordH=d=>{const o=ordFromCode(d.code),h=HOTELS.find(x=>x.code===d.hotel);o.hotelName=h?h.name:d.hotel;return o};
+const needTo=h=>REC.some(r=>r.active&&r.kind==='to'&&r.hotel===h);
 const picked=()=>[...DSEL].map(k=>DEL.find(x=>x.key===k)).filter(d=>d&&['pending','failed'].includes(d.status)&&d.dept!=='ALL');
 async function approve(key){
  const d=DEL.find(x=>x.key===key);if(!d)return;
- if(!needTo())return alert('أضف مستلماً من نوع To أولاً');
+ if(!needTo(d.hotel))return alert('أضف مستلماً من نوع To لفندق '+d.hotel+' أولاً');
  try{await ensureAuth();await approveOne(d);await load();alert('تمت الموافقة. '+GHMSG(await ghRun()))}
  catch(e){alert('تعذّرت الموافقة: '+e.message)}
 }
 async function bulkEach(){
  const L=picked();if(!L.length)return alert('حدّد طلباً واحداً على الأقل');
- if(!needTo())return alert('أضف مستلماً من نوع To أولاً');
+ const nt=[...new Set(L.map(d=>d.hotel))].filter(h=>!needTo(h));if(nt.length)return alert('أضف مستلماً من نوع To للفندق: '+nt.join(', '));
  try{await ensureAuth();for(const d of L)await approveOne(d);DSEL.clear();await load();alert('تمت الموافقة على '+L.length+' طلب (كل طلب بإيميل). '+GHMSG(await ghRun()))}
  catch(e){alert('تعذّر التنفيذ: '+e.message)}
 }
@@ -295,14 +303,15 @@ async function xmulti(list){
 }
 async function bulkMerge(){
  const L=picked();if(L.length<2)return alert('حدّد طلبين على الأقل للدمج');
- if(!needTo())return alert('أضف مستلماً من نوع To أولاً');
+ const hs=[...new Set(L.map(d=>d.hotel))];if(hs.length>1)return alert('الدمج لفندق واحد فقط. حدّد طلبات فندق واحد.');
+ if(!needTo(hs[0]))return alert('أضف مستلماً من نوع To لفندق '+hs[0]+' أولاً');
  try{
   await ensureAuth();
-  const buf=await xmulti(L.map(d=>ordFromCode(d.code)));
+  const buf=await xmulti(L.map(d=>ordH(d)));
   const n=new Date(),st=fmtD(n).slice(2).replace(/-/g,'')+'-'+String(n.getHours()).padStart(2,'0')+String(n.getMinutes()).padStart(2,'0');
-  const ds=st.slice(0,6),no='BATCH-'+st,key='ALL|'+no+'|'+ds,path='ALL_'+no+'.xlsx',iso=n.toISOString();
+  const ds=st.slice(0,6),no='BATCH-'+st,key=hs[0]+'|ALL|'+no+'|'+ds,path='ALL_'+no+'.xlsx',iso=n.toISOString();
   await upload(path,buf);
-  await api('deliveries',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({key,dept:'ALL',no,ds,dn:'ملف مجمّع / Combined',code:'BATCH|'+L.map(d=>d.no).join(','),status:'approved',rev:1,file_path:path,approved_at:iso,updated_at:iso})});
+  await api('deliveries',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({key,hotel:hs[0],dept:'ALL',no,ds,dn:'ملف مجمّع / Combined',code:'BATCH|'+L.map(d=>d.no).join(','),status:'approved',rev:1,file_path:path,approved_at:iso,updated_at:iso})});
   for(const d of L)await api('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'merged',error:'ضُمّ في '+no,updated_at:iso})});
   DSEL.clear();await load();alert('تم دمج '+L.length+' طلب في ملف واحد ('+no+'). '+GHMSG(await ghRun()));
  }catch(e){alert('تعذّر الدمج: '+e.message)}
@@ -321,25 +330,44 @@ $('#d').onclick=async e=>{
   if(b.dataset.sk){await api('deliveries?key=eq.'+encodeURIComponent(b.dataset.sk),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'skipped',updated_at:new Date().toISOString()})});return load()}
   if(b.dataset.rd){if(!confirm('حذف هذا المستلم؟'))return;await api('recipients?id=eq.'+b.dataset.rd,{method:'DELETE'});return load()}
   if(b.id==='radd'){const em=$('#re').value.trim();if(!/^\S+@\S+\.\S+$/.test(em))return alert('البريد غير صحيح');
-   await api('recipients',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({kind:$('#rk').value,name:$('#rn').value.trim(),email:em})});load()}
+   await api('recipients',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({hotel:$('#rh').value,kind:$('#rk').value,name:$('#rn').value.trim(),email:em})});load()}
  }catch(err){alert('تعذّر التنفيذ: '+err.message)}
 };
+function fillHF(){
+ const v=HSEL;$('#hf').innerHTML='<option value="">كل الفنادق</option>'+HOTELS.map(h=>`<option value="${esc(h.code)}">${esc(h.name)} (${esc(h.code)})</option>`).join('');
+ $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;
+}
+$('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD()};
+const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
 function drawK(){
- const e=LICROW&&LICROW.expires_at;
- if(!e){$('#k').innerHTML='<p style="color:#b4231a">جدول الصلاحية غير موجود. نفّذ ملف license.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
- const t=fmtD(new Date()),left=Math.round((new Date(e+'T12:00:00')-new Date(t+'T12:00:00'))/864e5);
- $('#k').innerHTML=`<div class="grid"><div class="kpi"><b>${e}</b>تاريخ الانتهاء</div><div class="kpi"><b style="color:${left<0?'#b4231a':left<8?'#b4531a':'#1d7a4f'}">${Math.abs(left)}</b>${left<0?'يوم منذ الانتهاء':'يوم متبقي'}</div></div>
- <p>التمديد يسري على <b>كل الأجهزة</b> عند فتح المنظومة أو الرجوع لها. وبدون إنترنت تعمل حسب آخر تاريخ حفظته.</p>
- <div class="row"><button class="btn" data-add="7">+7 أيام</button><button class="btn" data-add="30">+30 يوم</button><button class="btn" data-add="90">+90 يوم</button><button class="btn" data-add="365">+سنة</button></div>
- <div class="row"><input type="date" id="kd" value="${e}"><button class="btn alt" id="kset">تحديد التاريخ</button></div>`;
+ if(!HOTELS.length){$('#k').innerHTML='<p style="color:#b4231a">جدول الفنادق غير موجود. نفّذ ملف 7-hotels.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
+ const base=location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,''),t=fmtD(new Date());
+ $('#k').innerHTML=HOTELS.map(h=>{
+  const left=Math.round((new Date(h.expires_at+'T12:00:00')-new Date(t+'T12:00:00'))/864e5),col=left<0?'#b4231a':left<8?'#b4531a':'#1d7a4f';
+  const L=[['رابط المشرف',base+'?h='+h.key],['رابط الأقسام (طلب فقط)',base+'?h='+h.key+'&m=order'],['رابط العامل',base+'?h='+h.key+'&m=worker']];
+  return `<div style="border:1px solid var(--ln);border-radius:10px;padding:12px;margin-bottom:12px">
+  <div class="row"><b style="font-size:17px;flex:1">${esc(h.name)} <small dir="ltr">(${esc(h.code)})</small></b><span class="tag ${h.active?'t-ok':'t-bad'}">${h.active?'فعّال':'موقوف'}</span><button class="btn alt" data-htog="${esc(h.code)}">${h.active?'إيقاف':'تفعيل'}</button></div>
+  <div class="row"><span>الصلاحية حتى <b>${h.expires_at}</b> — <b style="color:${col}">${Math.abs(left)} ${left<0?'يوم منذ الانتهاء':'يوم متبقي'}</b></span></div>
+  <div class="row"><button class="btn" data-hadd="${esc(h.code)}|7">+7</button><button class="btn" data-hadd="${esc(h.code)}|30">+30</button><button class="btn" data-hadd="${esc(h.code)}|90">+90</button><button class="btn" data-hadd="${esc(h.code)}|365">+سنة</button><input type="date" data-hd="${esc(h.code)}" value="${h.expires_at}"><button class="btn alt" data-hset="${esc(h.code)}">تحديد التاريخ</button></div>
+  ${L.map(([n,u])=>`<div class="row"><b style="min-width:150px">${n}</b><input type="text" readonly value="${esc(u)}" style="flex:1;direction:ltr"><button class="btn alt" data-c="${esc(u)}">نسخ</button></div>`).join('')}
+  <div class="row"><button class="btn bad" data-hrot="${esc(h.code)}">تغيير المفتاح السري</button></div></div>`}).join('')+
+ `<h3>فندق جديد</h3><div class="row"><input type="text" id="hc" placeholder="الكود (مثل H2)" style="width:130px;direction:ltr"><input type="text" id="hn" placeholder="اسم الفندق" style="flex:1"><button class="btn" id="hnew">إضافة فندق</button></div><p>الفندق الجديد يبدأ بصلاحية 30 يوماً، ويرى الأصناف المشتركة فقط حتى تخصص له أصنافاً من تبويب الأصناف.</p>`;
 }
-async function setExp(d){
- try{await api('license?id=eq.1',{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({expires_at:d,updated_at:new Date().toISOString()})});await load();alert('تم. الصلاحية حتى '+d)}
- catch(e){alert('تعذّر التحديث: '+e.message)}
-}
-$('#k').onclick=e=>{const b=e.target.closest('button');if(!b||!LICROW)return;
- if(b.dataset.add){const t=fmtD(new Date()),base=LICROW.expires_at>t?LICROW.expires_at:t,d=new Date(base+'T12:00:00');d.setDate(d.getDate()+ +b.dataset.add);setExp(fmtD(d))}
- if(b.id==='kset'){const v=$('#kd').value;if(/^\d{4}-\d\d-\d\d$/.test(v))setExp(v)}
+async function patchHotel(code,body){await api('hotels?code=eq.'+enc(code),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});await load()}
+$('#k').onclick=async e=>{
+ const b=e.target.closest('button');if(!b)return;
+ try{
+  const t=fmtD(new Date());
+  if(b.dataset.c){await navigator.clipboard.writeText(b.dataset.c);b.textContent='تم ✓';return setTimeout(()=>b.textContent='نسخ',1200)}
+  if(b.dataset.hadd){const [c,n]=b.dataset.hadd.split('|'),h=HOTELS.find(x=>x.code===c),bs=h.expires_at>t?h.expires_at:t,d=new Date(bs+'T12:00:00');d.setDate(d.getDate()+ +n);return patchHotel(c,{expires_at:fmtD(d)})}
+  if(b.dataset.hset){const v=document.querySelector(`[data-hd="${b.dataset.hset}"]`).value;if(/^\d{4}-\d\d-\d\d$/.test(v))return patchHotel(b.dataset.hset,{expires_at:v})}
+  if(b.dataset.htog){const h=HOTELS.find(x=>x.code===b.dataset.htog);if(h.active&&!confirm('إيقاف الفندق؟ كل أجهزته تتوقف.'))return;return patchHotel(h.code,{active:!h.active})}
+  if(b.dataset.hrot){if(!confirm('المفتاح القديم يتوقف فوراً، وكل أجهزة هذا الفندق تحتاج الرابط الجديد. متابعة؟'))return;return patchHotel(b.dataset.hrot,{key:rk()})}
+  if(b.id==='hnew'){const c=$('#hc').value.trim().toUpperCase(),n=$('#hn').value.trim();
+   if(!/^[A-Z0-9_-]{2,12}$/.test(c)||!n)return alert('اكتب كوداً (حروف وأرقام 2 إلى 12) واسم الفندق');
+   const d=new Date();d.setDate(d.getDate()+30);
+   await api('hotels',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({code:c,name:n,key:rk(),expires_at:fmtD(d)})});await load()}
+ }catch(err){alert('تعذّر التنفيذ: '+err.message)}
 };
 $('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').hidden=true};
 document.querySelector('#credit').textContent=CREDIT;
