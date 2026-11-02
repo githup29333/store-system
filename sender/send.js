@@ -30,14 +30,14 @@ const REP = { Prefer: 'return=representation' };
 const addr = r => ({ name: r.name || '', address: r.email });
 const uniq = a => { const s = new Set(); return a.filter(x => { const k = x.address.toLowerCase(); if (s.has(k)) return false; s.add(k); return true; }); };
 
-async function sendOne(d, to, cc) {
+async function sendOne(d, to, cc, hn) {
   const q = 'deliveries?key=eq.' + enc(d.key) + '&rev=eq.' + d.rev;
   // حجز ذري: لو جهاز ثاني حجزه قبلنا ما نرسله مرة ثانية
   const got = await rest(q + '&status=eq.approved', { method: 'PATCH', headers: REP, body: JSON.stringify({ status: 'sending', attempts: (d.attempts || 0) + 1, updated_at: new Date().toISOString() }) });
   if (!got || !got.length) { console.log('Skip (already claimed or changed): ' + d.key); return true; }
   const toPending = () => rest('deliveries?key=eq.' + enc(d.key) + '&status=eq.sending', { method: 'PATCH', body: JSON.stringify({ status: 'pending' }) }).catch(() => {});
   try {
-    if (!to.length) throw new Error('NOFATAL لا يوجد مستلم من نوع To / no To recipient');
+    if (!to.length) throw new Error('NOFATAL لا يوجد مستلم من نوع To لهذا الفندق / no To recipient for this hotel');
     if (!d.file_path) throw new Error('NOFATAL لا يوجد ملف مرفق / no file');
     const fr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.file_path), { headers: H });
     if (!fr.ok) throw new Error('تعذّر تنزيل الملف / download failed ' + fr.status);
@@ -46,7 +46,7 @@ async function sendOne(d, to, cc) {
     const name = d.dn || d.dept, upd = d.rev > 1;
     const info = await transport.sendMail({
       from: FROM, to, cc,
-      subject: `صرف / Issue — ${name} — طلب / Order ${d.no} — ${date}` + (upd ? ` (تحديث ${d.rev} / Update ${d.rev})` : ''),
+      subject: (hn ? `[${hn}] ` : '') + `صرف / Issue — ${name} — طلب / Order ${d.no} — ${date}` + (upd ? ` (تحديث ${d.rev} / Update ${d.rev})` : ''),
       text: `مرفق ملف الصرف الخاص بـ${name} (طلب ${d.no} بتاريخ ${date}).` + (upd ? '\nهذه نسخة محدّثة من الطلب.' : '') +
         `\nالأصناف التي لم تُصرف تم حذفها من الملف.\n\n--\nAttached is the issue note for ${name} (order ${d.no}, ${date}).` +
         (upd ? '\nThis is an updated version of the order.' : '') + '\nUnissued items have been removed from the file.',
@@ -84,10 +84,12 @@ async function main() {
 
   const rows = await rest('deliveries?select=*&status=eq.approved&order=approved_at.asc&limit=' + LIMIT);
   if (!rows.length) { console.log('Nothing to send'); return; }
-  const rec = await rest('recipients?select=kind,email,name&active=eq.true&order=id.asc');
-  const to = uniq(rec.filter(r => r.kind === 'to').map(addr)), cc = uniq(rec.filter(r => r.kind === 'cc').map(addr));
+  const rec = await rest('recipients?select=kind,email,name,hotel&active=eq.true&order=id.asc');
+  const hs = await rest('hotels?select=code,name').catch(() => []);
+  const hname = Object.fromEntries(hs.map(h => [h.code, h.name]));
+  const by = h => ({ to: uniq(rec.filter(r => r.hotel === h && r.kind === 'to').map(addr)), cc: uniq(rec.filter(r => r.hotel === h && r.kind === 'cc').map(addr)) });
   let ok = true;
-  for (const d of rows) ok = (await sendOne(d, to, cc)) && ok;
+  for (const d of rows) { const g = by(d.hotel); ok = (await sendOne(d, g.to, g.cc, hname[d.hotel] || '')) && ok; }
   if (!ok) process.exitCode = 1; // يظهر الفشل في GitHub ويصلك إشعار
 }
 main().catch(e => { console.error('Fatal: ' + (e.message || e)); process.exit(1); });
