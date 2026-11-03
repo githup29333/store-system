@@ -54,13 +54,14 @@ h3{margin:18px 0 6px}
 </div>
 <div id="app" hidden>
  <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="k">الفنادق والصلاحية</button></nav>
+ <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="k">الفنادق والصلاحية</button></nav>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
   <section id="i" hidden></section>
   <section id="l" hidden></section>
   <section id="d" hidden></section>
+  <section id="c" hidden></section>
   <section id="k" hidden></section>
  </main>
  <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
@@ -70,7 +71,7 @@ h3{margin:18px 0 6px}
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,HOTELS=[],HSEL='';
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const DSEL=new Set(),enc=encodeURIComponent;
@@ -105,7 +106,7 @@ $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','k'].forEach(i=>$('#'+i).hidden=i!==t)};
+ ['s','o','i','l','d','c','k'].forEach(i=>$('#'+i).hidden=i!==t)};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
@@ -133,10 +134,11 @@ async function load(){
   O=build(orders);
   HOTELS=await api('hotels?select=*&order=created_at.asc').catch(()=>[]);
   fillHF();
+  try{[PRICES,LINKS]=await Promise.all([api('prices?select=*&order=id.asc&limit=2000'),api('item_price_link?select=*&limit=2000')])}catch(e){PRICES=[];LINKS=[]}
   GHTOK=await api('app_secrets?select=value&key=eq.gh_dispatch').then(r=>r[0]&&r[0].value||null).catch(()=>null);
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
- drawS();drawO();drawI();drawL();drawD();drawK();
+ drawS();drawO();drawI();drawL();drawD();drawC();drawK();
 }
 async function start(){
  $('#login').hidden=true;$('#app').hidden=false;
@@ -339,6 +341,119 @@ function fillHF(){
 }
 $('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD()};
 const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
+
+/* ---------- التكاليف ---------- */
+const normC=t=>String(t||'').toLowerCase().replace(/[\s\-–()*×/.,]+/g,'');
+const tok=t=>{const s=String(t||'').toLowerCase().replace(/[()*×/.,]/g,' ');return new Set(s.split(/[\s\-–]+/).filter(w=>w.length>=3&&!/^\d+$/.test(w)))};
+function priceMaps(){
+ const live=PRICES.filter(p=>!p.archived&&p.cost>0);
+ const byCode={};live.forEach(p=>{if(p.code&&!byCode[p.code])byCode[p.code]=p});
+ const groups={};live.forEach(p=>{const k=normC(p.name);(groups[k]=groups[k]||[]).push(p)});
+ const byName={};Object.entries(groups).forEach(([k,g])=>{byName[k]=g.find(x=>x.unit==='صندوق')||g[0]});
+ return {byCode,byName,live};
+}
+function fuzzyBest(name,live){
+ const ta=tok(name);if(!ta.size)return null;let best=null,sc=0;
+ for(const p of live){const tp=tok(p.name);if(!tp.size)continue;const i=[...ta].filter(x=>tp.has(x)).length,u=new Set([...ta,...tp]).size,s=i/u;if(s>sc){sc=s;best=p}}
+ return sc>=0.55?{price:best,score:sc}:null;
+}
+function resolvePrice(itemId,name){
+ const L=LINKS.find(x=>x.item_id===itemId);
+ if(L&&L.price_id){const p=PRICES.find(x=>x.id===L.price_id);if(p&&!p.archived)return p}
+ if(L&&L.method==='none')return null;
+ const {byName,live}=priceMaps(),k=normC(name);
+ if(byName[k])return byName[k];
+ const f=fuzzyBest(name,live);return f?f.price:null;
+}
+async function saveLink(itemId,priceId,method,score){
+ await fetch(SB+'/rest/v1/item_price_link?on_conflict=item_id',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+S.a,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({item_id:itemId,price_id:priceId,method,score:score||null,updated_at:new Date().toISOString()})});
+}
+async function autoMatch(){
+ const {byCode,byName,live}=priceMaps();const writes=[];
+ const locked=new Set(LINKS.filter(l=>l.method==='manual'||l.method==='none').map(l=>l.item_id));
+ ITEMS.forEach(it=>{
+  if(locked.has(it.id))return;
+  let hit=null,method=null,score=100;
+  if(it.code&&byCode[it.code]){hit=byCode[it.code];method='code'}
+  else{const k1=normC(it.ar),k2=normC(it.en);hit=byName[k1]||byName[k2];if(hit)method='exact'}
+  if(hit)writes.push({item_id:it.id,price_id:hit.id,method,score,updated_at:new Date().toISOString()});
+ });
+ for(let i=0;i<writes.length;i+=200){
+  await fetch(SB+'/rest/v1/item_price_link?on_conflict=item_id',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+S.a,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(writes.slice(i,i+200))});
+ }
+ LINKS=await api('item_price_link?select=*&limit=2000');
+ return writes.length;
+}
+function money(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function orderCost(ord){
+ let total=0,missing=0;
+ linesOf(ord).forEach(x=>{
+  const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n)||resolvePrice(x.id,nm.u);
+  if(p)total+=x.iss*p.cost;else missing++;
+ });
+ return {total,missing};
+}
+function drawC(){
+ if(!PRICES.length&&!LINKS.length&&!document.body.dataset.priceErr){} // ok even if empty
+ const linked=new Set(LINKS.filter(l=>l.price_id).map(l=>l.item_id)).size;
+ const decided=new Set(LINKS.map(l=>l.item_id));
+ const unresolved=ITEMS.filter(it=>!decided.has(it.id));
+ const nav=`<nav style="padding:0;margin-bottom:10px"><button data-ct="match" class="${CTAB==='match'?'on':''}">مطابقة الأسعار (${unresolved.length})</button><button data-ct="list" class="${CTAB==='list'?'on':''}">قائمة الأسعار</button><button data-ct="orders" class="${CTAB==='orders'?'on':''}">تكلفة الطلبات</button><button data-ct="cmp" class="${CTAB==='cmp'?'on':''}">المقارنة اليومية</button><button data-ct="pie" class="${CTAB==='pie'?'on':''}">توزيع الفئات</button></nav>`;
+ let body='';
+ if(CTAB==='match'){
+  const rows=unresolved.map(it=>{
+   const {live}=priceMaps(),f=fuzzyBest(it.ar,live)||fuzzyBest(it.en,live);
+   return `<tr><td>${esc(it.ar)}<br><small dir="ltr">${esc(it.en)}</small></td><td>${f?esc(f.price.name)+' — '+money(f.price.cost)+' / '+esc(f.price.unit)+' <small>('+Math.round(f.score*100)+'%)</small>':'لا يوجد اقتراح'}</td><td>${f?`<button class="btn" data-acc="${it.id}|${f.price.id}">اعتماد</button>`:''} <button class="btn alt" data-pick="${it.id}">اختيار يدوي</button> <button class="btn bad" data-none="${it.id}">لا يوجد سعر</button></td></tr>`}).join('')||'<tr><td colspan="3">كل الأصناف مربوطة بسعر 🎉</td></tr>';
+  body=`<div class="row"><button class="btn" id="cAuto">تحديث المطابقة التلقائية</button><span style="color:var(--mut)">مطابقة تلقائية بالكود أو بالاسم المطابق تماماً. الاقتراحات أدناه تحتاج اعتمادك.</span></div>
+  <table><tr><th>الصنف</th><th>أقرب اقتراح</th><th></th></tr>${rows}</table>`;
+ }else if(CTAB==='list'){
+  body=`<div class="row"><input type="search" id="pq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>الكود</th><th>الاسم</th><th>الوحدة</th><th>التكلفة</th><th>الفئة</th><th>مؤرشف</th><th></th></tr><tbody id="pb"></tbody></table></div>`;
+ }else if(CTAB==='orders'){
+  const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|')).slice(0,60);
+  const rows=L.map(d=>{const {total,missing}=orderCost(ordH(d));return `<tr><td>${esc(d.hotel)}</td><td>${esc(d.no)}</td><td>${esc(d.dn)}</td><td>${dt(d.ds)}</td><td>${money(total)}</td><td>${missing?'<span style="color:#b4231a">⚠ '+missing+'</span>':'✓'}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد طلبات مُرسلة بعد</td></tr>';
+  body=`<div class="wrap"><table><tr><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>التكلفة</th><th>التسعير</th></tr>${rows}</table></div><p style="color:var(--mut)">آخر 60 طلب مُرسل. التكلفة بالأسعار الحالية.</p>`;
+ }else if(CTAB==='cmp'){
+  const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|'));
+  const byDay={};L.forEach(d=>{byDay[d.ds]=(byDay[d.ds]||0)+orderCost(ordH(d)).total});
+  const days=Object.keys(byDay).sort((a,b)=>b.localeCompare(a));
+  const rows=days.map((ds,i)=>{const cur=byDay[ds],prev=i+1<days.length?byDay[days[i+1]]:null;
+   const diff=prev==null?null:cur-prev,pct=prev?Math.round(diff/prev*100):null;
+   const arrow=diff==null?'':diff>0?'🔺':diff<0?'🔻':'➖';
+   return `<tr><td>${dt(ds)}</td><td>${money(cur)}</td><td>${diff==null?'—':arrow+' '+money(Math.abs(diff))+(pct!=null?' ('+Math.abs(pct)+'%)':'')}</td></tr>`}).join('')||'<tr><td colspan="3">لا توجد بيانات</td></tr>';
+  body=`<table><tr><th>اليوم</th><th>إجمالي التكلفة</th><th>الفرق عن اليوم السابق الذي فيه بيانات</th></tr>${rows}</table><p style="color:var(--mut)">المقارنة بأسعار اليوم الحالية وليست بأسعار يوم الصرف الفعلي.</p>`;
+ }else if(CTAB==='pie'){
+  const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|'));
+  const byCat={};L.forEach(d=>{const ord=ordH(d);linesOf(ord).forEach(x=>{const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n)||resolvePrice(x.id,nm.u);if(p)byCat[p.category]=(byCat[p.category]||0)+x.iss*p.cost})});
+  const tot=Object.values(byCat).reduce((a,b)=>a+b,0)||1;
+  const COL={'منتجات جافة':'#0b5c7a','حليب وأجبان':'#1d7a4f','مشروبات':'#b4531a','منظفات':'#5d6b78','مستلزمات':'#a479e2','أخرى':'#cfd7de'};
+  let acc=0,grad=[];Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>{const p0=acc/tot*360;acc+=v;const p1=acc/tot*360;grad.push(`${COL[c]||'#999'} ${p0}deg ${p1}deg`)});
+  const legend=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="bar"><span>${c}</span><i style="width:${Math.round(v/tot*60)}%;min-width:3px;background:${COL[c]||'#999'}"></i><em>${money(v)} (${Math.round(v/tot*100)}%)</em></div>`).join('')||'<p>لا توجد بيانات</p>';
+  body=`<div class="row"><div style="width:180px;height:180px;border-radius:50%;background:conic-gradient(${grad.join(',')||'#eee 0 360deg'})"></div><div style="flex:1;min-width:200px">${legend}</div></div><p style="color:var(--mut)">كل الطلبات المُرسلة، بأسعار اليوم الحالية.</p>`;
+ }
+ $('#c').innerHTML=nav+body;
+ if(CTAB==='list')drawPList();
+}
+function drawPList(){
+ const q=($('#pq').value||'').trim().toLowerCase();
+ $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px"></td><td><select data-pcat="${p.id}">${['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','أخرى'].map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><button class="btn" data-psave="${p.id}">حفظ</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
+}
+$('#c').onclick=async e=>{
+ const b=e.target.closest('[data-ct]');if(b){CTAB=b.dataset.ct;return drawC()}
+ const acc=e.target.closest('[data-acc]');if(acc){const [iid,pid]=acc.dataset.acc.split('|').map(Number);await saveLink(iid,pid,'manual');LINKS=await api('item_price_link?select=*&limit=2000');return drawC()}
+ const none=e.target.closest('[data-none]');if(none){await saveLink(+none.dataset.none,null,'none');LINKS=await api('item_price_link?select=*&limit=2000');return drawC()}
+ const pick=e.target.closest('[data-pick]');if(pick){
+  const it=ITEMS.find(x=>x.id===+pick.dataset.pick),term=prompt('ابحث عن اسم السعر المطابق لـ «'+it.ar+'»:','');if(term===null)return;
+  const m=PRICES.filter(p=>!p.archived&&(p.name.toLowerCase().includes(term.toLowerCase())));
+  if(!m.length)return alert('لا توجد نتائج');
+  const choice=m.length===1?m[0]:m[+prompt(m.map((x,i)=>i+': '+x.name+' — '+money(x.cost)+'/'+x.unit).join('\n')+'\n\nاكتب رقم الاختيار:','0')||0];
+  if(!choice)return;await saveLink(it.id,choice.id,'manual');LINKS=await api('item_price_link?select=*&limit=2000');return drawC()
+ }
+ const sv=e.target.closest('[data-psave]');if(sv){const id=+sv.dataset.psave;
+  const body={name:document.querySelector(`[data-pn="${id}"]`).value.trim(),unit:document.querySelector(`[data-pu="${id}"]`).value.trim(),cost:+document.querySelector(`[data-pc="${id}"]`).value||0,category:document.querySelector(`[data-pcat="${id}"]`).value,archived:document.querySelector(`[data-parch="${id}"]`).checked};
+  await api('prices?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});sv.textContent='تم ✓';PRICES=await api('prices?select=*&order=id.asc&limit=2000');return}
+ if(e.target.id==='cAuto'){e.target.disabled=true;e.target.textContent='جارٍ المطابقة…';const n=await autoMatch();e.target.disabled=false;drawC();alert('تمت مطابقة '+n+' صنف تلقائياً (بالكود أو بالاسم المطابق تماماً)')}
+};
+$('#c').oninput=e=>{if(e.target.id==='pq')drawPList()};
 function drawK(){
  if(!HOTELS.length){$('#k').innerHTML='<p style="color:#b4231a">جدول الفنادق غير موجود. نفّذ ملف 7-hotels.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
  const base=location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,''),t=fmtD(new Date());
