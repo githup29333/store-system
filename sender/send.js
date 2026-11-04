@@ -42,15 +42,22 @@ async function sendOne(d, to, cc, hn) {
     const fr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.file_path), { headers: H });
     if (!fr.ok) throw new Error('تعذّر تنزيل الملف / download failed ' + fr.status);
     const buf = Buffer.from(await fr.arrayBuffer());
+    const attachments = [{ filename: `Issue_${d.dept}_${d.no}.xlsx`, content: buf, contentType: XL }];
+    if (d.cost_path) {
+      const cfr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.cost_path), { headers: H });
+      if (cfr.ok) attachments.push({ filename: `Cost_${d.dept}_${d.no}.xlsx`, content: Buffer.from(await cfr.arrayBuffer()), contentType: XL });
+      else console.error('Cost file missing for ' + d.key + ' (' + cfr.status + '), sending order file only');
+    }
     const date = '20' + d.ds.slice(0, 2) + '-' + d.ds.slice(2, 4) + '-' + d.ds.slice(4);
     const name = d.dn || d.dept, upd = d.rev > 1;
     const info = await transport.sendMail({
       from: FROM, to, cc,
       subject: (hn ? `[${hn}] ` : '') + `صرف / Issue — ${name} — طلب / Order ${d.no} — ${date}` + (upd ? ` (تحديث ${d.rev} / Update ${d.rev})` : ''),
       text: `مرفق ملف الصرف الخاص بـ${name} (طلب ${d.no} بتاريخ ${date}).` + (upd ? '\nهذه نسخة محدّثة من الطلب.' : '') +
-        `\nالأصناف التي لم تُصرف تم حذفها من الملف.\n\n--\nAttached is the issue note for ${name} (order ${d.no}, ${date}).` +
-        (upd ? '\nThis is an updated version of the order.' : '') + '\nUnissued items have been removed from the file.',
-      attachments: [{ filename: `Issue_${d.dept}_${d.no}.xlsx`, content: buf, contentType: XL }]
+        `\nالأصناف التي لم تُصرف تم حذفها من الملف.` + (d.cost_path ? '\nمرفق أيضاً ملف التكاليف لهذا الطلب.' : '') +
+        `\n\n--\nAttached is the issue note for ${name} (order ${d.no}, ${date}).` +
+        (upd ? '\nThis is an updated version of the order.' : '') + '\nUnissued items have been removed from the file.' + (d.cost_path ? '\nThe cost report for this order is also attached.' : ''),
+      attachments
     });
     const rej = (info.rejected || []).map(x => x.address || x);
     const done = await rest(q + '&status=eq.sending', { method: 'PATCH', headers: REP, body: JSON.stringify({ status: 'sent', sent_at: new Date().toISOString(), error: rej.length ? 'رُفض لبعض المستلمين / rejected: ' + rej.join(', ') : null }) });
