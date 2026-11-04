@@ -266,13 +266,18 @@ async function upload(path,buf){
 }
 async function approveOne(d){
  const now=new Date().toISOString(),q='deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev;
- let path=d.file_path;
+ let path=d.file_path,costPath=d.cost_path||null;
  if(!d.code.startsWith('BATCH|')){
   const wb=new ExcelJS.Workbook();addSheet(wb,ordH(d),'Issue');
   path=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_r'+d.rev+'.xlsx';
   await upload(path,await wb.xlsx.writeBuffer());
+  try{
+   const cwb=await buildCostBook(d);
+   costPath=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_cost_r'+d.rev+'.xlsx';
+   await upload(costPath,await cwb.xlsx.writeBuffer());
+  }catch(e){console.error(e);costPath=null}
  }
- await api(q,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,approved_at:now,updated_at:now,error:null})});
+ await api(q,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,cost_path:costPath,approved_at:now,updated_at:now,error:null})});
 }
 const ordH=d=>{const o=ordFromCode(d.code),h=HOTELS.find(x=>x.code===d.hotel);o.hotelName=h?h.name:d.hotel;return o};
 const needTo=h=>REC.some(r=>r.active&&r.kind==='to'&&r.hotel===h);
@@ -385,13 +390,101 @@ async function autoMatch(){
  return writes.length;
 }
 function money(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function orderCost(ord){
- let total=0,missing=0;
+function orderCostDetail(ord){
+ const lines=[],byCat={};let total=0,missing=0;
  linesOf(ord).forEach(x=>{
   const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n)||resolvePrice(x.id,nm.u);
-  if(p)total+=x.iss*p.cost;else missing++;
+  if(p){const lt=x.iss*p.cost;total+=lt;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category})}
+  else{missing++;lines.push({ar:nm.n,en:nm.u,unit:'',qty:x.iss,price:null,lineTotal:null,category:null})}
  });
- return {total,missing};
+ return {lines,total,missing,byCat};
+}
+function orderCost(ord){const d=orderCostDetail(ord);return{total:d.total,missing:d.missing}}
+const CATCOL={'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','أخرى':'9AA7B2'};
+function dsAdd(ds,days){
+ const y=2000+ +ds.slice(0,2),m=+ds.slice(2,4)-1,dd=+ds.slice(4,6);
+ const dt=new Date(Date.UTC(y,m,dd));dt.setUTCDate(dt.getUTCDate()+days);
+ return String(dt.getUTCFullYear()).slice(2)+String(dt.getUTCMonth()+1).padStart(2,'0')+String(dt.getUTCDate()).padStart(2,'0');
+}
+function deptDayTotal(hotel,dept,ds,excludeKey){
+ return DEL.filter(x=>x.hotel===hotel&&x.dept===dept&&x.ds===ds&&x.status==='sent'&&!x.code.startsWith('BATCH|')&&x.key!==excludeKey)
+  .reduce((s,x)=>s+orderCost(ordH(x)).total,0);
+}
+function donutSVG(byCat,sz){
+ const cx=sz/2,cy=sz/2,R=sz*0.42,rIn=sz*0.23,tot=Object.values(byCat).reduce((a,b)=>a+b,0);
+ const toxy=(ang,r)=>{const rad=(ang-90)*Math.PI/180;return [cx+r*Math.cos(rad),cy+r*Math.sin(rad)]};
+ let acc=0,paths='';
+ if(!tot){return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}"><circle cx="${cx}" cy="${cy}" r="${R}" fill="#e3e8ec"/><circle cx="${cx}" cy="${cy}" r="${rIn}" fill="#ffffff"/></svg>`}
+ Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([cat,v])=>{
+  const a0=acc/tot*360;acc+=v;const a1=acc/tot*360,large=(a1-a0)>180?1:0;
+  const [x0,y0]=toxy(a0,R),[x1,y1]=toxy(a1,R);
+  paths+=`<path d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="#${CATCOL[cat]||'9AA7B2'}"/>`;
+ });
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}">
+ <rect width="${sz}" height="${sz}" fill="#ffffff"/>
+ ${paths}
+ <circle cx="${cx}" cy="${cy}" r="${rIn}" fill="#ffffff"/>
+ </svg>`;
+}
+function svgToPng(svgStr,w,h){
+ return new Promise((resolve,reject)=>{
+  try{
+   const img=new Image(),blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob);
+   img.onload=()=>{
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    cv.toBlob(b=>{if(!b)return reject(new Error('toBlob failed'));const r=new FileReader();r.onload=()=>resolve(new Uint8Array(r.result));r.onerror=reject;r.readAsArrayBuffer(b)},'image/png');
+   };
+   img.onerror=()=>reject(new Error('svg image load failed'));
+   img.src=url;
+  }catch(e){reject(e)}
+ });
+}
+async function buildCostBook(d){
+ const ord=ordH(d),det=orderCostDetail(ord);
+ const yDs=dsAdd(d.ds,-1),yTotal=deptDayTotal(d.hotel,d.dept,yDs),tTotal=deptDayTotal(d.hotel,d.dept,d.ds,d.key)+det.total;
+ const diff=yTotal?tTotal-yTotal:null,pct=(yTotal&&diff!=null)?Math.round(diff/yTotal*100):null;
+ const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Cost',{views:[{rightToLeft:true,state:'frozen',ySplit:11}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,printTitlesRow:'11:11',margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
+ ws.columns=[{width:5},{width:30},{width:26},{width:14},{width:9},{width:11},{width:13}];
+ const F='Tahoma',th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th};
+ const put=(ref,v,o={})=>{const c=ws.getCell(ref);c.value=v;c.font={name:F,size:o.sz||11,bold:!!o.b,color:{argb:o.fc||'FF16222C'}};if(o.bg)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.bg}};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};if(o.bd)c.border=BD;if(o.num)c.numFmt=o.num;return c};
+ ws.mergeCells('A1:G1');put('A1',ord.hotelName||'Hotel',{sz:18,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=34;
+ ws.mergeCells('A2:G2');put('A2','تقرير تكلفة الطلب / Order Cost Report',{sz:14,b:1,bg:'FFE4EEF3'});ws.getRow(2).height=26;
+ ws.mergeCells('A3:B3');put('A3','القسم / Dept: '+(ord.dn||ord.dept),{b:1,bd:1,h:'right'});
+ put('C3','رقم الطلب / Order: '+ord.no,{b:1,bd:1});
+ ws.mergeCells('D3:G3');put('D3','التاريخ / Date: '+dstrOf(ord),{b:1,bd:1});ws.getRow(3).height=22;
+ const kpi=(ref,merge,label,val,bg,fc)=>{ws.mergeCells(merge);put(ref,label+'\n'+val,{b:1,bg,fc:fc||'FF16222C',sz:12});};
+ kpi('A5','A5:B6','إجمالي تكلفة الطلب\nOrder Total',money(det.total)+' د.ل','FFE4EEF3');
+ kpi('C5','C5:D6','إجمالي القسم أمس\nDept Total Yesterday',yTotal?money(yTotal)+' د.ل':'لا يوجد / N/A','FFF4F7F9');
+ const dcol=diff==null?'FF5D6B78':diff>0?'FFB4231A':diff<0?'FF1D7A4F':'FF5D6B78';
+ const dtxt=diff==null?'لا تتوفر بيانات أمس / No data':(diff>0?'🔺 زيادة / Up ':diff<0?'🔻 نقص / Down ':'➖ ثابت / Same ')+money(Math.abs(diff))+' د.ل'+(pct!=null?' ('+Math.abs(pct)+'%)':'');
+ kpi('E5','E5:G6','الفرق عن أمس (نفس القسم)\nDiff vs Yesterday (same dept)',dtxt,'FFFFF4E5',dcol);
+ ws.getRow(5).height=20;ws.getRow(6).height=20;
+ const svg=donutSVG(det.byCat,480),png=await svgToPng(svg,480,480);
+ const imgId=wb.addImage({buffer:png,extension:'png'});
+ ws.addImage(imgId,{tl:{col:0,row:7},ext:{width:170,height:170}});
+ const cats=Object.entries(det.byCat).sort((a,b)=>b[1]-a[1]);
+ put('C8','توزيع الطلب حسب الفئة / Order Breakdown by Category',{b:1,h:'right',sz:12});ws.mergeCells('C8:G8');
+ let cr=9;cats.forEach(([cat,v])=>{
+  put('C'+cr,'⬤',{fc:'FF'+(CATCOL[cat]||'9AA7B2'),h:'right'});put('D'+cr,cat,{h:'right'});put('E'+cr,money(v)+' د.ل');put('F'+cr,Math.round(v/det.total*100)+'%');cr++;
+ });
+ if(!cats.length){put('C9','لا توجد أصناف مُسعّرة في هذا الطلب / No priced items in this order',{h:'right',fc:'FFB4231A'});ws.mergeCells('C9:G9')}
+ let r=11;
+ ['#','الصنف / Item (AR)','Item (EN)','الفئة\nCategory','الوحدة\nUnit','الكمية\nQty','الإجمالي\nTotal'].forEach((t,i)=>put('ABCDEFG'[i]+r,t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1,sz:10}));
+ ws.getRow(r).height=30;r++;
+ det.lines.forEach((x,i)=>{
+  const bg=x.price==null?'FFFBE9E7':(i%2?'FFF4F8FA':null);
+  put('A'+r,i+1,{bd:1,bg});put('B'+r,x.ar,{bd:1,bg,h:'right'});put('C'+r,x.en,{bd:1,bg,h:'left'});
+  put('D'+r,x.category||'—',{bd:1,bg});put('E'+r,x.unit||'—',{bd:1,bg});put('F'+r,x.qty,{bd:1,bg});
+  put('G'+r,x.lineTotal==null?'بدون سعر / No price':money(x.lineTotal),{bd:1,bg,b:x.lineTotal!=null,fc:x.lineTotal==null?'FFB4531A':null});
+  r++;
+ });
+ ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الإجمالي / Grand Total',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF',h:'right'});
+ put('G'+r,money(det.total)+' د.ل',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF'});ws.getRow(r).height=22;r+=2;
+ ws.mergeCells(`A${r}:G${r}`);put('A'+r,(det.missing?'⚠ '+det.missing+' صنف بدون سعر مؤكد لم يُدرج في الإجمالي / '+det.missing+' item(s) without a confirmed price were excluded from the total. ':'')+'الأسعار من قائمة الأسعار القياسية للمخزن وقد تختلف عن سعر الشراء الفعلي / Costs are from the store\'s standard price list and may differ from actual purchase price.',{sz:8,fc:'FF5D6B78',h:'right'});
+ r++;ws.mergeCells(`A${r}:G${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
+ return wb;
 }
 function drawC(){
  if(!PRICES.length&&!LINKS.length&&!document.body.dataset.priceErr){} // ok even if empty
@@ -407,7 +500,7 @@ function drawC(){
   body=`<div class="row"><button class="btn" id="cAuto">تحديث المطابقة التلقائية</button><span style="color:var(--mut)">مطابقة تلقائية بالكود أو بالاسم المطابق تماماً. الاقتراحات أدناه تحتاج اعتمادك.</span></div>
   <table><tr><th>الصنف</th><th>أقرب اقتراح</th><th></th></tr>${rows}</table>`;
  }else if(CTAB==='list'){
-  body=`<div class="row"><input type="search" id="pq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>الكود</th><th>الاسم</th><th>الوحدة</th><th>التكلفة</th><th>الفئة</th><th>مؤرشف</th><th></th></tr><tbody id="pb"></tbody></table></div>`;
+  body=`<div class="row"><input type="search" id="pq" placeholder="ابحث" style="flex:1"><button class="btn alt" id="pEst">تخمين الأسعار الناقصة (+50%)</button></div><p style="color:var(--mut)">السعر التقديري = أقرب صنف مشابه له سعر × 1.5 (زيادة 5 دينار لكل 10 كهامش أمان). يظهر بعلامة ≈ ولا يُعتبر سعراً حقيقياً.</p><div class="wrap"><table><tr><th>الكود</th><th>الاسم</th><th>الوحدة</th><th>التكلفة</th><th>الفئة</th><th>مؤرشف</th><th></th></tr><tbody id="pb"></tbody></table></div>`;
  }else if(CTAB==='orders'){
   const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|')).slice(0,60);
   const rows=L.map(d=>{const {total,missing}=orderCost(ordH(d));return `<tr><td>${esc(d.hotel)}</td><td>${esc(d.no)}</td><td>${esc(d.dn)}</td><td>${dt(d.ds)}</td><td>${money(total)}</td><td>${missing?'<span style="color:#b4231a">⚠ '+missing+'</span>':'✓'}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد طلبات مُرسلة بعد</td></tr>';
@@ -435,7 +528,7 @@ function drawC(){
 }
 function drawPList(){
  const q=($('#pq').value||'').trim().toLowerCase();
- $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px"></td><td><select data-pcat="${p.id}">${['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','أخرى'].map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><button class="btn" data-psave="${p.id}">حفظ</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
+ $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px">${p.estimated?' <span title="سعر تقديري غير مؤكد / Estimated, unconfirmed" style="color:var(--warn)">≈</span>':''}</td><td><select data-pcat="${p.id}">${['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','أخرى'].map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><button class="btn" data-psave="${p.id}">حفظ</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
 }
 $('#c').onclick=async e=>{
  const b=e.target.closest('[data-ct]');if(b){CTAB=b.dataset.ct;return drawC()}
@@ -449,9 +542,24 @@ $('#c').onclick=async e=>{
   if(!choice)return;await saveLink(it.id,choice.id,'manual');LINKS=await api('item_price_link?select=*&limit=2000');return drawC()
  }
  const sv=e.target.closest('[data-psave]');if(sv){const id=+sv.dataset.psave;
-  const body={name:document.querySelector(`[data-pn="${id}"]`).value.trim(),unit:document.querySelector(`[data-pu="${id}"]`).value.trim(),cost:+document.querySelector(`[data-pc="${id}"]`).value||0,category:document.querySelector(`[data-pcat="${id}"]`).value,archived:document.querySelector(`[data-parch="${id}"]`).checked};
+  const newCost=+document.querySelector(`[data-pc="${id}"]`).value||0,old=PRICES.find(x=>x.id===id);
+  const body={name:document.querySelector(`[data-pn="${id}"]`).value.trim(),unit:document.querySelector(`[data-pu="${id}"]`).value.trim(),cost:newCost,category:document.querySelector(`[data-pcat="${id}"]`).value,archived:document.querySelector(`[data-parch="${id}"]`).checked,estimated:old&&old.estimated&&newCost===old.cost};
   await api('prices?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});sv.textContent='تم ✓';PRICES=await api('prices?select=*&order=id.asc&limit=2000');return}
  if(e.target.id==='cAuto'){e.target.disabled=true;e.target.textContent='جارٍ المطابقة…';const n=await autoMatch();e.target.disabled=false;drawC();alert('تمت مطابقة '+n+' صنف تلقائياً (بالكود أو بالاسم المطابق تماماً)')}
+ if(e.target.id==='pEst'){
+  e.target.disabled=true;e.target.textContent='جارٍ التخمين…';
+  const targets=PRICES.filter(p=>!p.archived&&p.cost<=0),base=PRICES.filter(p=>!p.archived&&!p.estimated&&p.cost>0);
+  const writes=[];
+  targets.forEach(t=>{
+   const sameCat=base.filter(p=>p.category===t.category);
+   const pool=sameCat.length?sameCat:base;
+   const f=fuzzyBest(t.name,pool);
+   if(f)writes.push({id:t.id,cost:Math.round(f.price.cost*1.5*100)/100,source:f.price.name});
+  });
+  for(const w of writes)await api('prices?id=eq.'+w.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({cost:w.cost,estimated:true})});
+  PRICES=await api('prices?select=*&order=id.asc&limit=2000');e.target.disabled=false;e.target.textContent='تخمين الأسعار الناقصة (+50%)';drawPList();
+  alert('تم تخمين '+writes.length+' صنف من أصل '+targets.length+' (الباقي ما له صنف مشابه كافٍ بالمطابقة).');
+ }
 };
 $('#c').oninput=e=>{if(e.target.id==='pq')drawPList()};
 function drawK(){
