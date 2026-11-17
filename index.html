@@ -559,13 +559,17 @@ function renderIssue(){
  if(!o)return;save();$('#addItem').hidden=false;
  const got=Object.keys(o.parts).length,miss=got<o.total;
  const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
+ ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
+ const UN=['قطعة','حزمة','صندوق'];
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
-  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${c.n}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td></tr>`}).join('');
- $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
- <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table>
+  const unSel=`<select data-un="${id}" ${WM?'':'disabled'}>${UN.map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select>`;
+  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${c.n}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
+ const deptCtl=WM?`<select id="odept">${Object.keys(D).map(k=>`<option value="${k}" ${k===o.dept?'selected':''}>${D[k]}</option>`).join('')}</select>`:D[o.dept];
+ $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${deptCtl} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
+ <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th><th>الوحدة<br>Unit</th></tr>${rows}</table>
  <div class="row" style="margin-top:12px">${WM?'<button class="btn ok" id="fc">نسخ الكود النهائي / Copy final code</button>':'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button>'}</div>`;
 }
-$('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}renderIssue()};
+$('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}else if(t.dataset.un){o.items[t.dataset.un].unit=t.value}else if(t.id==='odept'){o.dept=t.value}renderIssue()};
 $('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc')copyFinal()};
 $('#load').onclick=()=>ingest($('#paste').value);
 
@@ -758,7 +762,7 @@ addEventListener('online',flushLog);setInterval(flushLog,60000);
 function copyFinal(){
  if(!chk()||!o)return;
  if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
- const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)}).join(',');
+ const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)+':'+(x.unit||'')}).join(',');
  const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
  logOrder('final',code);
  navigator.clipboard.writeText(code).then(()=>toast('تم نسخ الكود النهائي — أرسله للمشرف / Final code copied — send it to the supervisor'),()=>prompt('انسخ الكود / Copy the code:',code));
@@ -774,7 +778,7 @@ function parseFinal(t){
 let RES=null;
 const LAB=[['غير متوفر','Not available','#b4231a','#fbe9e7'],['جزئي','Partial','#b4531a','#fff4e5'],['تم','Fulfilled','#1d7a4f','#ffffff']];
 function finalCode(){
- const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)}).join(',');
+ const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)+':'+(x.unit||'')}).join(',');
  return ['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
 }
 function showResult(){
