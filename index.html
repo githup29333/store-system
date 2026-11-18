@@ -30,7 +30,7 @@ textarea{width:100%}
 .item .nm{flex:1}.item small{color:var(--mut)}
 .q{display:flex;align-items:center;gap:6px}
 .q button{width:34px;height:34px;border:1px solid var(--ln);border-radius:8px;background:#f4f7f9;font-size:20px;line-height:1}
-.q b{min-width:26px;text-align:center}
+.q input{width:46px;height:34px;text-align:center;border:1px solid var(--ln);border-radius:8px;font:inherit;padding:0}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid var(--ln);padding:6px 8px;text-align:right}
 th{background:#eef2f5}
@@ -476,10 +476,13 @@ $('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);$('#t3').onclick=()=>tab
 function renderList(){
  const s=$('#srch').value.trim();
  $('#list').innerHTML=cat.map((c,i)=>({c,id:i+1})).filter(x=>!s||(x.c.n+' '+x.c.u).toLowerCase().includes(s.toLowerCase())).map(x=>
-  `<div class="item"><div class="nm">${x.c.n} <small>${x.c.u}</small></div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><b>${q[x.id]||0}</b><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
+  `<div class="item"><div class="nm">${x.c.n} <small>${x.c.u}</small></div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
  const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':'';
 }
+function cntOnly(){const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':''}
 $('#list').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=b.dataset.i;q[i]=Math.max(0,(q[i]||0)+ +b.dataset.d);renderList()};
+$('#list').oninput=e=>{const t=e.target;if(!t.dataset.qi)return;q[t.dataset.qi]=Math.max(0,+t.value||0);cntOnly()};
+$('#list').onchange=e=>{const t=e.target;if(!t.dataset.qi)return;t.value=q[t.dataset.qi]||0};
 $('#srch').oninput=renderList;
 $('#clr').onclick=()=>{q={};renderList();$('#sheetWrap').hidden=true};
 async function tr(t){const p=/[\u0600-\u06FF]/.test(t)?'ar|en':'en|ar';try{const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(t)+'&langpair='+p);const j=await r.json();return (j.responseData.translatedText||'').trim()}catch(e){return ''}}

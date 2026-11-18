@@ -233,7 +233,7 @@ const itemOfD=(ord,id)=>(ord.names&&ord.names[id])||nm(id);
 function ordFromCode(code){
  const f=code.split('|'),names={},items={};
  (f[9]||'').split(';').filter(Boolean).forEach(t=>{const [id,n,u]=t.split('~');names[id]={n,u:u||''}});
- (f[6]||'').split(',').filter(Boolean).forEach(x=>{const [id,rq,is]=x.split(':');items[id]={req:+rq,iss:+is,on:+is>0}});
+ (f[6]||'').split(',').filter(Boolean).forEach(x=>{const [id,rq,is,un]=x.split(':');items[id]={req:+rq,iss:+is,on:+is>0,unit:un||''}});
  return{dept:f[1],no:f[2],ds:f[3],dn:f[7]||f[1],names,items};
 }
 const ST={pending:['بانتظار موافقتك','t-w'],approved:['موافق — بانتظار الإرسال','t-w'],sending:['قيد الإرسال','t-w'],sent:['تم الإرسال ✓','t-ok'],merged:['ضُمّ لملف مجمّع',''],failed:['فشل الإرسال','t-bad'],skipped:['تم تجاهله','']};
@@ -354,20 +354,32 @@ function priceMaps(){
  const live=PRICES.filter(p=>!p.archived&&p.cost>0);
  const byCode={};live.forEach(p=>{if(p.code&&!byCode[p.code])byCode[p.code]=p});
  const groups={};live.forEach(p=>{const k=normC(p.name);(groups[k]=groups[k]||[]).push(p)});
- const byName={};Object.entries(groups).forEach(([k,g])=>{byName[k]=g.find(x=>x.unit==='صندوق')||g[0]});
- return {byCode,byName,live};
+ return {byCode,groups,live};
+}
+const UNIT_GROUP={'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق']};
+function pickFromGroup(g,unitHint){
+ if(!g||!g.length)return null;
+ if(unitHint&&UNIT_GROUP[unitHint]){const m=g.find(x=>UNIT_GROUP[unitHint].includes(x.unit));if(m)return m}
+ return g.find(x=>x.unit==='صندوق')||g[0];
 }
 function fuzzyBest(name,live){
  const ta=tok(name);if(!ta.size)return null;let best=null,sc=0;
  for(const p of live){const tp=tok(p.name);if(!tp.size)continue;const i=[...ta].filter(x=>tp.has(x)).length,u=new Set([...ta,...tp]).size,s=i/u;if(s>sc){sc=s;best=p}}
  return sc>=0.55?{price:best,score:sc}:null;
 }
-function resolvePrice(itemId,name){
+function resolvePrice(itemId,name,unitHint){
  const L=LINKS.find(x=>x.item_id===itemId);
- if(L&&L.price_id){const p=PRICES.find(x=>x.id===L.price_id);if(p&&!p.archived)return p}
+ if(L&&L.price_id){
+  const p=PRICES.find(x=>x.id===L.price_id);
+  if(p&&!p.archived){
+   if(!unitHint||!UNIT_GROUP[unitHint]||UNIT_GROUP[unitHint].includes(p.unit))return p;
+   const {groups}=priceMaps(),alt=pickFromGroup(groups[normC(p.name)],unitHint);
+   return alt||p;
+  }
+ }
  if(L&&L.method==='none')return null;
- const {byName,live}=priceMaps(),k=normC(name);
- if(byName[k])return byName[k];
+ const {groups,live}=priceMaps(),k=normC(name);
+ if(groups[k])return pickFromGroup(groups[k],unitHint);
  const f=fuzzyBest(name,live);return f?f.price:null;
 }
 async function saveLink(itemId,priceId,method,score){
@@ -393,14 +405,15 @@ function money(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimum
 function orderCostDetail(ord){
  const lines=[],byCat={};let total=0,missing=0;
  linesOf(ord).forEach(x=>{
-  const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n)||resolvePrice(x.id,nm.u);
-  if(p){const lt=x.iss*p.cost;total+=lt;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category})}
+  const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n,x.unit)||resolvePrice(x.id,nm.u,x.unit);
+  if(p){const lt=x.iss*p.cost;total+=lt;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category,estimated:!!p.estimated})}
   else{missing++;lines.push({ar:nm.n,en:nm.u,unit:'',qty:x.iss,price:null,lineTotal:null,category:null})}
  });
- return {lines,total,missing,byCat};
+ return {lines,total,missing,byCat,anyEstimated:lines.some(l=>l.estimated)};
 }
 function orderCost(ord){const d=orderCostDetail(ord);return{total:d.total,missing:d.missing}}
-const CATCOL={'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','أخرى':'9AA7B2'};
+const CATCOL={'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','خضروات وفواكه':'7CB342','أخرى':'9AA7B2'};
+const CATS=['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','خضروات وفواكه','أخرى'];
 function dsAdd(ds,days){
  const y=2000+ +ds.slice(0,2),m=+ds.slice(2,4)-1,dd=+ds.slice(4,6);
  const dt=new Date(Date.UTC(y,m,dd));dt.setUTCDate(dt.getUTCDate()+days);
@@ -474,15 +487,15 @@ async function buildCostBook(d){
  ['#','الصنف / Item (AR)','Item (EN)','الفئة\nCategory','الوحدة\nUnit','الكمية\nQty','الإجمالي\nTotal'].forEach((t,i)=>put('ABCDEFG'[i]+r,t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1,sz:10}));
  ws.getRow(r).height=30;r++;
  det.lines.forEach((x,i)=>{
-  const bg=x.price==null?'FFFBE9E7':(i%2?'FFF4F8FA':null);
+  const bg=x.price==null?'FFFBE9E7':x.estimated?'FFFFF4E5':(i%2?'FFF4F8FA':null);
   put('A'+r,i+1,{bd:1,bg});put('B'+r,x.ar,{bd:1,bg,h:'right'});put('C'+r,x.en,{bd:1,bg,h:'left'});
   put('D'+r,x.category||'—',{bd:1,bg});put('E'+r,x.unit||'—',{bd:1,bg});put('F'+r,x.qty,{bd:1,bg});
-  put('G'+r,x.lineTotal==null?'بدون سعر / No price':money(x.lineTotal),{bd:1,bg,b:x.lineTotal!=null,fc:x.lineTotal==null?'FFB4531A':null});
+  put('G'+r,x.lineTotal==null?'بدون سعر / No price':(money(x.lineTotal)+(x.estimated?' *':'')),{bd:1,bg,b:x.lineTotal!=null,fc:x.lineTotal==null?'FFB4531A':x.estimated?'FFB4531A':null});
   r++;
  });
  ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الإجمالي / Grand Total',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF',h:'right'});
  put('G'+r,money(det.total)+' د.ل',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF'});ws.getRow(r).height=22;r+=2;
- ws.mergeCells(`A${r}:G${r}`);put('A'+r,(det.missing?'⚠ '+det.missing+' صنف بدون سعر مؤكد لم يُدرج في الإجمالي / '+det.missing+' item(s) without a confirmed price were excluded from the total. ':'')+'الأسعار من قائمة الأسعار القياسية للمخزن وقد تختلف عن سعر الشراء الفعلي / Costs are from the store\'s standard price list and may differ from actual purchase price.',{sz:8,fc:'FF5D6B78',h:'right'});
+ ws.mergeCells(`A${r}:G${r}`);put('A'+r,(det.missing?'⚠ '+det.missing+' صنف بدون سعر مؤكد لم يُدرج في الإجمالي / '+det.missing+' item(s) without a confirmed price were excluded from the total. ':'')+(det.anyEstimated?'* الأصناف المعلَّمة بنجمة سعرها تقديري تخميني غير مؤكد من مورد / * Items marked with an asterisk use an unconfirmed estimated price. ':'')+'الأسعار من قائمة الأسعار القياسية للمخزن وقد تختلف عن سعر الشراء الفعلي / Costs are from the store\'s standard price list and may differ from actual purchase price.',{sz:8,fc:'FF5D6B78',h:'right'});
  r++;ws.mergeCells(`A${r}:G${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
  return wb;
 }
@@ -528,7 +541,7 @@ function drawC(){
 }
 function drawPList(){
  const q=($('#pq').value||'').trim().toLowerCase();
- $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px">${p.estimated?' <span title="سعر تقديري غير مؤكد / Estimated, unconfirmed" style="color:var(--warn)">≈</span>':''}</td><td><select data-pcat="${p.id}">${['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','أخرى'].map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><button class="btn" data-psave="${p.id}">حفظ</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
+ $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px">${p.estimated?' <span title="سعر تقديري غير مؤكد / Estimated, unconfirmed" style="color:var(--warn)">≈</span>':''}</td><td><select data-pcat="${p.id}">${CATS.map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><button class="btn" data-psave="${p.id}">حفظ</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
 }
 $('#c').onclick=async e=>{
  const b=e.target.closest('[data-ct]');if(b){CTAB=b.dataset.ct;return drawC()}
