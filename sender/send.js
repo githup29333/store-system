@@ -38,16 +38,18 @@ async function sendOne(d, to, cc, hn) {
   const toPending = () => rest('deliveries?key=eq.' + enc(d.key) + '&status=eq.sending', { method: 'PATCH', body: JSON.stringify({ status: 'pending' }) }).catch(() => {});
   try {
     if (!to.length) throw new Error('NOFATAL لا يوجد مستلم من نوع To لهذا الفندق / no To recipient for this hotel');
-    if (!d.file_path) throw new Error('NOFATAL لا يوجد ملف مرفق / no file');
-    const fr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.file_path), { headers: H });
-    if (!fr.ok) throw new Error('تعذّر تنزيل الملف / download failed ' + fr.status);
-    const buf = Buffer.from(await fr.arrayBuffer());
-    const attachments = [{ filename: `Issue_${d.dept}_${d.no}.xlsx`, content: buf, contentType: XL }];
-    if (d.cost_path) {
-      const cfr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.cost_path), { headers: H });
-      if (cfr.ok) attachments.push({ filename: `Cost_${d.dept}_${d.no}.xlsx`, content: Buffer.from(await cfr.arrayBuffer()), contentType: XL });
-      else console.error('Cost file missing for ' + d.key + ' (' + cfr.status + '), sending order file only');
-    }
+    if (!d.file_path || !d.cost_path) throw new Error('NOFATAL يجب توفر ملف الطلب وملف التكلفة معاً / both order and cost files are required');
+    const [fr, cfr] = await Promise.all([
+      fetch(URL_ + '/storage/v1/object/exports/' + enc(d.file_path), { headers: H }),
+      fetch(URL_ + '/storage/v1/object/exports/' + enc(d.cost_path), { headers: H })
+    ]);
+    if (!fr.ok) throw new Error('تعذّر تنزيل ملف الطلب / order download failed ' + fr.status);
+    if (!cfr.ok) throw new Error('تعذّر تنزيل ملف التكلفة / cost download failed ' + cfr.status);
+    const [buf, costBuf] = await Promise.all([fr.arrayBuffer(), cfr.arrayBuffer()]);
+    const attachments = [
+      { filename: `Issue_${d.dept}_${d.no}.xlsx`, content: Buffer.from(buf), contentType: XL },
+      { filename: `Cost_${d.dept}_${d.no}.xlsx`, content: Buffer.from(costBuf), contentType: XL }
+    ];
     const date = '20' + d.ds.slice(0, 2) + '-' + d.ds.slice(2, 4) + '-' + d.ds.slice(4);
     const name = d.dn || d.dept, upd = d.rev > 1;
     const info = await transport.sendMail({
