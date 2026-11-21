@@ -341,6 +341,7 @@ $('#d').onclick=async e=>{
   if(b.id==='gnow'){const g=await ghRun('manual');return alert(g==='ok'?'تم تشغيل الإرسال اليدوي للطلبات المنتظرة الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
   if(b.id==='autoSave'){
    const enabled=$('#autoEnabled').checked,time=$('#autoTime').value||'15:00';
+   if(enabled&&!AUTOCFG.test_passed_at)return alert('لا يمكن تفعيل الإرسال التلقائي قبل نجاح اختبار البريد. اضغط «اختبار البريد» أولاً ثم حدّث اللوحة.');
    if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return alert('وقت غير صالح');
    const cfg={enabled,time,timezone:'Africa/Tripoli',enabled_at:enabled?(AUTOCFG.enabled&&AUTOCFG.enabled_at?AUTOCFG.enabled_at:new Date().toISOString()):(AUTOCFG.enabled_at||null)};
    await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'auto_send_config',value:JSON.stringify(cfg),updated_at:new Date().toISOString()})});
