@@ -1,4 +1,5 @@
 const ExcelJS = require('exceljs');
+const sharp = require('sharp');
 
 const money = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const clean = s => String(s || '').trim().toLowerCase().replace(/[\s\-–()*×/.,]+/g, '');
@@ -60,6 +61,29 @@ function priceFor(line, ctx) {
 const CATS = ['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','خضروات وفواكه','أخرى'];
 const CATCOL = {'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','خضروات وفواكه':'7CB342','أخرى':'9AA7B2'};
 const COLORS = {navy:'101827',gold:'C6A15B',pale:'E9DFC9',ink:'202938',muted:'697586',line:'D7D0C3',green:'287A61',amber:'A87524',red:'A94343',white:'FFFFFF'};
+function donutSvg(byCat, size=600) {
+  const cx=size/2,cy=size/2,R=size*.42,r=size*.23,total=Object.values(byCat).reduce((a,b)=>a+b,0);
+  const xy=(a,rad)=>{const t=(a-90)*Math.PI/180;return [cx+rad*Math.cos(t),cy+rad*Math.sin(t)];};
+  let acc=0,paths='';
+  if(total) Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([cat,val])=>{
+    const a0=acc/total*360;acc+=val;const a1=acc/total*360,large=a1-a0>180?1:0;
+    const [x0,y0]=xy(a0,R),[x1,y1]=xy(a1,R),col=CATCOL[cat]||'9AA7B2';
+    paths+=`<path d="M${cx},${cy} L${x0},${y0} A${R},${R} 0 ${large} 1 ${x1},${y1} Z" fill="#${col}"/>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="100%" height="100%" fill="#fff"/>${paths}<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff"/></svg>`;
+}
+function barsSvg(byCat, width=1000) {
+  const entries=Object.entries(byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const height=Math.max(190,entries.length*48+48),max=Math.max(1,...entries.map(x=>x[1])),total=entries.reduce((a,x)=>a+x[1],0)||1;
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let body='';
+  entries.forEach(([cat,val],i)=>{
+    const y=34+i*48,w=Math.max(2,(width-300)*val/max),pct=Math.round(val/total*100),col=CATCOL[cat]||'9AA7B2';
+    body+=`<text x="${width-12}" y="${y+16}" text-anchor="end" font-family="Tahoma,Arial" font-size="19" fill="#202938">${esc(cat)}</text><rect x="18" y="${y+23}" width="${width-320}" height="13" rx="6" fill="#edf1f4"/><rect x="18" y="${y+23}" width="${w}" height="13" rx="6" fill="#${col}"/><text x="18" y="${y+13}" font-family="Tahoma,Arial" font-size="15" fill="#697586">${money(val)} د.ل · ${pct}%</text>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#fff"/><text x="${width-12}" y="22" text-anchor="end" font-family="Tahoma,Arial" font-size="17" font-weight="bold" fill="#0B5C7A">قيمة التكلفة حسب الفئة / Cost by category</text>${body}</svg>`;
+}
+
 
 function style(cell, opts = {}) {
   const c = COLORS;
@@ -144,6 +168,15 @@ async function makeCost(order, ctx) {
   [7,8,9].forEach(r=>sum.getRow(r).height=24);
   merge(sum,'A11:J11','تحليل توزيع التكلفة حسب الفئة | COST BREAKDOWN',{size:12,bold:true,color:COLORS.white,bg:COLORS.gold});
   sum.getRow(11).height=27;
+  if(cats.length){
+    const donut=await sharp(Buffer.from(donutSvg(byCat,600))).png().toBuffer();
+    const bar=await sharp(Buffer.from(barsSvg(byCat,1000))).png().toBuffer();
+    sum.addImage(wb.addImage({buffer:donut,extension:'png'}),{tl:{col:0,row:11},ext:{width:270,height:235}});
+    sum.addImage(wb.addImage({buffer:bar,extension:'png'}),{tl:{col:4,row:11},ext:{width:520,height:235}});
+  }else{
+    merge(sum,'A13:J17','لا توجد تكاليف مسعّرة كافية لعرض توزيع الفئات',{size:12,color:COLORS.muted,bg:'F7F9FA'});
+  }
+  merge(sum,'A25:J25',cats.length?'ملخص الفئات / CATEGORY SUMMARY':'ملخص الفئات / CATEGORY SUMMARY',{size:11,bold:true,color:COLORS.white,bg:COLORS.navy});
   merge(sum,'A13:J13',cats.length?'ملخص الفئات / CATEGORY SUMMARY':'لا توجد أصناف مسعّرة كافية لعرض التوزيع',{size:11,bold:true,color:COLORS.navy,bg:'F3F6F8'});
   sum.mergeCells('A14:D14');sum.mergeCells('E14:G14');sum.mergeCells('H14:J14');
   [['A14','الفئة / CATEGORY'],['E14','التكلفة / COST'],['H14','النسبة / SHARE']].forEach(([a,v])=>{sum.getCell(a).value=v;style(sum.getCell(a),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true})});
