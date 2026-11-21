@@ -25,7 +25,6 @@ jobs:
           const end = html.indexOf('</script>', start);
           if (start < 0 || end < 0) throw new Error('Inline dashboard script not found');
           new Function(html.slice(start + 8, end));
-          new Function(match[1]);
           console.log('Dashboard JavaScript syntax OK');
           NODE
       - name: Check per-order and missing-price safeguards
