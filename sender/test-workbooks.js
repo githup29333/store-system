@@ -20,6 +20,8 @@ const { generateWorkbooks } = require('./workbooks');
   await issue.xlsx.load(files.issue);
   assert.ok(issue.getWorksheet('Issue'));
   assert.equal(issue.getWorksheet('Issue').getCell('B7').value,'أرز');
+  assert.equal(issue.getWorksheet('Issue').getCell('F6').value,'الوحدة / Unit');
+  assert.equal(issue.getWorksheet('Issue').getCell('F7').value,'كيلو');
   const cost = new ExcelJS.Workbook();
   await cost.xlsx.load(files.cost);
   const summary = cost.getWorksheet('ملخص الإدارة - EXECUTIVE');
