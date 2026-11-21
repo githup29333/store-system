@@ -182,7 +182,7 @@ async function main(){
   throw new Error('Unknown MODE: '+mode);
  }
 
- const rows=await rest('deliveries?select=*&status=eq.approved&order=approved_at.asc&limit='+LIMIT);
+ const rows=await rest('deliveries?select=*&status=eq.approved&dept=neq.ALL&order=approved_at.asc&limit='+LIMIT);
  if(!rows.length){console.log('Nothing approved to send');return;}
  const rec=await rest('recipients?select=kind,email,name,hotel&active=eq.true&order=id.asc');
  const hs=await rest('hotels?select=code,name').catch(()=>[]);
