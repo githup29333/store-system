@@ -31,3 +31,7 @@ In the dashboard's **الإرسال** section:
 - Workbook generation failure marks the delivery failed; it never sends one attachment alone.
 - An interrupted/ambiguous SMTP attempt is marked failed for mailbox verification rather than automatically retried, reducing duplicate emails.
 - The workflow uses the service-role key and SMTP credentials only from GitHub Actions secrets. Never add these values to source files.
+
+## Issue note item units
+
+The issue-note Excel attachment now shows the actual measurement unit from each completed issue line in the final column, replacing the remarks column. The same unit field is used by the dashboard and device-side issue workbook exports. The Greek yogurt catalog label is maintained as `زبادي يوناني / Greek Yogurt (pcs)` to distinguish it from plain yogurt drink and ayran.
