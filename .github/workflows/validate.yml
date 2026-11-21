@@ -1,0 +1,43 @@
+name: validate-order-system
+on:
+  push:
+    branches:
+      - feature/daily-hotel-reports
+  pull_request:
+    branches:
+      - main
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check sender syntax
+        run: node --check sender/send.js
+      - name: Check dashboard JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('dashboard.html', 'utf8');
+          const match = html.match(/<script>([\\s\\S]*?)<\\/script>/i);
+          if (!match) throw new Error('Inline dashboard script not found');
+          new Function(match[1]);
+          console.log('Dashboard JavaScript syntax OK');
+          NODE
+      - name: Check per-order and missing-price safeguards
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const dashboard = fs.readFileSync('dashboard.html', 'utf8');
+          const sender = fs.readFileSync('sender/send.js', 'utf8');
+          const assert = require('node:assert/strict');
+          assert.match(dashboard, /function orderCostDetail[\\s\\S]*?return \\{lines,total,missing,priced,byCat/);
+          assert.match(dashboard, /السعر غير متوفر حالياً \\/ Pending price/);
+          assert.match(dashboard, /async function approveOne[\\s\\S]*?cost_path:costPath/);
+          assert.match(sender, /Issue_.*?xlsx[\\s\\S]*?Cost_.*?xlsx/);
+          assert.match(sender, /if \\(!d\\.file_path \\|\\| !d\\.cost_path\\)/);
+          assert.doesNotMatch(dashboard, /Dept Yesterday|Diff vs Yesterday/);
+          console.log('Order isolation and missing-price safeguards OK');
+          NODE
