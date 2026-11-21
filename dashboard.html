@@ -356,7 +356,7 @@ function priceMaps(){
  const groups={};live.forEach(p=>{const k=normC(p.name);(groups[k]=groups[k]||[]).push(p)});
  return {byCode,groups,live};
 }
-const UNIT_GROUP={'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق']};
+const UNIT_GROUP={'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق'],'كيلو':['كيلو','كجم','كغ','kg','KG']};
 function pickFromGroup(g,unitHint){
  if(!g||!g.length)return null;
  if(unitHint&&UNIT_GROUP[unitHint]){const m=g.find(x=>UNIT_GROUP[unitHint].includes(x.unit));if(m)return m}
