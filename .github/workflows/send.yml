@@ -5,7 +5,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'send = إرسال الموافق عليه | test = رسالة اختبار فقط'
+        description: 'send = إرسال الموافق عليه | manual = تشغيل كل الطلبات المنتظرة الآن | test = رسالة اختبار فقط'
+        type: choice
+        options:
+          - send
+          - manual
+          - test
         default: 'send'
 concurrency:
   group: send-issue-emails
@@ -25,7 +30,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: node send.js
         env:
-          MODE: ${{ github.event.inputs.mode }}
+          MODE: ${{ github.event_name == 'schedule' && 'auto' || github.event.inputs.mode || 'auto' }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
