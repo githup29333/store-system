@@ -162,15 +162,22 @@ async function main(){
  if(mode==='auto'){
   const cfgRows=await rest('app_secrets?select=value&key=eq.auto_send_config');
   let cfg={};try{cfg=JSON.parse(cfgRows[0]?.value||'{}')}catch(e){}
-  if(!cfg.enabled){console.log('Automatic sending is disabled in dashboard settings');return;}
-  const tz=cfg.timezone||'Africa/Tripoli',now=localParts(new Date(),tz);
-  if(!atOrAfter(now,cfg.time||'15:00')){console.log('Waiting for configured local time '+(cfg.time||'15:00')+' '+tz);return;}
-  const created=cfg.enabled_at||'1970-01-01T00:00:00.000Z';
-  const pending=await rest('deliveries?select=*&status=eq.pending&dept=neq.ALL&created_at=gte.'+enc(created)+'&order=created_at.asc&limit='+LIMIT);
-  if(!pending.length){console.log('No new completed orders eligible for automatic sending');return;}
-  const ctx=await loadContext();
-  const n=await preparePending(pending,ctx);
-  console.log('Prepared '+n+' completed order(s) for automatic dispatch');
+  if(!cfg.enabled){
+   console.log('Automatic sending is disabled; approved manual orders will still be processed');
+  }else{
+   const tz=cfg.timezone||'Africa/Tripoli',now=localParts(new Date(),tz);
+   if(!atOrAfter(now,cfg.time||'15:00')){
+    console.log('Waiting for configured local time '+(cfg.time||'15:00')+' '+tz);
+   }else{
+    const created=cfg.enabled_at||'1970-01-01T00:00:00.000Z';
+    const pending=await rest('deliveries?select=*&status=eq.pending&dept=neq.ALL&created_at=gte.'+enc(created)+'&order=created_at.asc&limit='+LIMIT);
+    if(pending.length){
+     const ctx=await loadContext();
+     const n=await preparePending(pending,ctx);
+     console.log('Prepared '+n+' completed order(s) for automatic dispatch');
+    }else console.log('No new completed orders eligible for automatic sending');
+   }
+  }
  }else if(mode==='manual'){
   const pending=await rest('deliveries?select=*&status=eq.pending&dept=neq.ALL&order=created_at.asc&limit='+LIMIT);
   if(pending.length){
