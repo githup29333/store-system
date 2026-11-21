@@ -146,7 +146,14 @@ async function runTest(){
    {filename:'Issue_'+d.dept+'_'+d.no+'.xlsx',content:Buffer.from(bufs[0]),contentType:XL},
    {filename:'Cost_'+d.dept+'_'+d.no+'.xlsx',content:Buffer.from(bufs[1]),contentType:XL}
   ]});
- console.log('Test email sent to '+to+' with two verified XLSX attachments.');
+ const existing=await rest('app_secrets?select=value&key=eq.auto_send_config');
+ let cfg={enabled:false,time:'15:00',timezone:'Africa/Tripoli'};
+ try{if(existing[0]?.value)cfg={...cfg,...JSON.parse(existing[0].value)}}catch(e){}
+ cfg.test_passed_at=new Date().toISOString();
+ await rest('app_secrets?on_conflict=key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({
+  key:'auto_send_config',value:JSON.stringify(cfg),updated_at:cfg.test_passed_at
+ })});
+ console.log('Test email sent to '+to+' with two verified Excel attachments; automatic activation is now unlocked.');
 }
 
 async function main(){
