@@ -107,7 +107,7 @@ async function makeIssue(order) {
   ws.mergeCells('A'+(end+2)+':C'+(end+2)); put('A'+(end+2),'مقدّم الطلب / Requested by\nالتوقيع / Signature: ____________',{border:true,align:'right'});
   ws.mergeCells('D'+(end+2)+':F'+(end+2)); put('D'+(end+2),'أمين المخزن / Storekeeper\nالتوقيع / Signature: ____________',{border:true,align:'right'});
   ws.getRow(end+2).height=58;
-  ws.mergeCells('A'+(end+3)+':F'+(end+3)); put('A'+(end+3),'الأصناف غير المصروفة غير مدرجة / Unissued items are excluded',{size:9,color:'FF697586'});
+  ws.mergeCells('A'+(end+3)+':F'+(end+3)); put('A'+(end+3),'الأصناف غير المصروفة غير مدرجة / Unissued items are excluded',{size:9,color:'697586'});
   return wb.xlsx.writeBuffer();
 }
 
@@ -145,7 +145,6 @@ async function makeCost(order, ctx) {
   merge(sum,'A11:J11','تحليل توزيع التكلفة حسب الفئة | COST BREAKDOWN',{size:12,bold:true,color:COLORS.white,bg:COLORS.gold});
   sum.getRow(11).height=27;
   merge(sum,'A13:J13',cats.length?'ملخص الفئات / CATEGORY SUMMARY':'لا توجد أصناف مسعّرة كافية لعرض التوزيع',{size:11,bold:true,color:COLORS.navy,bg:'F3F6F8'});
-  ['الفئة / CATEGORY','التكلفة / COST','النسبة / SHARE'].forEach((v,i)=>{const cell=sum.getCell(14,i+1);cell.value=v;style(cell,{bold:true,color:COLORS.white,bg:COLORS.navy,border:true});});
   sum.mergeCells('A14:D14');sum.mergeCells('E14:G14');sum.mergeCells('H14:J14');
   [['A14','الفئة / CATEGORY'],['E14','التكلفة / COST'],['H14','النسبة / SHARE']].forEach(([a,v])=>{sum.getCell(a).value=v;style(sum.getCell(a),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true})});
   let rr=15;
