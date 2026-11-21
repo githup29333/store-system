@@ -71,7 +71,7 @@ h3{margin:18px 0 6px}
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match';
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const DSEL=new Set(),enc=encodeURIComponent;
@@ -136,6 +136,7 @@ async function load(){
   fillHF();
   try{[PRICES,LINKS]=await Promise.all([api('prices?select=*&order=id.asc&limit=2000'),api('item_price_link?select=*&limit=2000')])}catch(e){PRICES=[];LINKS=[]}
   GHTOK=await api('app_secrets?select=value&key=eq.gh_dispatch').then(r=>r[0]&&r[0].value||null).catch(()=>null);
+  AUTOCFG=await api('app_secrets?select=value&key=eq.auto_send_config').then(r=>{try{return r[0]?JSON.parse(r[0].value):AUTOCFG}catch(e){return AUTOCFG}}).catch(()=>AUTOCFG);
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
  drawS();drawO();drawI();drawL();drawD();drawC();drawK();
@@ -244,7 +245,12 @@ function drawD(){
  const rows=DV().map(d=>{const [lb,cl]=ST[d.status]||[d.status,''],age=(Date.now()-new Date(d.updated_at))/36e5,late=['pending','approved','sending','failed'].includes(d.status)&&age>6;
   const act=['pending','failed'].includes(d.status)?`<button class="btn" data-ap="${esc(d.key)}">موافقة وإرسال</button> <button class="btn alt" data-sk="${esc(d.key)}">تجاهل</button>`:'';
   return `<tr><td>${['pending','failed'].includes(d.status)&&d.dept!=='ALL'?`<input type="checkbox" data-sel="${esc(d.key)}" ${DSEL.has(d.key)?'checked':''}>`:''}</td><td>${esc(d.hotel||'')}</td><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="7">لا توجد نتائج للإرسال بعد</td></tr>';
- $('#d').innerHTML=`<div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
+ $('#d').innerHTML=`<h3>الإرسال التلقائي / AUTOMATIC SENDING</h3>
+ <div class="row"><label><input type="checkbox" id="autoEnabled" ${AUTOCFG.enabled?'checked':''}> تفعيل الإرسال التلقائي للطلبات المكتملة</label>
+ <label>وقت الإرسال اليومي <input type="time" id="autoTime" value="${esc(AUTOCFG.time||'15:00')}"></label>
+ <span style="color:var(--mut)">توقيت ليبيا (Africa/Tripoli)</span><button class="btn" id="autoSave">حفظ إعدادات الإرسال</button></div>
+ <p style="color:var(--mut);font-size:13px">يتم فحص الطلبات كل 5 دقائق بعد الوقت المحدد. الطلبات القديمة قبل تفعيل الإعداد لا تُرسل تلقائياً.</p>
+ <div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
  <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
  <h3>المستلمون</h3><div class="wrap"><table><tr><th>الفندق</th><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
  <h3>الإرسال الفوري (GitHub)</h3>
@@ -252,9 +258,9 @@ function drawD(){
  <div class="row"><input type="text" id="gtok" placeholder="الصق مفتاح GitHub هنا" style="flex:1;direction:ltr;-webkit-text-security:disc" autocomplete="off"><button class="btn" id="gsave">حفظ المفتاح</button>${GHTOK?'<button class="btn bad" id="gdel">حذف</button>':''}<button class="btn alt" id="gnow">تشغيل الإرسال الآن</button></div>
  <div class="row" style="margin-top:10px"><select id="rh">${HOTELS.map(h=>`<option value="${esc(h.code)}" ${h.code===HSEL?'selected':''}>${esc(h.code)}</option>`).join('')}</select><select id="rk"><option value="to">To</option><option value="cc">CC</option></select><input type="text" id="rn" placeholder="الاسم" style="flex:1"><input type="email" id="re" placeholder="البريد" style="flex:1;direction:ltr"><button class="btn" id="radd">إضافة</button></div>`;
 }
-async function ghRun(){
+async function ghRun(mode='send'){
  if(!GHTOK)return 'no-token';
- try{const r=await fetch('https://api.github.com/repos/githup29333/store-system/actions/workflows/send.yml/dispatches',{method:'POST',headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+GHTOK,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},body:JSON.stringify({ref:'main',inputs:{mode:'send'}})});
+ try{const r=await fetch('https://api.github.com/repos/githup29333/store-system/actions/workflows/send.yml/dispatches',{method:'POST',headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+GHTOK,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},body:JSON.stringify({ref:'main',inputs:{mode}})});
   return r.status===204?'ok':'HTTP '+r.status}catch(e){return e.message}
 }
 $('#d').onchange=e=>{const k=e.target.dataset&&e.target.dataset.sel;if(k===undefined)return;e.target.checked?DSEL.add(k):DSEL.delete(k)};
@@ -331,7 +337,14 @@ $('#d').onclick=async e=>{
   if(b.id==='dsEach')return bulkEach();
   if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'gh_dispatch',value:v,updated_at:new Date().toISOString()})});GHTOK=v;drawD();return alert('تم حفظ المفتاح')}
   if(b.id==='gdel'){await api('app_secrets?key=eq.gh_dispatch',{method:'DELETE'});GHTOK=null;drawD();return}
-  if(b.id==='gnow'){const g=await ghRun();return alert(g==='ok'?'تم تشغيل الإرسال الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
+  if(b.id==='gnow'){const g=await ghRun('manual');return alert(g==='ok'?'تم تشغيل الإرسال اليدوي للطلبات المنتظرة الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
+  if(b.id==='autoSave'){
+   const enabled=$('#autoEnabled').checked,time=$('#autoTime').value||'15:00';
+   if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time))return alert('وقت غير صالح');
+   const cfg={enabled,time,timezone:'Africa/Tripoli',enabled_at:enabled?(AUTOCFG.enabled&&AUTOCFG.enabled_at?AUTOCFG.enabled_at:new Date().toISOString()):(AUTOCFG.enabled_at||null)};
+   await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'auto_send_config',value:JSON.stringify(cfg),updated_at:new Date().toISOString()})});
+   AUTOCFG=cfg;drawD();return alert(enabled?'تم حفظ إعداد الإرسال التلقائي. سيعمل بعد الوقت المحدد للطلبات الجديدة فقط.':'تم إيقاف الإرسال التلقائي');
+  }
   if(b.dataset.sk){await api('deliveries?key=eq.'+encodeURIComponent(b.dataset.sk),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'skipped',updated_at:new Date().toISOString()})});return load()}
   if(b.dataset.rd){if(!confirm('حذف هذا المستلم؟'))return;await api('recipients?id=eq.'+b.dataset.rd,{method:'DELETE'});return load()}
   if(b.id==='radd'){const em=$('#re').value.trim();if(!/^\S+@\S+\.\S+$/.test(em))return alert('البريد غير صحيح');
