@@ -35,27 +35,40 @@ function parseDelivery(d, ctx) {
   };
 }
 
+const UNIT_GROUP = {'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق'],'كيلو':['كيلو','كجم','كغ','kg','KG']};
+function pickFromGroup(group,unitHint){
+  if(!group||!group.length)return null;
+  if(unitHint&&UNIT_GROUP[unitHint]){
+    const match=group.find(p=>UNIT_GROUP[unitHint].includes(p.unit));
+    if(match)return match;
+  }
+  return group.find(p=>p.unit==='صندوق')||group[0];
+}
 function priceFor(line, ctx) {
-  const prices = (ctx.prices || []).filter(p => !p.archived && Number(p.cost) > 0);
-  const link = (ctx.links || []).find(x => Number(x.item_id) === line.id);
-  if (link?.method === 'none') return null;
-  if (link?.price_id) {
-    const selected = prices.find(p => Number(p.id) === Number(link.price_id));
-    if (selected) return selected;
+  const prices=(ctx.prices||[]).filter(p=>!p.archived&&Number(p.cost)>0);
+  const groups={};
+  prices.forEach(p=>{const k=clean(p.name);(groups[k]=groups[k]||[]).push(p);});
+  const link=(ctx.links||[]).find(x=>Number(x.item_id)===line.id);
+  if(link?.method==='none')return null;
+  if(link?.price_id){
+    const selected=prices.find(p=>Number(p.id)===Number(link.price_id));
+    if(selected){
+      if(!line.unit||!UNIT_GROUP[line.unit]||UNIT_GROUP[line.unit].includes(selected.unit))return selected;
+      return pickFromGroup(groups[clean(selected.name)],line.unit)||selected;
+    }
   }
-  const n1 = clean(line.ar), n2 = clean(line.en);
-  let exact = prices.find(p => clean(p.name) === n1 || (n2 && clean(p.name) === n2));
-  if (exact) return exact;
-  const wanted = tokens(line.ar + ' ' + line.en);
-  let best = null, bestScore = 0;
-  for (const p of prices) {
-    const have = tokens(p.name);
-    if (!wanted.size || !have.size) continue;
-    const overlap = [...wanted].filter(x => have.has(x)).length;
-    const score = overlap / Math.max(wanted.size, have.size);
-    if (score > bestScore) { best = p; bestScore = score; }
+  const exact=groups[clean(line.ar)]||(line.en?groups[clean(line.en)]:null);
+  if(exact)return pickFromGroup(exact,line.unit);
+  const wanted=tokens(line.ar+' '+line.en);
+  let best=null,bestScore=0;
+  for(const p of prices){
+    const have=tokens(p.name);
+    if(!wanted.size||!have.size)continue;
+    const overlap=[...wanted].filter(x=>have.has(x)).length;
+    const score=overlap/Math.max(wanted.size,have.size);
+    if(score>bestScore){best=p;bestScore=score;}
   }
-  return bestScore >= 0.55 ? best : null;
+  return bestScore>=0.55?best:null;
 }
 
 const CATS = ['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','خضروات وفواكه','أخرى'];
