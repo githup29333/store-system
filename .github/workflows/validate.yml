@@ -14,8 +14,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install sender dependencies
+        working-directory: sender
+        run: npm install --no-audit --no-fund
       - name: Check sender syntax
-        run: node --check sender/send.js
+        working-directory: sender
+        run: node --check send.js && node --check workbooks.js
+      - name: Run workbook tests
+        working-directory: sender
+        run: npm test
       - name: Check dashboard JavaScript syntax
         run: |
           node <<'NODE'
