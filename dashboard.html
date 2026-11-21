@@ -245,7 +245,7 @@ function drawD(){
   const act=['pending','failed'].includes(d.status)?`<button class="btn" data-ap="${esc(d.key)}">موافقة وإرسال</button> <button class="btn alt" data-sk="${esc(d.key)}">تجاهل</button>`:'';
   return `<tr><td>${['pending','failed'].includes(d.status)&&d.dept!=='ALL'?`<input type="checkbox" data-sel="${esc(d.key)}" ${DSEL.has(d.key)?'checked':''}>`:''}</td><td>${esc(d.hotel||'')}</td><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="7">لا توجد نتائج للإرسال بعد</td></tr>';
  $('#d').innerHTML=`<div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
- <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button><button class="btn ok" id="dsMerge">دمج المحدد في ملف واحد وإرسال</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
+ <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
  <h3>المستلمون</h3><div class="wrap"><table><tr><th>الفندق</th><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
  <h3>الإرسال الفوري (GitHub)</h3>
  <p>${GHTOK?'<span class="tag t-ok">مفعّل</span> الضغط على "موافقة وإرسال" يشغّل الإرسال فوراً.':'<span class="tag t-bad">غير مفعّل</span> الإرسال يعتمد على الجدولة وقد يتأخر ساعات.'}</p>
@@ -329,7 +329,6 @@ $('#d').onclick=async e=>{
   if(b.id==='dsAll'){DEL.filter(d=>['pending','failed'].includes(d.status)&&d.dept!=='ALL').forEach(d=>DSEL.add(d.key));return drawD()}
   if(b.id==='dsNone'){DSEL.clear();return drawD()}
   if(b.id==='dsEach')return bulkEach();
-  if(b.id==='dsMerge')return bulkMerge();
   if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'gh_dispatch',value:v,updated_at:new Date().toISOString()})});GHTOK=v;drawD();return alert('تم حفظ المفتاح')}
   if(b.id==='gdel'){await api('app_secrets?key=eq.gh_dispatch',{method:'DELETE'});GHTOK=null;drawD();return}
   if(b.id==='gnow'){const g=await ghRun();return alert(g==='ok'?'تم تشغيل الإرسال الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
