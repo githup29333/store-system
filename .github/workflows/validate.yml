@@ -21,8 +21,10 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('dashboard.html', 'utf8');
-          const match = html.match(/<script>([\\s\\S]*?)<\\/script>/i);
-          if (!match) throw new Error('Inline dashboard script not found');
+          const start = html.indexOf('<script>');
+          const end = html.indexOf('</script>', start);
+          if (start < 0 || end < 0) throw new Error('Inline dashboard script not found');
+          new Function(html.slice(start + 8, end));
           new Function(match[1]);
           console.log('Dashboard JavaScript syntax OK');
           NODE
