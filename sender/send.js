@@ -108,6 +108,7 @@ async function sendOne(d,to,cc,hotelName){
    ]
   });
   const rej=(info.rejected||[]).map(x=>x.address||x);
+  if(!(info.accepted||[]).length)throw new Error('NOFATAL لم يقبل خادم البريد أي مستلم / SMTP accepted no recipients');
   const done=await rest(q+'&status=eq.sending',{method:'PATCH',headers:REP,body:JSON.stringify({
    status:'sent',sent_at:new Date().toISOString(),
    error:rej.length?'رُفض لبعض المستلمين / rejected: '+rej.join(', '):null
