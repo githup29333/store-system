@@ -463,9 +463,9 @@ function barSVG(byCat,sz){
 async function buildCostBook(d){
  const ord=ordH(d),det=orderCostDetail(ord);
  const wb=new ExcelJS.Workbook();
- wb.creator='Store System';wb.subject='Per-order cost report';wb.title='Order Cost Report';
+ wb.creator='Store System';wb.subject='Premium bilingual per-order cost report';wb.title='Premium Order Cost Dashboard';
  wb.created=new Date();wb.modified=new Date();
- const F='Tahoma',navy='17324D',teal='087E8B',pale='EAF2F5',ink='203040',muted='667788',line='D8E1E8',green='16836A',amber='B7791F',red='B54747',white='FFFFFF';
+ const F='Tahoma',navy='101827',teal='C6A15B',pale='E9DFC9',ink='202938',muted='697586',line='D7D0C3',green='287A61',amber='A87524',red='A94343',white='FFFFFF';
  const border={top:{style:'thin',color:{argb:'FF'+line}},bottom:{style:'thin',color:{argb:'FF'+line}},left:{style:'thin',color:{argb:'FF'+line}},right:{style:'thin',color:{argb:'FF'+line}}};
  const fill=(c)=>({type:'pattern',pattern:'solid',fgColor:{argb:'FF'+c}});
  const styleCell=(cell,o={})=>{
@@ -480,14 +480,14 @@ async function buildCostBook(d){
   ws.views=[{rightToLeft:true,showGridLines:false}];
   ws.properties.defaultRowHeight=22;
   ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,margins:{left:.25,right:.25,top:.45,bottom:.45,header:.2,footer:.2}};
-  ws.headerFooter={oddFooter:'&RInternal management report  |  Page &P of &N'};
+  ws.headerFooter={oddFooter:'&Rتقرير داخلي / INTERNAL MANAGEMENT REPORT  |  Page &P of &N'};
  };
  // صفحة الملخص التنفيذي
- const sum=wb.addWorksheet('ملخص الإدارة');meta(sum);
+ const sum=wb.addWorksheet('ملخص الإدارة - EXECUTIVE');meta(sum);
  sum.columns=[{width:5},{width:20},{width:20},{width:4},{width:20},{width:20},{width:4},{width:20},{width:20},{width:5}];
  mergeText(sum,'A1:J1',ord.hotelName||'HOTEL',{size:20,bold:true,color:white,bg:navy});
  sum.getRow(1).height=42;
- mergeText(sum,'A2:J2','تقرير تكلفة الصرف  |  ORDER COST OVERVIEW',{size:13,bold:true,color:teal,bg:pale});
+ mergeText(sum,'A2:J2','لوحة تكلفة الصرف  |  ORDER COST DASHBOARD',{size:13,bold:true,color:teal,bg:pale});
  sum.getRow(2).height=30;
  mergeText(sum,'A4:C4','القسم / DEPARTMENT',{size:9,bold:true,color:muted,bg:'F3F6F8',border:true});
  mergeText(sum,'D4:F4','رقم الطلب / ORDER NO.',{size:9,bold:true,color:muted,bg:'F3F6F8',border:true});
@@ -539,26 +539,26 @@ async function buildCostBook(d){
  cr+=2;
  if(det.missing){
   sum.mergeCells('A'+cr+':J'+(cr+1));
-  styleCell(sum.getCell('A'+cr),{size:10,bold:true,color:amber,bg:'FFF5E8',align:'right',border:true}).value='تنبيه تسعير: يوجد '+det.missing+' صنف/أصناف لم يتوفر لها سعر من الإدارة. تم الإبقاء عليها في تفاصيل التقرير، والإجمالي أعلاه يشمل الأصناف المسعّرة فقط.';
+  styleCell(sum.getCell('A'+cr),{size:10,bold:true,color:amber,bg:'FFF5E8',align:'right',border:true}).value='تنبيه تسعير / PRICING ALERT: يوجد '+det.missing+' صنف/أصناف بانتظار سعر الإدارة / item(s) pending management pricing. تم الإبقاء عليها في التفاصيل / retained in details. الإجمالي يشمل الأصناف المسعّرة فقط / Total includes priced items only.';
   sum.getRow(cr).height=27;sum.getRow(cr+1).height=24;cr+=2;
  }
  if(det.anyEstimated){
   sum.mergeCells('A'+cr+':J'+cr);
-  styleCell(sum.getCell('A'+cr),{size:9,color:amber,bg:'FFF9EF',align:'right'}).value='* الأسعار المعلّمة بنجمة تقديرية وغير مؤكدة.';
+  styleCell(sum.getCell('A'+cr),{size:9,color:amber,bg:'FFF9EF',align:'right'}).value='* أسعار تقديرية / Estimated prices: الأسعار المعلّمة بنجمة غير مؤكدة / starred values are unconfirmed.';
   cr++;
  }
  sum.mergeCells('A'+(cr+1)+':J'+(cr+1));
- styleCell(sum.getCell('A'+(cr+1)),{size:8,color:muted}).value='الأسعار وفق قائمة أسعار المخزن المتاحة وقت إنشاء التقرير، وقد تختلف عن سعر الشراء الفعلي.';
+ styleCell(sum.getCell('A'+(cr+1)),{size:8,color:muted}).value='مصدر الأسعار / PRICE BASIS: وفق قائمة أسعار المخزن وقت إنشاء التقرير / based on the available store price list at report generation.';
  sum.printArea='A1:J'+(cr+1);sum.pageSetup.printArea='A1:J'+(cr+1);
  // صفحة التفاصيل
- const detws=wb.addWorksheet('تفاصيل الأصناف');meta(detws);
+ const detws=wb.addWorksheet('تفاصيل الأصناف - DETAILS');meta(detws);
  detws.columns=[{width:6},{width:30},{width:28},{width:22},{width:13},{width:13},{width:16},{width:18},{width:22}];
  mergeText(detws,'A1:I1',ord.hotelName||'HOTEL',{size:18,bold:true,color:white,bg:navy});detws.getRow(1).height=38;
  mergeText(detws,'A2:I2','تفاصيل تكلفة الطلب  |  ITEMIZED COST DETAILS',{size:13,bold:true,color:teal,bg:pale});detws.getRow(2).height=28;
- mergeText(detws,'A4:C4','القسم: '+(ord.dn||ord.dept),{bold:true,bg:'F3F6F8',border:true,align:'right'});
- mergeText(detws,'D4:F4','رقم الطلب: '+ord.no,{bold:true,bg:'F3F6F8',border:true});
- mergeText(detws,'G4:I4','التاريخ: '+dstrOf(ord),{bold:true,bg:'F3F6F8',border:true});
- mergeText(detws,'A6:I6','تفاصيل الأصناف والتكلفة',{bold:true,color:white,bg:teal,size:12});detws.getRow(6).height=26;
+ mergeText(detws,'A4:C4','القسم / DEPARTMENT: '+(ord.dn||ord.dept),{bold:true,bg:'F3F6F8',border:true,align:'right'});
+ mergeText(detws,'D4:F4','رقم الطلب / ORDER NO.: '+ord.no,{bold:true,bg:'F3F6F8',border:true});
+ mergeText(detws,'G4:I4','التاريخ / DATE: '+dstrOf(ord),{bold:true,bg:'F3F6F8',border:true});
+ mergeText(detws,'A6:I6','تفاصيل الأصناف والتكلفة / ITEM & COST DETAILS',{bold:true,color:white,bg:teal,size:12});detws.getRow(6).height=26;
  const headers=['#','الصنف بالعربية','ITEM NAME','الفئة / CATEGORY','الوحدة / UNIT','الكمية / QTY','سعر الوحدة / UNIT PRICE','الإجمالي / LINE TOTAL','حالة التسعير / STATUS'];
  headers.forEach((v,i)=>{const c=detws.getCell(7,i+1);c.value=v;styleCell(c,{bold:true,color:white,bg:navy,border:true,size:9})});
  detws.getRow(7).height=34;
@@ -579,7 +579,7 @@ async function buildCostBook(d){
  let note=totalRow+2;
  if(det.missing){
   detws.mergeCells('A'+note+':I'+(note+1));
-  styleCell(detws.getCell('A'+note),{bold:true,color:amber,bg:'FFF5E8',align:'right',border:true}).value='ملاحظة: '+det.missing+' صنف/أصناف بدون سعر حالياً من الإدارة. الأصناف موجودة في الجدول، ولا تؤثر على إرسال التقرير. الإجمالي يحسب الأصناف المسعّرة فقط.';
+  styleCell(detws.getCell('A'+note),{bold:true,color:amber,bg:'FFF5E8',align:'right',border:true}).value='ملاحظة تسعير / PRICING NOTE: '+det.missing+' صنف/أصناف بانتظار سعر الإدارة / item(s) pending management pricing. الأصناف موجودة ولا تمنع الإرسال / items remain listed and do not block delivery. الإجمالي للأصناف المسعّرة فقط / priced items only.';
   detws.getRow(note).height=28;detws.getRow(note+1).height=24;
  }
  return wb;
