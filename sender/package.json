@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "nodemailer": "^6.9.0",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "sharp": "^0.33.5"
   }
 }
