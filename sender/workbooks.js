@@ -176,28 +176,28 @@ async function makeCost(order, ctx) {
   }else{
     merge(sum,'A13:J17','لا توجد تكاليف مسعّرة كافية لعرض توزيع الفئات',{size:12,color:COLORS.muted,bg:'F7F9FA'});
   }
-  merge(sum,'A25:J25',cats.length?'ملخص الفئات / CATEGORY SUMMARY':'ملخص الفئات / CATEGORY SUMMARY',{size:11,bold:true,color:COLORS.white,bg:COLORS.navy});
-  merge(sum,'A13:J13',cats.length?'ملخص الفئات / CATEGORY SUMMARY':'لا توجد أصناف مسعّرة كافية لعرض التوزيع',{size:11,bold:true,color:COLORS.navy,bg:'F3F6F8'});
-  sum.mergeCells('A14:D14');sum.mergeCells('E14:G14');sum.mergeCells('H14:J14');
-  [['A14','الفئة / CATEGORY'],['E14','التكلفة / COST'],['H14','النسبة / SHARE']].forEach(([a,v])=>{sum.getCell(a).value=v;style(sum.getCell(a),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true})});
-  let rr=15;
+  merge(sum,'A25:J25','ملخص الفئات | CATEGORY SUMMARY',{size:11,bold:true,color:COLORS.white,bg:COLORS.navy});
+  ['الفئة / CATEGORY','التكلفة / COST','النسبة / SHARE'].forEach((v,i)=>{const cell=sum.getCell(26,i+1);cell.value=v;style(cell,{bold:true,color:COLORS.white,bg:COLORS.gold,border:true});});
+  sum.mergeCells('A26:D26');sum.mergeCells('E26:G26');sum.mergeCells('H26:J26');
+  [['A26','الفئة / CATEGORY'],['E26','التكلفة / COST'],['H26','النسبة / SHARE']].forEach(([a,v])=>{sum.getCell(a).value=v;style(sum.getCell(a),{bold:true,color:COLORS.white,bg:COLORS.gold,border:true})});
+  let cr=27;
   cats.forEach(([cat,val],i)=>{
-    sum.mergeCells('A'+rr+':D'+rr);sum.mergeCells('E'+rr+':G'+rr);sum.mergeCells('H'+rr+':J'+rr);
-    style(sum.getCell('A'+rr),{align:'right',bg:i%2?'F5F8FA':COLORS.white,border:true}).value=cat;
-    style(sum.getCell('E'+rr),{bg:i%2?'F5F8FA':COLORS.white,border:true,numFmt:'#,##0.00'}).value=val;
-    style(sum.getCell('H'+rr),{bg:i%2?'F5F8FA':COLORS.white,border:true,numFmt:'0.0%'}).value=total?val/total:0;
-    rr++;
+    sum.mergeCells('A'+cr+':D'+cr);sum.mergeCells('E'+cr+':G'+cr);sum.mergeCells('H'+cr+':J'+cr);
+    style(sum.getCell('A'+cr),{align:'right',bg:i%2?'F5F8FA':COLORS.white,border:true}).value=cat;
+    style(sum.getCell('E'+cr),{bg:i%2?'F5F8FA':COLORS.white,border:true,numFmt:'#,##0.00'}).value=val;
+    style(sum.getCell('H'+cr),{bg:i%2?'F5F8FA':COLORS.white,border:true,numFmt:'0.0%'}).value=total?val/total:0;
+    cr++;
   });
-  if(!cats.length){sum.mergeCells('A15:J15');style(sum.getCell('A15'),{color:COLORS.muted}).value='لا توجد أصناف مسعّرة';rr=16;}
-  sum.mergeCells('A'+rr+':D'+rr);sum.mergeCells('E'+rr+':G'+rr);sum.mergeCells('H'+rr+':J'+rr);
-  style(sum.getCell('A'+rr),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true}).value='الإجمالي / TOTAL';
-  style(sum.getCell('E'+rr),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true,numFmt:'#,##0.00'}).value=total;
-  style(sum.getCell('H'+rr),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true,numFmt:'0.0%'}).value=total?1:0;
-  rr+=2;
-  if(missing){sum.mergeCells('A'+rr+':J'+(rr+1));style(sum.getCell('A'+rr),{size:10,bold:true,color:COLORS.amber,bg:'FFF5E8',align:'right',border:true}).value='تنبيه تسعير / PRICING ALERT: يوجد '+missing+' صنف بانتظار السعر. تم الإبقاء عليها في التفاصيل، والإجمالي يشمل الأصناف المسعّرة فقط / Missing-price items remain listed; total includes priced items only.';sum.getRow(rr).height=28;sum.getRow(rr+1).height=24;rr+=2;}
-  if(lines.some(x=>x.estimated)){sum.mergeCells('A'+rr+':J'+rr);style(sum.getCell('A'+rr),{size:9,color:COLORS.amber,bg:'FFF9EF',align:'right'}).value='* أسعار تقديرية / Estimated prices: القيم المعلّمة بنجمة غير مؤكدة / starred values are unconfirmed.';rr++;}
-  merge(sum,'A'+(rr+1)+':J'+(rr+1),'أساس التسعير: قائمة أسعار المخزن وقت إنشاء التقرير / Price basis: current store price list',{size:8,color:COLORS.muted});
-  sum.views=[{rightToLeft:true,showGridLines:false}];sum.pageSetup.printArea='A1:J'+(rr+1);
+  if(!cats.length){sum.mergeCells('A27:J27');style(sum.getCell('A27'),{color:COLORS.muted}).value='لا توجد أصناف مسعّرة';cr=28;}
+  sum.mergeCells('A'+cr+':D'+cr);sum.mergeCells('E'+cr+':G'+cr);sum.mergeCells('H'+cr+':J'+cr);
+  style(sum.getCell('A'+cr),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true}).value='الإجمالي / TOTAL';
+  style(sum.getCell('E'+cr),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true,numFmt:'#,##0.00'}).value=total;
+  style(sum.getCell('H'+cr),{bold:true,color:COLORS.white,bg:COLORS.navy,border:true,numFmt:'0.0%'}).value=total?1:0;
+  cr+=2;
+  if(missing){sum.mergeCells('A'+cr+':J'+(cr+1));style(sum.getCell('A'+cr),{size:10,bold:true,color:COLORS.amber,bg:'FFF5E8',align:'right',border:true}).value='تنبيه تسعير / PRICING ALERT: يوجد '+missing+' صنف بانتظار السعر. تم الإبقاء عليها في التفاصيل، والإجمالي يشمل الأصناف المسعّرة فقط / Missing-price items remain listed; total includes priced items only.';sum.getRow(cr).height=28;sum.getRow(cr+1).height=24;cr+=2;}
+  if(lines.some(x=>x.estimated)){sum.mergeCells('A'+cr+':J'+cr);style(sum.getCell('A'+cr),{size:9,color:COLORS.amber,bg:'FFF9EF',align:'right'}).value='* أسعار تقديرية / Estimated prices: القيم المعلّمة بنجمة غير مؤكدة / starred values are unconfirmed.';cr++;}
+  merge(sum,'A'+(cr+1)+':J'+(cr+1),'أساس التسعير: قائمة أسعار المخزن وقت إنشاء التقرير / Price basis: current store price list',{size:8,color:COLORS.muted});
+  sum.views=[{rightToLeft:true,showGridLines:false}];sum.pageSetup.printArea='A1:J'+(cr+1);
   const det=wb.addWorksheet('تفاصيل الأصناف - DETAILS');setup(det);
   det.columns=[{width:6},{width:30},{width:28},{width:22},{width:13},{width:13},{width:16},{width:18},{width:22}];
   merge(det,'A1:I1',order.hotel,{size:18,bold:true,color:COLORS.white,bg:COLORS.navy});det.getRow(1).height=38;
