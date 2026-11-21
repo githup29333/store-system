@@ -343,7 +343,7 @@ $('#d').onclick=async e=>{
    const enabled=$('#autoEnabled').checked,time=$('#autoTime').value||'15:00';
    if(enabled&&!AUTOCFG.test_passed_at)return alert('لا يمكن تفعيل الإرسال التلقائي قبل نجاح اختبار البريد. اضغط «اختبار البريد» أولاً ثم حدّث اللوحة.');
    if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return alert('وقت غير صالح');
-   const cfg={enabled,time,timezone:'Africa/Tripoli',enabled_at:enabled?(AUTOCFG.enabled&&AUTOCFG.enabled_at?AUTOCFG.enabled_at:new Date().toISOString()):(AUTOCFG.enabled_at||null)};
+   const cfg={enabled,time,timezone:'Africa/Tripoli',test_passed_at:AUTOCFG.test_passed_at||null,enabled_at:enabled?(AUTOCFG.enabled&&AUTOCFG.enabled_at?AUTOCFG.enabled_at:new Date().toISOString()):(AUTOCFG.enabled_at||null)};
    await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'auto_send_config',value:JSON.stringify(cfg),updated_at:new Date().toISOString()})});
    AUTOCFG=cfg;drawD();return alert(enabled?'تم حفظ إعداد الإرسال التلقائي. سيعمل بعد الوقت المحدد للطلبات الجديدة فقط.':'تم إيقاف الإرسال التلقائي');
   }
