@@ -122,7 +122,7 @@ async function makeIssue(order) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Store System'; wb.subject = 'Bilingual issue note'; wb.title = 'Issue ' + order.no;
   const ws = wb.addWorksheet('Issue', {views:[{rightToLeft:true,showGridLines:false}]});
-  ws.columns = [{width:7},{width:32},{width:30},{width:16},{width:16},{width:25}];
+  ws.columns = [{width:7},{width:32},{width:30},{width:16},{width:16},{width:15}];
   const put = (cell, value, o={}) => { style(ws.getCell(cell),o).value = value; };
   ws.mergeCells('A1:F1'); put('A1',order.hotel,{b:1,bold:true,size:18,color:'FFFFFF',bg:'0B2638',border:1});
   ws.getRow(1).height = 38;
@@ -131,11 +131,11 @@ async function makeIssue(order) {
   ws.mergeCells('A3:C3'); put('A3','القسم / Department: ' + order.dept,{b:1,bg:'EAF0F4',border:1});
   ws.mergeCells('D3:F3'); put('D3','رقم الطلب / Order: ' + order.no,{b:1,bg:'EAF0F4',border:1});
   ws.mergeCells('A4:F4'); put('A4','التاريخ / Date: ' + order.date,{bg:'F4F7F9',border:1});
-  ['#','الصنف بالعربية / Arabic item','ITEM NAME / English','المطلوب / Requested','المصروف / Issued','ملاحظات / Remarks'].forEach((v,i)=>put('ABCDEF'[i]+'6',v,{bold:true,color:'FFFFFF',bg:'0B5C7A',border:true}));
+  ['#','الصنف بالعربية / Arabic item','ITEM NAME / English','المطلوب / Requested','المصروف / Issued','الوحدة / Unit'].forEach((v,i)=>put('ABCDEF'[i]+'6',v,{bold:true,color:'FFFFFF',bg:'0B5C7A',border:true}));
   ws.getRow(6).height = 34;
   order.lines.forEach((x,i)=>{
     const r=7+i, bg=i%2?'FFF4F8FA':'FFFFFFFF';
-    [i+1,x.ar,x.en,x.req,x.issued,x.issued<x.req?'ناقص / Short':''].forEach((v,j)=>put('ABCDEF'[j]+r,v,{bg,border:true,bold:j===4,color:j===5&&v?'FFB4531A':undefined}));
+    [i+1,x.ar,x.en,x.req,x.issued,x.unit||'—'].forEach((v,j)=>put('ABCDEF'[j]+r,v,{bg,border:true,bold:j===4,color:j===5&&v?'FFB4531A':undefined}));
     ws.getRow(r).height=26;
   });
   const end=7+order.lines.length;
