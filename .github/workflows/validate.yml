@@ -35,7 +35,8 @@ jobs:
           const sender = fs.readFileSync('sender/send.js', 'utf8');
           const assert = require('node:assert/strict');
           assert.ok(dashboard.includes('return {lines,total,missing,priced,byCat'));
-          assert.ok(dashboard.includes('السعر غير متوفر حالياً / Pending price'));
+          assert.ok(dashboard.includes('بانتظار السعر'));
+          assert.ok(dashboard.includes('ملخص الإدارة') && dashboard.includes('تفاصيل الأصناف'));
           assert.ok(dashboard.includes('cost_path:costPath'));
           assert.ok(sender.includes('Issue_${d.dept}_${d.no}.xlsx'));
           assert.ok(sender.includes('Cost_${d.dept}_${d.no}.xlsx'));
