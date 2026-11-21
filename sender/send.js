@@ -38,16 +38,18 @@ async function sendOne(d, to, cc, hn) {
   const toPending = () => rest('deliveries?key=eq.' + enc(d.key) + '&status=eq.sending', { method: 'PATCH', body: JSON.stringify({ status: 'pending' }) }).catch(() => {});
   try {
     if (!to.length) throw new Error('NOFATAL لا يوجد مستلم من نوع To لهذا الفندق / no To recipient for this hotel');
-    if (!d.file_path) throw new Error('NOFATAL لا يوجد ملف مرفق / no file');
-    const fr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.file_path), { headers: H });
-    if (!fr.ok) throw new Error('تعذّر تنزيل الملف / download failed ' + fr.status);
-    const buf = Buffer.from(await fr.arrayBuffer());
-    const attachments = [{ filename: `Issue_${d.dept}_${d.no}.xlsx`, content: buf, contentType: XL }];
-    if (d.cost_path) {
-      const cfr = await fetch(URL_ + '/storage/v1/object/exports/' + enc(d.cost_path), { headers: H });
-      if (cfr.ok) attachments.push({ filename: `Cost_${d.dept}_${d.no}.xlsx`, content: Buffer.from(await cfr.arrayBuffer()), contentType: XL });
-      else console.error('Cost file missing for ' + d.key + ' (' + cfr.status + '), sending order file only');
-    }
+    if (!d.file_path || !d.cost_path) throw new Error('NOFATAL يجب توفر ملف الطلب وملف التكلفة معاً / both order and cost files are required');
+    const [fr, cfr] = await Promise.all([
+      fetch(URL_ + '/storage/v1/object/exports/' + enc(d.file_path), { headers: H }),
+      fetch(URL_ + '/storage/v1/object/exports/' + enc(d.cost_path), { headers: H })
+    ]);
+    if (!fr.ok) throw new Error('تعذّر تنزيل ملف الطلب / order download failed ' + fr.status);
+    if (!cfr.ok) throw new Error('تعذّر تنزيل ملف التكلفة / cost download failed ' + cfr.status);
+    const [buf, costBuf] = await Promise.all([fr.arrayBuffer(), cfr.arrayBuffer()]);
+    const attachments = [
+      { filename: `Issue_${d.dept}_${d.no}.xlsx`, content: Buffer.from(buf), contentType: XL },
+      { filename: `Cost_${d.dept}_${d.no}.xlsx`, content: Buffer.from(costBuf), contentType: XL }
+    ];
     const date = '20' + d.ds.slice(0, 2) + '-' + d.ds.slice(2, 4) + '-' + d.ds.slice(4);
     const name = d.dn || d.dept, upd = d.rev > 1;
     const info = await transport.sendMail({
@@ -80,8 +82,25 @@ async function main() {
   if (E.MODE === 'test') {
     await transport.verify();
     const to = E.TEST_TO || E.SMTP_USER;
-    await transport.sendMail({ from: FROM, to, subject: 'اختبار منظومة الصرف / Issuance system test', text: 'إذا وصلتك هذه الرسالة فالإرسال يعمل.\nIf you received this, sending works.' });
-    console.log('Test email sent to ' + to);
+    const hotel = E.TEST_HOTEL || 'EBR';
+    const rows = await rest('deliveries?select=hotel,dept,no,ds,dn,file_path,cost_path&hotel=eq.' + enc(hotel) + '&status=eq.sent&file_path=not.is.null&cost_path=not.is.null&order=updated_at.desc&limit=1');
+    if (!rows.length) throw new Error('No previously sent order with both Excel files found for test hotel ' + hotel);
+    const d = rows[0];
+    const paths = [d.file_path, d.cost_path];
+    const files = await Promise.all(paths.map(path => fetch(URL_ + '/storage/v1/object/exports/' + enc(path), { headers: H })));
+    if (files.some(r => !r.ok)) throw new Error('Could not download both existing test attachments from private storage');
+    const [issue, cost] = await Promise.all(files.map(r => r.arrayBuffer()));
+    const date = '20' + d.ds.slice(0, 2) + '-' + d.ds.slice(2, 4) + '-' + d.ds.slice(4);
+    await transport.sendMail({
+      from: FROM, to,
+      subject: '[TEST] مرفقات منظومة الصرف / Issuance attachments test — ' + d.no,
+      text: 'هذه رسالة اختبار فقط. مرفق بها ملف الطلب وملف التكلفة لطلب سابق من الفندق ' + hotel + '.\\nThis is a test email with both Excel attachments from a previously sent order.',
+      attachments: [
+        { filename: 'Issue_' + d.dept + '_' + d.no + '.xlsx', content: Buffer.from(issue), contentType: XL },
+        { filename: 'Cost_' + d.dept + '_' + d.no + '.xlsx', content: Buffer.from(cost), contentType: XL }
+      ]
+    });
+    console.log('Test email with two Excel attachments sent to ' + to + ' for ' + hotel + ' / ' + d.no + ' / ' + date);
     return;
   }
   // إنقاذ العالق: طلب بقي "قيد الإرسال" أكثر من STALE_MIN دقيقة يرجع للإرسال

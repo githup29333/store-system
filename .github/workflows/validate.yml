@@ -1,0 +1,46 @@
+name: validate-order-system
+on:
+  push:
+    branches:
+      - feature/daily-hotel-reports
+  pull_request:
+    branches:
+      - main
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check sender syntax
+        run: node --check sender/send.js
+      - name: Check dashboard JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('dashboard.html', 'utf8');
+          const start = html.indexOf('<script>');
+          const end = html.indexOf('</script>', start);
+          if (start < 0 || end < 0) throw new Error('Inline dashboard script not found');
+          new Function(html.slice(start + 8, end));
+          console.log('Dashboard JavaScript syntax OK');
+          NODE
+      - name: Check per-order and missing-price safeguards
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const dashboard = fs.readFileSync('dashboard.html', 'utf8');
+          const sender = fs.readFileSync('sender/send.js', 'utf8');
+          const assert = require('node:assert/strict');
+          assert.ok(dashboard.includes('return {lines,total,missing,priced,byCat'));
+          assert.ok(dashboard.includes('بانتظار السعر'));
+          assert.ok(dashboard.includes('ملخص الإدارة') && dashboard.includes('تفاصيل الأصناف'));
+          assert.ok(dashboard.includes('cost_path:costPath'));
+          assert.ok(sender.includes('Issue_${d.dept}_${d.no}.xlsx'));
+          assert.ok(sender.includes('Cost_${d.dept}_${d.no}.xlsx'));
+          assert.ok(sender.includes('if (!d.file_path || !d.cost_path)'));
+          assert.ok(!dashboard.includes('Dept Yesterday') && !dashboard.includes('Diff vs Yesterday'));
+          console.log('Order isolation and missing-price safeguards OK');
+          NODE

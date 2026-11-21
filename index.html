@@ -563,7 +563,7 @@ function renderIssue(){
  const got=Object.keys(o.parts).length,miss=got<o.total;
  const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
  ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
- const UN=['قطعة','حزمة','صندوق'];
+ const UN=['قطعة','حزمة','صندوق','كيلو'];
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
   const unSel=`<select data-un="${id}" ${WM?'':'disabled'}>${UN.map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select>`;
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${c.n}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');

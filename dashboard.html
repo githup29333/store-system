@@ -245,7 +245,7 @@ function drawD(){
   const act=['pending','failed'].includes(d.status)?`<button class="btn" data-ap="${esc(d.key)}">موافقة وإرسال</button> <button class="btn alt" data-sk="${esc(d.key)}">تجاهل</button>`:'';
   return `<tr><td>${['pending','failed'].includes(d.status)&&d.dept!=='ALL'?`<input type="checkbox" data-sel="${esc(d.key)}" ${DSEL.has(d.key)?'checked':''}>`:''}</td><td>${esc(d.hotel||'')}</td><td><b>${esc(d.no)}</b>${d.rev>1?' <small>(تحديث '+d.rev+')</small>':''}</td><td>${esc(d.dn||d.dept)}</td><td>${dt(d.ds)}</td><td><span class="tag ${cl}">${lb}</span>${late?' <b style="color:#b4231a">متأخر</b>':''}${d.error?'<br><small style="color:#b4231a">'+esc(d.error)+'</small>':''}</td><td>${act}</td></tr>`}).join('')||'<tr><td colspan="7">لا توجد نتائج للإرسال بعد</td></tr>';
  $('#d').innerHTML=`<div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
- <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button><button class="btn ok" id="dsMerge">دمج المحدد في ملف واحد وإرسال</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
+ <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
  <h3>المستلمون</h3><div class="wrap"><table><tr><th>الفندق</th><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
  <h3>الإرسال الفوري (GitHub)</h3>
  <p>${GHTOK?'<span class="tag t-ok">مفعّل</span> الضغط على "موافقة وإرسال" يشغّل الإرسال فوراً.':'<span class="tag t-bad">غير مفعّل</span> الإرسال يعتمد على الجدولة وقد يتأخر ساعات.'}</p>
@@ -271,12 +271,11 @@ async function approveOne(d){
   const wb=new ExcelJS.Workbook();addSheet(wb,ordH(d),'Issue');
   path=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_r'+d.rev+'.xlsx';
   await upload(path,await wb.xlsx.writeBuffer());
-  try{
-   const cwb=await buildCostBook(d);
-   costPath=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_cost_r'+d.rev+'.xlsx';
-   await upload(costPath,await cwb.xlsx.writeBuffer());
-  }catch(e){console.error(e);costPath=null}
+  const cwb=await buildCostBook(d);
+  costPath=d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_cost_r'+d.rev+'.xlsx';
+  await upload(costPath,await cwb.xlsx.writeBuffer());
  }
+ if(!path||!costPath)throw new Error('لم يكتمل إنشاء ملف الطلب والتكلفة؛ لم تتم الموافقة أو الإرسال.');
  await api(q,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'approved',file_path:path,cost_path:costPath,approved_at:now,updated_at:now,error:null})});
 }
 const ordH=d=>{const o=ordFromCode(d.code),h=HOTELS.find(x=>x.code===d.hotel);o.hotelName=h?h.name:d.hotel;return o};
@@ -330,7 +329,6 @@ $('#d').onclick=async e=>{
   if(b.id==='dsAll'){DEL.filter(d=>['pending','failed'].includes(d.status)&&d.dept!=='ALL').forEach(d=>DSEL.add(d.key));return drawD()}
   if(b.id==='dsNone'){DSEL.clear();return drawD()}
   if(b.id==='dsEach')return bulkEach();
-  if(b.id==='dsMerge')return bulkMerge();
   if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'gh_dispatch',value:v,updated_at:new Date().toISOString()})});GHTOK=v;drawD();return alert('تم حفظ المفتاح')}
   if(b.id==='gdel'){await api('app_secrets?key=eq.gh_dispatch',{method:'DELETE'});GHTOK=null;drawD();return}
   if(b.id==='gnow'){const g=await ghRun();return alert(g==='ok'?'تم تشغيل الإرسال الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
@@ -356,7 +354,7 @@ function priceMaps(){
  const groups={};live.forEach(p=>{const k=normC(p.name);(groups[k]=groups[k]||[]).push(p)});
  return {byCode,groups,live};
 }
-const UNIT_GROUP={'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق']};
+const UNIT_GROUP={'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق'],'كيلو':['كيلو','كجم','كغ','kg','KG']};
 function pickFromGroup(g,unitHint){
  if(!g||!g.length)return null;
  if(unitHint&&UNIT_GROUP[unitHint]){const m=g.find(x=>UNIT_GROUP[unitHint].includes(x.unit));if(m)return m}
@@ -403,26 +401,17 @@ async function autoMatch(){
 }
 function money(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function orderCostDetail(ord){
- const lines=[],byCat={};let total=0,missing=0;
+ const lines=[],byCat={};let total=0,missing=0,priced=0;
  linesOf(ord).forEach(x=>{
   const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n,x.unit)||resolvePrice(x.id,nm.u,x.unit);
-  if(p){const lt=x.iss*p.cost;total+=lt;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category,estimated:!!p.estimated})}
-  else{missing++;lines.push({ar:nm.n,en:nm.u,unit:'',qty:x.iss,price:null,lineTotal:null,category:null})}
+  if(p){const lt=x.iss*p.cost;total+=lt;priced++;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit||x.unit||nm.u,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category,estimated:!!p.estimated})}
+  else{missing++;lines.push({ar:nm.n,en:nm.u,unit:x.unit||nm.u||'—',qty:x.iss,price:null,lineTotal:null,category:null})}
  });
- return {lines,total,missing,byCat,anyEstimated:lines.some(l=>l.estimated)};
+ return {lines,total,missing,priced,byCat,anyEstimated:lines.some(l=>l.estimated)};
 }
 function orderCost(ord){const d=orderCostDetail(ord);return{total:d.total,missing:d.missing}}
 const CATCOL={'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','خضروات وفواكه':'7CB342','أخرى':'9AA7B2'};
 const CATS=['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','خضروات وفواكه','أخرى'];
-function dsAdd(ds,days){
- const y=2000+ +ds.slice(0,2),m=+ds.slice(2,4)-1,dd=+ds.slice(4,6);
- const dt=new Date(Date.UTC(y,m,dd));dt.setUTCDate(dt.getUTCDate()+days);
- return String(dt.getUTCFullYear()).slice(2)+String(dt.getUTCMonth()+1).padStart(2,'0')+String(dt.getUTCDate()).padStart(2,'0');
-}
-function deptDayTotal(hotel,dept,ds,excludeKey){
- return DEL.filter(x=>x.hotel===hotel&&x.dept===dept&&x.ds===ds&&x.status==='sent'&&!x.code.startsWith('BATCH|')&&x.key!==excludeKey)
-  .reduce((s,x)=>s+orderCost(ordH(x)).total,0);
-}
 function donutSVG(byCat,sz){
  const cx=sz/2,cy=sz/2,R=sz*0.42,rIn=sz*0.23,tot=Object.values(byCat).reduce((a,b)=>a+b,0);
  const toxy=(ang,r)=>{const rad=(ang-90)*Math.PI/180;return [cx+r*Math.cos(rad),cy+r*Math.sin(rad)]};
@@ -454,49 +443,145 @@ function svgToPng(svgStr,w,h){
   }catch(e){reject(e)}
  });
 }
+function barSVG(byCat,sz){
+ const entries=Object.entries(byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+ const W=sz,H=Math.max(190,entries.length*48+48),max=Math.max(1,...entries.map(x=>x[1]));
+ const total=entries.reduce((a,x)=>a+x[1],0)||1;
+ const escSvg=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+ let body='';
+ entries.forEach(([cat,v],i)=>{
+  const y=34+i*48,w=Math.max(2,(W-300)*v/max),pct=Math.round(v/total*100),col=CATCOL[cat]||'9AA7B2';
+  body+=`<text x="${W-12}" y="${y+16}" text-anchor="end" font-family="Tahoma,Arial,sans-serif" font-size="19" fill="#16222c">${escSvg(cat)}</text>
+  <rect x="18" y="${y+23}" width="${W-320}" height="13" rx="6" fill="#edf1f4"/>
+  <rect x="18" y="${y+23}" width="${w}" height="13" rx="6" fill="#${col}"/>
+  <text x="18" y="${y+13}" font-family="Tahoma,Arial,sans-serif" font-size="15" fill="#5d6b78">${money(v)} د.ل · ${pct}%</text>`;
+ });
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+ <rect width="100%" height="100%" fill="#ffffff"/>
+ <text x="${W-12}" y="22" text-anchor="end" font-family="Tahoma,Arial,sans-serif" font-size="17" font-weight="bold" fill="#0B5C7A">قيمة التكلفة حسب الفئة / Cost by category</text>${body}</svg>`;
+}
 async function buildCostBook(d){
  const ord=ordH(d),det=orderCostDetail(ord);
- const yDs=dsAdd(d.ds,-1),yTotal=deptDayTotal(d.hotel,d.dept,yDs),tTotal=deptDayTotal(d.hotel,d.dept,d.ds,d.key)+det.total;
- const diff=yTotal?tTotal-yTotal:null,pct=(yTotal&&diff!=null)?Math.round(diff/yTotal*100):null;
- const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Cost',{views:[{rightToLeft:true,state:'frozen',ySplit:11}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,printTitlesRow:'11:11',margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
- ws.columns=[{width:5},{width:30},{width:26},{width:14},{width:9},{width:11},{width:13}];
- const F='Tahoma',th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th};
- const put=(ref,v,o={})=>{const c=ws.getCell(ref);c.value=v;c.font={name:F,size:o.sz||11,bold:!!o.b,color:{argb:o.fc||'FF16222C'}};if(o.bg)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.bg}};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};if(o.bd)c.border=BD;if(o.num)c.numFmt=o.num;return c};
- ws.mergeCells('A1:G1');put('A1',ord.hotelName||'Hotel',{sz:18,b:1,fc:'FFFFFFFF',bg:'FF0B5C7A'});ws.getRow(1).height=34;
- ws.mergeCells('A2:G2');put('A2','تقرير تكلفة الطلب / Order Cost Report',{sz:14,b:1,bg:'FFE4EEF3'});ws.getRow(2).height=26;
- ws.mergeCells('A3:B3');put('A3','القسم / Dept: '+(ord.dn||ord.dept),{b:1,bd:1,h:'right'});
- put('C3','رقم الطلب / Order: '+ord.no,{b:1,bd:1});
- ws.mergeCells('D3:G3');put('D3','التاريخ / Date: '+dstrOf(ord),{b:1,bd:1});ws.getRow(3).height=22;
- const kpi=(ref,merge,label,val,bg,fc)=>{ws.mergeCells(merge);put(ref,label+'\n'+val,{b:1,bg,fc:fc||'FF16222C',sz:12});};
- kpi('A5','A5:B6','إجمالي تكلفة الطلب\nOrder Total',money(det.total)+' د.ل','FFE4EEF3');
- kpi('C5','C5:D6','إجمالي القسم أمس\nDept Total Yesterday',yTotal?money(yTotal)+' د.ل':'لا يوجد / N/A','FFF4F7F9');
- const dcol=diff==null?'FF5D6B78':diff>0?'FFB4231A':diff<0?'FF1D7A4F':'FF5D6B78';
- const dtxt=diff==null?'لا تتوفر بيانات أمس / No data':(diff>0?'🔺 زيادة / Up ':diff<0?'🔻 نقص / Down ':'➖ ثابت / Same ')+money(Math.abs(diff))+' د.ل'+(pct!=null?' ('+Math.abs(pct)+'%)':'');
- kpi('E5','E5:G6','الفرق عن أمس (نفس القسم)\nDiff vs Yesterday (same dept)',dtxt,'FFFFF4E5',dcol);
- ws.getRow(5).height=20;ws.getRow(6).height=20;
- const svg=donutSVG(det.byCat,480),png=await svgToPng(svg,480,480);
- const imgId=wb.addImage({buffer:png,extension:'png'});
- ws.addImage(imgId,{tl:{col:0,row:7},ext:{width:170,height:170}});
- const cats=Object.entries(det.byCat).sort((a,b)=>b[1]-a[1]);
- put('C8','توزيع الطلب حسب الفئة / Order Breakdown by Category',{b:1,h:'right',sz:12});ws.mergeCells('C8:G8');
- let cr=9;cats.forEach(([cat,v])=>{
-  put('C'+cr,'⬤',{fc:'FF'+(CATCOL[cat]||'9AA7B2'),h:'right'});put('D'+cr,cat,{h:'right'});put('E'+cr,money(v)+' د.ل');put('F'+cr,Math.round(v/det.total*100)+'%');cr++;
+ const wb=new ExcelJS.Workbook();
+ wb.creator='Store System';wb.subject='Premium bilingual per-order cost report';wb.title='Premium Order Cost Dashboard';
+ wb.created=new Date();wb.modified=new Date();
+ const F='Tahoma',navy='101827',teal='C6A15B',pale='E9DFC9',ink='202938',muted='697586',line='D7D0C3',green='287A61',amber='A87524',red='A94343',white='FFFFFF';
+ const border={top:{style:'thin',color:{argb:'FF'+line}},bottom:{style:'thin',color:{argb:'FF'+line}},left:{style:'thin',color:{argb:'FF'+line}},right:{style:'thin',color:{argb:'FF'+line}}};
+ const fill=(c)=>({type:'pattern',pattern:'solid',fgColor:{argb:'FF'+c}});
+ const styleCell=(cell,o={})=>{
+  cell.font={name:F,size:o.size||10,bold:!!o.bold,color:{argb:'FF'+(o.color||ink)}};
+  cell.alignment={horizontal:o.align||'center',vertical:'middle',wrapText:true};
+  if(o.bg)cell.fill=fill(o.bg);if(o.border)cell.border=border;
+  if(o.numFmt)cell.numFmt=o.numFmt;
+  return cell;
+ };
+ const mergeText=(ws,range,value,o={})=>{ws.mergeCells(range);styleCell(ws.getCell(range.split(':')[0]),o).value=value;};
+ const meta=ws=>{
+  ws.views=[{rightToLeft:true,showGridLines:false}];
+  ws.properties.defaultRowHeight=22;
+  ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,margins:{left:.25,right:.25,top:.45,bottom:.45,header:.2,footer:.2}};
+  ws.headerFooter={oddFooter:'&Rتقرير داخلي / INTERNAL MANAGEMENT REPORT  |  Page &P of &N'};
+ };
+ // صفحة الملخص التنفيذي
+ const sum=wb.addWorksheet('ملخص الإدارة - EXECUTIVE');meta(sum);
+ sum.columns=[{width:5},{width:20},{width:20},{width:4},{width:20},{width:20},{width:4},{width:20},{width:20},{width:5}];
+ mergeText(sum,'A1:J1',ord.hotelName||'HOTEL',{size:20,bold:true,color:white,bg:navy});
+ sum.getRow(1).height=42;
+ mergeText(sum,'A2:J2','لوحة تكلفة الصرف  |  ORDER COST DASHBOARD',{size:13,bold:true,color:teal,bg:pale});
+ sum.getRow(2).height=30;
+ mergeText(sum,'A4:C4','القسم / DEPARTMENT',{size:9,bold:true,color:muted,bg:'F3F6F8',border:true});
+ mergeText(sum,'D4:F4','رقم الطلب / ORDER NO.',{size:9,bold:true,color:muted,bg:'F3F6F8',border:true});
+ mergeText(sum,'G4:J4','التاريخ / DATE',{size:9,bold:true,color:muted,bg:'F3F6F8',border:true});
+ mergeText(sum,'A5:C5',ord.dn||ord.dept,{size:12,bold:true,color:navy,bg:white,border:true});
+ mergeText(sum,'D5:F5',String(ord.no||'—'),{size:12,bold:true,color:navy,bg:white,border:true});
+ mergeText(sum,'G5:J5',dstrOf(ord),{size:12,bold:true,color:navy,bg:white,border:true});
+ sum.getRow(4).height=21;sum.getRow(5).height=29;
+ const card=(label,value,range,bg,color)=>{
+  const [a,b]=range.split(':');const c=sum.getCell(a);
+  sum.mergeCells(range);c.value=label+'\n'+value;
+  styleCell(c,{size:13,bold:true,color:color||navy,bg,border:true});
+ };
+ card('إجمالي التكلفة المسعّرة  |  PRICED TOTAL',money(det.total)+' د.ل','A7:C9',pale,navy);
+ card('أصناف تم تسعيرها  |  PRICED ITEMS',String(det.priced),'D7:F9','EFF7F3',green);
+ card('أصناف بانتظار السعر  |  PENDING PRICE',String(det.missing),'G7:J9','FFF5E8',amber);
+ [7,8,9].forEach(r=>sum.getRow(r).height=24);
+ mergeText(sum,'A11:J11','تحليل توزيع التكلفة حسب الفئة  |  COST BREAKDOWN',{size:12,bold:true,color:white,bg:teal});
+ sum.getRow(11).height=27;
+ const cats=Object.entries(det.byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+ const donut=await svgToPng(donutSVG(det.byCat,600),600,600);
+ sum.addImage(wb.addImage({buffer:donut,extension:'png'}),{tl:{col:0,row:11},ext:{width:270,height:235}});
+ if(cats.length){
+  const bar=await svgToPng(barSVG(det.byCat,1000),1000,Math.max(190,cats.length*48+48));
+  sum.addImage(wb.addImage({buffer:bar,extension:'png'}),{tl:{col:4,row:11},ext:{width:520,height:235}});
+ }else{
+  mergeText(sum,'E13:J17','لا توجد تكاليف مسعّرة كافية لعرض توزيع الفئات',{size:12,color:muted,bg:'F7F9FA'});
+ }
+ let rr=25;
+ mergeText(sum,'A25:J25','ملخص الفئات  |  CATEGORY SUMMARY',{size:11,bold:true,color:white,bg:navy});
+ ['الفئة / CATEGORY','التكلفة / COST','النسبة / SHARE'].forEach((v,i)=>{const c=sum.getCell(26,i+1);c.value=v;styleCell(c,{bold:true,color:white,bg:teal,border:true})});
+ sum.mergeCells('A26:D26');sum.mergeCells('E26:G26');sum.mergeCells('H26:J26');
+ styleCell(sum.getCell('A26'),{bold:true,color:white,bg:teal,border:true});
+ styleCell(sum.getCell('E26'),{bold:true,color:white,bg:teal,border:true});
+ styleCell(sum.getCell('H26'),{bold:true,color:white,bg:teal,border:true});
+ let cr=27;
+ cats.forEach(([cat,val],i)=>{
+  sum.mergeCells('A'+cr+':D'+cr);sum.mergeCells('E'+cr+':G'+cr);sum.mergeCells('H'+cr+':J'+cr);
+  styleCell(sum.getCell('A'+cr),{align:'right',bg:i%2?'F5F8FA':white,border:true}).value=cat;
+  styleCell(sum.getCell('E'+cr),{bg:i%2?'F5F8FA':white,border:true,numFmt:'#,##0.00'}).value=val;
+  styleCell(sum.getCell('H'+cr),{bg:i%2?'F5F8FA':white,border:true,numFmt:'0.0%'}).value=det.total?val/det.total:0;
+  cr++;
  });
- if(!cats.length){put('C9','لا توجد أصناف مُسعّرة في هذا الطلب / No priced items in this order',{h:'right',fc:'FFB4231A'});ws.mergeCells('C9:G9')}
- let r=11;
- ['#','الصنف / Item (AR)','Item (EN)','الفئة\nCategory','الوحدة\nUnit','الكمية\nQty','الإجمالي\nTotal'].forEach((t,i)=>put('ABCDEFG'[i]+r,t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1,sz:10}));
- ws.getRow(r).height=30;r++;
+ if(!cats.length){sum.mergeCells('A27:J27');styleCell(sum.getCell('A27'),{color:muted,bg:white}).value='لا توجد أصناف مسعّرة في هذا الطلب';cr++}
+ sum.mergeCells('A'+cr+':D'+cr);sum.mergeCells('E'+cr+':G'+cr);sum.mergeCells('H'+cr+':J'+cr);
+ styleCell(sum.getCell('A'+cr),{bold:true,color:white,bg:navy,border:true}).value='الإجمالي / TOTAL';
+ styleCell(sum.getCell('E'+cr),{bold:true,color:white,bg:navy,border:true,numFmt:'#,##0.00'}).value=det.total;
+ styleCell(sum.getCell('H'+cr),{bold:true,color:white,bg:navy,border:true,numFmt:'0.0%'}).value=det.total?1:0;
+ cr+=2;
+ if(det.missing){
+  sum.mergeCells('A'+cr+':J'+(cr+1));
+  styleCell(sum.getCell('A'+cr),{size:10,bold:true,color:amber,bg:'FFF5E8',align:'right',border:true}).value='تنبيه تسعير / PRICING ALERT: يوجد '+det.missing+' صنف/أصناف بانتظار سعر الإدارة / item(s) pending management pricing. تم الإبقاء عليها في التفاصيل / retained in details. الإجمالي يشمل الأصناف المسعّرة فقط / Total includes priced items only.';
+  sum.getRow(cr).height=27;sum.getRow(cr+1).height=24;cr+=2;
+ }
+ if(det.anyEstimated){
+  sum.mergeCells('A'+cr+':J'+cr);
+  styleCell(sum.getCell('A'+cr),{size:9,color:amber,bg:'FFF9EF',align:'right'}).value='* أسعار تقديرية / Estimated prices: الأسعار المعلّمة بنجمة غير مؤكدة / starred values are unconfirmed.';
+  cr++;
+ }
+ sum.mergeCells('A'+(cr+1)+':J'+(cr+1));
+ styleCell(sum.getCell('A'+(cr+1)),{size:8,color:muted}).value='مصدر الأسعار / PRICE BASIS: وفق قائمة أسعار المخزن وقت إنشاء التقرير / based on the available store price list at report generation.';
+ sum.printArea='A1:J'+(cr+1);sum.pageSetup.printArea='A1:J'+(cr+1);
+ // صفحة التفاصيل
+ const detws=wb.addWorksheet('تفاصيل الأصناف - DETAILS');meta(detws);
+ detws.columns=[{width:6},{width:30},{width:28},{width:22},{width:13},{width:13},{width:16},{width:18},{width:22}];
+ mergeText(detws,'A1:I1',ord.hotelName||'HOTEL',{size:18,bold:true,color:white,bg:navy});detws.getRow(1).height=38;
+ mergeText(detws,'A2:I2','تفاصيل تكلفة الطلب  |  ITEMIZED COST DETAILS',{size:13,bold:true,color:teal,bg:pale});detws.getRow(2).height=28;
+ mergeText(detws,'A4:C4','القسم / DEPARTMENT: '+(ord.dn||ord.dept),{bold:true,bg:'F3F6F8',border:true,align:'right'});
+ mergeText(detws,'D4:F4','رقم الطلب / ORDER NO.: '+ord.no,{bold:true,bg:'F3F6F8',border:true});
+ mergeText(detws,'G4:I4','التاريخ / DATE: '+dstrOf(ord),{bold:true,bg:'F3F6F8',border:true});
+ mergeText(detws,'A6:I6','تفاصيل الأصناف والتكلفة / ITEM & COST DETAILS',{bold:true,color:white,bg:teal,size:12});detws.getRow(6).height=26;
+ const headers=['#','الصنف بالعربية','ITEM NAME','الفئة / CATEGORY','الوحدة / UNIT','الكمية / QTY','سعر الوحدة / UNIT PRICE','الإجمالي / LINE TOTAL','حالة التسعير / STATUS'];
+ headers.forEach((v,i)=>{const c=detws.getCell(7,i+1);c.value=v;styleCell(c,{bold:true,color:white,bg:navy,border:true,size:9})});
+ detws.getRow(7).height=34;
  det.lines.forEach((x,i)=>{
-  const bg=x.price==null?'FFFBE9E7':x.estimated?'FFFFF4E5':(i%2?'FFF4F8FA':null);
-  put('A'+r,i+1,{bd:1,bg});put('B'+r,x.ar,{bd:1,bg,h:'right'});put('C'+r,x.en,{bd:1,bg,h:'left'});
-  put('D'+r,x.category||'—',{bd:1,bg});put('E'+r,x.unit||'—',{bd:1,bg});put('F'+r,x.qty,{bd:1,bg});
-  put('G'+r,x.lineTotal==null?'بدون سعر / No price':(money(x.lineTotal)+(x.estimated?' *':'')),{bd:1,bg,b:x.lineTotal!=null,fc:x.lineTotal==null?'FFB4531A':x.estimated?'FFB4531A':null});
-  r++;
+  const r=8+i,bg=x.price==null?'FFF1F0':x.estimated?'FFF8E9':i%2?'F5F8FA':white;
+  const vals=[i+1,x.ar,x.en,x.category||'—',x.unit||'—',x.qty,x.price==null?null:x.price,x.lineTotal==null?null:x.lineTotal,x.price==null?'بانتظار السعر':x.estimated?'تقديري *':'مسعّر'];
+  vals.forEach((v,j)=>{const c=detws.getCell(r,j+1);c.value=v;styleCell(c,{bg,border:true,align:j===1?'right':j===2?'left':'center',bold:j===7&&v!=null,color:x.price==null&&j===8?red:x.estimated&&j===8?amber:ink,numFmt:j===6||j===7?'#,##0.00':undefined})});
+  detws.getRow(r).height=27;
  });
- ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الإجمالي / Grand Total',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF',h:'right'});
- put('G'+r,money(det.total)+' د.ل',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF'});ws.getRow(r).height=22;r+=2;
- ws.mergeCells(`A${r}:G${r}`);put('A'+r,(det.missing?'⚠ '+det.missing+' صنف بدون سعر مؤكد لم يُدرج في الإجمالي / '+det.missing+' item(s) without a confirmed price were excluded from the total. ':'')+(det.anyEstimated?'* الأصناف المعلَّمة بنجمة سعرها تقديري تخميني غير مؤكد من مورد / * Items marked with an asterisk use an unconfirmed estimated price. ':'')+'الأسعار من قائمة الأسعار القياسية للمخزن وقد تختلف عن سعر الشراء الفعلي / Costs are from the store\'s standard price list and may differ from actual purchase price.',{sz:8,fc:'FF5D6B78',h:'right'});
- r++;ws.mergeCells(`A${r}:G${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
+ const totalRow=8+det.lines.length;
+ detws.mergeCells('A'+totalRow+':G'+totalRow);
+ styleCell(detws.getCell('A'+totalRow),{bold:true,color:white,bg:navy,align:'right',border:true}).value='الإجمالي المسعّر / PRICED GRAND TOTAL';
+ styleCell(detws.getCell('H'+totalRow),{bold:true,color:white,bg:navy,border:true,numFmt:'#,##0.00'}).value=det.total;
+ styleCell(detws.getCell('I'+totalRow),{bold:true,color:white,bg:navy,border:true}).value=det.missing?'جزئي — توجد أسعار ناقصة':'مكتمل';
+ detws.autoFilter={from:{row:7,column:1},to:{row:7+Math.max(1,det.lines.length),column:9}};
+ detws.views=[{rightToLeft:true,showGridLines:false,state:'frozen',ySplit:7}];
+ detws.pageSetup.printTitlesRow='7:7';detws.pageSetup.printArea='A1:I'+totalRow;
+ let note=totalRow+2;
+ if(det.missing){
+  detws.mergeCells('A'+note+':I'+(note+1));
+  styleCell(detws.getCell('A'+note),{bold:true,color:amber,bg:'FFF5E8',align:'right',border:true}).value='ملاحظة تسعير / PRICING NOTE: '+det.missing+' صنف/أصناف بانتظار سعر الإدارة / item(s) pending management pricing. الأصناف موجودة ولا تمنع الإرسال / items remain listed and do not block delivery. الإجمالي للأصناف المسعّرة فقط / priced items only.';
+  detws.getRow(note).height=28;detws.getRow(note+1).height=24;
+ }
  return wb;
 }
 function drawC(){
