@@ -82,8 +82,25 @@ async function main() {
   if (E.MODE === 'test') {
     await transport.verify();
     const to = E.TEST_TO || E.SMTP_USER;
-    await transport.sendMail({ from: FROM, to, subject: 'اختبار منظومة الصرف / Issuance system test', text: 'إذا وصلتك هذه الرسالة فالإرسال يعمل.\nIf you received this, sending works.' });
-    console.log('Test email sent to ' + to);
+    const hotel = E.TEST_HOTEL || 'EBR';
+    const rows = await rest('deliveries?select=hotel,dept,no,ds,dn,file_path,cost_path&hotel=eq.' + enc(hotel) + '&status=eq.sent&file_path=not.is.null&cost_path=not.is.null&order=updated_at.desc&limit=1');
+    if (!rows.length) throw new Error('No previously sent order with both Excel files found for test hotel ' + hotel);
+    const d = rows[0];
+    const paths = [d.file_path, d.cost_path];
+    const files = await Promise.all(paths.map(path => fetch(URL_ + '/storage/v1/object/exports/' + enc(path), { headers: H })));
+    if (files.some(r => !r.ok)) throw new Error('Could not download both existing test attachments from private storage');
+    const [issue, cost] = await Promise.all(files.map(r => r.arrayBuffer()));
+    const date = '20' + d.ds.slice(0, 2) + '-' + d.ds.slice(2, 4) + '-' + d.ds.slice(4);
+    await transport.sendMail({
+      from: FROM, to,
+      subject: '[TEST] مرفقات منظومة الصرف / Issuance attachments test — ' + d.no,
+      text: 'هذه رسالة اختبار فقط. مرفق بها ملف الطلب وملف التكلفة لطلب سابق من الفندق ' + hotel + '.\\nThis is a test email with both Excel attachments from a previously sent order.',
+      attachments: [
+        { filename: 'Issue_' + d.dept + '_' + d.no + '.xlsx', content: Buffer.from(issue), contentType: XL },
+        { filename: 'Cost_' + d.dept + '_' + d.no + '.xlsx', content: Buffer.from(cost), contentType: XL }
+      ]
+    });
+    console.log('Test email with two Excel attachments sent to ' + to + ' for ' + hotel + ' / ' + d.no + ' / ' + date);
     return;
   }
   // إنقاذ العالق: طلب بقي "قيد الإرسال" أكثر من STALE_MIN دقيقة يرجع للإرسال
