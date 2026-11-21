@@ -51,6 +51,10 @@ jobs:
           assert.ok(sender.includes("r.hotel===h"));
           assert.ok(sender.includes("status=eq.pending"));
           assert.ok(sender.includes("Africa/Tripoli"));
+          assert.ok(sender.includes('approved manual orders will still be processed'));
+          assert.ok(sender.includes('dept=neq.ALL'));
+          assert.ok(sender.includes('verify mailbox before retry'));
+
           assert.ok(!dashboard.includes('Dept Yesterday') && !dashboard.includes('Diff vs Yesterday'));
           console.log('Order isolation and missing-price safeguards OK');
           NODE
