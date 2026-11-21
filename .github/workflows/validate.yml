@@ -45,9 +45,12 @@ jobs:
           assert.ok(dashboard.includes('بانتظار السعر'));
           assert.ok(dashboard.includes('ملخص الإدارة') && dashboard.includes('تفاصيل الأصناف'));
           assert.ok(dashboard.includes('cost_path:costPath'));
-          assert.ok(sender.includes('Issue_${d.dept}_${d.no}.xlsx'));
-          assert.ok(sender.includes('Cost_${d.dept}_${d.no}.xlsx'));
-          assert.ok(sender.includes('if (!d.file_path || !d.cost_path)'));
+          assert.ok(sender.includes("'Issue_'+d.dept+'_'+d.no+'.xlsx'"));
+          assert.ok(sender.includes("'Cost_'+d.dept+'_'+d.no+'.xlsx'"));
+          assert.ok(sender.includes('if(!d.file_path||!d.cost_path)'));
+          assert.ok(sender.includes("r.hotel===h"));
+          assert.ok(sender.includes("status=eq.pending"));
+          assert.ok(sender.includes("Africa/Tripoli"));
           assert.ok(!dashboard.includes('Dept Yesterday') && !dashboard.includes('Diff vs Yesterday'));
           console.log('Order isolation and missing-price safeguards OK');
           NODE
