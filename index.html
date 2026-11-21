@@ -551,7 +551,7 @@ function ingest(txt){if(!chk())return;
   if(!o||o.key!==key)o=ORD()[key]||{key,dept,no,ds,total:+pn,parts:{},items:{},hash:h};
   if(h!==hash())bad=true;
   nms.split(';').filter(Boolean).forEach(t=>{const [id,a,b]=t.split('~');o.names=o.names||{};o.names[id]={n:a,u:b||''}});
-  if(fin){for(let i=1;i<=+pn;i++)o.parts[i]=1;o.total=+pn;o.worker=wk||'';items.split(',').forEach(s=>{const [id,rq,is]=s.split(':');o.items[id]={req:+rq,iss:+is,on:+is>0}});continue}
+  if(fin){for(let i=1;i<=+pn;i++)o.parts[i]=1;o.total=+pn;o.worker=wk||'';items.split(',').forEach(s=>{const [id,rq,is,unit]=s.split(':');o.items[id]={req:+rq,iss:+is,on:+is>0,unit:unit||''}});continue}
   o.parts[pi]=1;
   items.split(',').forEach(s=>{const [id,qt]=s.split(':');if(!o.items[id])o.items[id]={req:+qt,iss:+qt,on:true}});
  }
@@ -579,7 +579,7 @@ $('#load').onclick=()=>ingest($('#paste').value);
 const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
 const dstr=()=>`20${o.ds.slice(0,2)}-${o.ds.slice(2,4)}-${o.ds.slice(4)}`;
 const fname=()=>`Issue_${o.dept}_${o.no}.xlsx`;
-const linesOf=ord=>Object.keys(ord.items).map(Number).sort((a,b)=>a-b).filter(id=>ord.items[id].on&&ord.items[id].iss>0).map(id=>({id,req:ord.items[id].req,iss:ord.items[id].iss}));
+const linesOf=ord=>Object.keys(ord.items).map(Number).sort((a,b)=>a-b).filter(id=>ord.items[id].on&&ord.items[id].iss>0).map(id=>({id,req:ord.items[id].req,iss:ord.items[id].iss,unit:ord.items[id].unit||''}));
 const dstrOf=ord=>'20'+ord.ds.slice(0,2)+'-'+ord.ds.slice(2,4)+'-'+ord.ds.slice(4);
 const itemOf=(ord,id)=>(ord.names&&ord.names[id])||cat[id-1]||{n:'#'+id,u:''};
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -594,13 +594,13 @@ function addSheet(wb,ord,name){
  put('C3','رقم الطلب / Order No.: '+ord.no,{b:1,bd:1});
  ws.mergeCells('D3:F3');put('D3','التاريخ / Date: '+dstrOf(ord),{b:1,bd:1});ws.getRow(3).height=24;
  ws.getRow(4).height=6;
- ['#','الصنف','Item','المطلوب\nRequested','المصروف\nIssued','ملاحظات\nRemarks'].forEach((t,i)=>put('ABCDEF'[i]+'5',t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1}));
+ ['#','الصنف','Item','المطلوب\nRequested','المصروف\nIssued','الوحدة\nUnit'].forEach((t,i)=>put('ABCDEF'[i]+'5',t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1}));
  ws.getRow(5).height=34;
  const L=linesOf(ord);let r=6;
  L.forEach((x,i)=>{const c=itemOf(ord,x.id),bg=i%2?'FFF4F8FA':null,sh=x.iss<x.req;
   put('A'+r,i+1,{bd:1,bg});put('B'+r,c.n,{bd:1,bg,h:'right'});put('C'+r,c.u,{bd:1,bg,h:'left'});
   put('D'+r,x.req,{bd:1,bg});put('E'+r,x.iss,{bd:1,bg,b:1});
-  put('F'+r,sh?'ناقص / Short':'',{bd:1,bg,b:sh,fc:sh?'FFB4531A':null});r++});
+  put('F'+r,x.unit||'—',{bd:1,bg});r++});
  ws.mergeCells(`A${r}:F${r}`);put('A'+r,'إجمالي الأصناف المصروفة / Total issued items: '+L.length,{b:1,bg:'FFE4EEF3',bd:1});ws.getRow(r).height=22;r+=2;
  ws.mergeCells(`A${r}:C${r}`);put('A'+r,'مقدّم الطلب / Requested by\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});
  ws.mergeCells(`D${r}:F${r}`);put('D'+r,'أمين المخزن / Storekeeper\n\nالتوقيع / Signature: ____________',{bd:1,h:'right'});ws.getRow(r).height=62;r++;
