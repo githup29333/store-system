@@ -177,7 +177,6 @@ async function makeCost(order, ctx) {
     merge(sum,'A13:J17','لا توجد تكاليف مسعّرة كافية لعرض توزيع الفئات',{size:12,color:COLORS.muted,bg:'F7F9FA'});
   }
   merge(sum,'A25:J25','ملخص الفئات | CATEGORY SUMMARY',{size:11,bold:true,color:COLORS.white,bg:COLORS.navy});
-  ['الفئة / CATEGORY','التكلفة / COST','النسبة / SHARE'].forEach((v,i)=>{const cell=sum.getCell(26,i+1);cell.value=v;style(cell,{bold:true,color:COLORS.white,bg:COLORS.gold,border:true});});
   sum.mergeCells('A26:D26');sum.mergeCells('E26:G26');sum.mergeCells('H26:J26');
   [['A26','الفئة / CATEGORY'],['E26','التكلفة / COST'],['H26','النسبة / SHARE']].forEach(([a,v])=>{sum.getCell(a).value=v;style(sum.getCell(a),{bold:true,color:COLORS.white,bg:COLORS.gold,border:true})});
   let cr=27;
