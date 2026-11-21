@@ -83,7 +83,7 @@ async function sendOne(d,to,cc,hotelName){
   status:'sending',attempts:(d.attempts||0)+1,updated_at:new Date().toISOString()
  })});
  if(!got||!got.length){console.log('Skip (already claimed or changed): '+d.key);return true;}
- let mailAccepted=false;
+ let mailAttempted=false;
  try{
   if(!to.length)throw new Error('NOFATAL لا يوجد مستلم To لهذا الفندق / no To recipient for this hotel');
   if(!d.file_path||!d.cost_path)throw new Error('NOFATAL يجب توفر ملفّي Excel معاً / both Excel files are required');
@@ -97,6 +97,7 @@ async function sendOne(d,to,cc,hotelName){
   if(issue.length<100||cost.length<100||issue.subarray(0,2).toString()!=='PK'||cost.subarray(0,2).toString()!=='PK')throw new Error('مرفق Excel غير صالح أو فارغ / invalid or empty Excel attachment');
   const date='20'+d.ds.slice(0,2)+'-'+d.ds.slice(2,4)+'-'+d.ds.slice(4);
   const name=d.dn||d.dept,upd=d.rev>1;
+  mailAttempted=true;
   const info=await transport.sendMail({
    from:FROM,to,cc,
    subject:(hotelName?'['+hotelName+'] ':'')+'صرف / Issue — '+name+' — طلب / Order '+d.no+' — '+date+(upd?' (تحديث '+d.rev+' / Update '+d.rev+')':''),
@@ -106,7 +107,6 @@ async function sendOne(d,to,cc,hotelName){
     {filename:'Cost_'+d.dept+'_'+d.no+'.xlsx',content:cost,contentType:XL}
    ]
   });
-  mailAccepted=true;
   const rej=(info.rejected||[]).map(x=>x.address||x);
   const done=await rest(q+'&status=eq.sending',{method:'PATCH',headers:REP,body:JSON.stringify({
    status:'sent',sent_at:new Date().toISOString(),
@@ -117,10 +117,10 @@ async function sendOne(d,to,cc,hotelName){
   return true;
  }catch(e){
   let msg=String(e.message||e).slice(0,300);
-  const accepted=mailAccepted||msg.startsWith('MAIL_ACCEPTED_DB_UPDATE_MISSED');
+  const accepted=mailAttempted||msg.startsWith('MAIL_ACCEPTED_DB_UPDATE_MISSED');
   const fatal=msg.startsWith('NOFATAL')||accepted;
   msg=msg.replace(/^NOFATAL /,'');
-  if(accepted)msg='نتيجة البريد غير مؤكدة في قاعدة البيانات؛ افحص صندوق البريد قبل إعادة المحاولة / SMTP accepted but DB status update failed; verify mailbox before retry. '+msg;
+  if(accepted)msg='نتيجة البريد غير مؤكدة في قاعدة البيانات؛ افحص صندوق البريد قبل إعادة المحاولة / SMTP result is ambiguous (or accepted but DB update failed); verify mailbox before retry. '+msg;
   const give=fatal||(d.attempts||0)+1>=MAXTRY;
   await rest(q+'&status=eq.sending',{method:'PATCH',headers:REP,body:JSON.stringify({
    status:give?'failed':'approved',error:msg,updated_at:new Date().toISOString()
