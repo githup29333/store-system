@@ -412,15 +412,6 @@ function orderCostDetail(ord){
 function orderCost(ord){const d=orderCostDetail(ord);return{total:d.total,missing:d.missing}}
 const CATCOL={'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','خضروات وفواكه':'7CB342','أخرى':'9AA7B2'};
 const CATS=['منتجات جافة','حليب وأجبان','مشروبات','منظفات','مستلزمات','خضروات وفواكه','أخرى'];
-function dsAdd(ds,days){
- const y=2000+ +ds.slice(0,2),m=+ds.slice(2,4)-1,dd=+ds.slice(4,6);
- const dt=new Date(Date.UTC(y,m,dd));dt.setUTCDate(dt.getUTCDate()+days);
- return String(dt.getUTCFullYear()).slice(2)+String(dt.getUTCMonth()+1).padStart(2,'0')+String(dt.getUTCDate()).padStart(2,'0');
-}
-function deptDayTotal(hotel,dept,ds,excludeKey){
- return DEL.filter(x=>x.hotel===hotel&&x.dept===dept&&x.ds===ds&&x.status==='sent'&&!x.code.startsWith('BATCH|')&&x.key!==excludeKey)
-  .reduce((s,x)=>s+orderCost(ordH(x)).total,0);
-}
 function donutSVG(byCat,sz){
  const cx=sz/2,cy=sz/2,R=sz*0.42,rIn=sz*0.23,tot=Object.values(byCat).reduce((a,b)=>a+b,0);
  const toxy=(ang,r)=>{const rad=(ang-90)*Math.PI/180;return [cx+r*Math.cos(rad),cy+r*Math.sin(rad)]};
