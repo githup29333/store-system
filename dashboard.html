@@ -237,7 +237,7 @@ function ordFromCode(code){
  (f[6]||'').split(',').filter(Boolean).forEach(x=>{const [id,rq,is,un]=x.split(':');items[id]={req:+rq,iss:+is,on:+is>0,unit:un||''}});
  return{dept:f[1],no:f[2],ds:f[3],dn:f[7]||f[1],names,items};
 }
-const ST={pending:['بانتظار موافقتك','t-w'],approved:['موافق — بانتظار الإرسال','t-w'],sending:['قيد الإرسال','t-w'],sent:['تم الإرسال ✓','t-ok'],merged:['ضُمّ لملف مجمّع',''],failed:['فشل الإرسال','t-bad'],skipped:['تم تجاهله','']};
+const ST={pending:['مكتمل — بانتظار الإرسال','t-w'],approved:['موافق — بانتظار الإرسال','t-w'],sending:['قيد الإرسال','t-w'],sent:['تم الإرسال ✓','t-ok'],merged:['ضُمّ لملف مجمّع',''],failed:['فشل الإرسال','t-bad'],skipped:['تم تجاهله','']};
 function drawD(){
  if(DELERR){$('#d').innerHTML='<p style="color:#b4231a">جداول الإرسال غير موجودة. نفّذ ملف delivery.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
  const cnt=s=>DV().filter(x=>x.status===s).length;
@@ -250,7 +250,7 @@ function drawD(){
  <label>وقت الإرسال اليومي <input type="time" id="autoTime" value="${esc(AUTOCFG.time||'15:00')}"></label>
  <span style="color:var(--mut)">توقيت ليبيا (Africa/Tripoli)</span><button class="btn" id="autoSave">حفظ إعدادات الإرسال</button></div>
  <p style="color:var(--mut);font-size:13px">يتم فحص الطلبات كل 5 دقائق بعد الوقت المحدد. الطلبات القديمة قبل تفعيل الإعداد لا تُرسل تلقائياً.</p>
- <div class="grid"><div class="kpi"><b>${cnt('pending')}</b>بانتظار موافقتك</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
+ <div class="grid"><div class="kpi"><b>${cnt('pending')}</b>مكتمل — بانتظار الإرسال</div><div class="kpi"><b>${cnt('approved')+cnt('sending')}</b>قيد الإرسال</div><div class="kpi"><b style="color:${cnt('failed')?'#b4231a':'inherit'}">${cnt('failed')}</b>فشل</div><div class="kpi"><b>${cnt('sent')}</b>تم الإرسال</div></div>
  <h3>نتائج الصرف</h3><div class="row"><button class="btn alt" id="dsAll">تحديد كل المنتظر</button><button class="btn alt" id="dsNone">إلغاء التحديد</button><button class="btn" id="dsEach">موافقة وإرسال المحدد (كل طلب بإيميل)</button></div><div class="wrap"><table><tr><th></th><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th></th></tr>${rows}</table></div>
  <h3>المستلمون</h3><div class="wrap"><table><tr><th>الفندق</th><th>النوع</th><th>الاسم</th><th>البريد</th><th></th></tr>${rec}</table></div>
  <h3>الإرسال الفوري (GitHub)</h3>
