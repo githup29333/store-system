@@ -401,13 +401,13 @@ async function autoMatch(){
 }
 function money(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function orderCostDetail(ord){
- const lines=[],byCat={};let total=0,missing=0;
+ const lines=[],byCat={};let total=0,missing=0,priced=0;
  linesOf(ord).forEach(x=>{
   const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n,x.unit)||resolvePrice(x.id,nm.u,x.unit);
-  if(p){const lt=x.iss*p.cost;total+=lt;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category,estimated:!!p.estimated})}
-  else{missing++;lines.push({ar:nm.n,en:nm.u,unit:'',qty:x.iss,price:null,lineTotal:null,category:null})}
+  if(p){const lt=x.iss*p.cost;total+=lt;priced++;byCat[p.category]=(byCat[p.category]||0)+lt;lines.push({ar:nm.n,en:nm.u,unit:p.unit||x.unit||nm.u,qty:x.iss,price:p.cost,lineTotal:lt,category:p.category,estimated:!!p.estimated})}
+  else{missing++;lines.push({ar:nm.n,en:nm.u,unit:x.unit||nm.u||'—',qty:x.iss,price:null,lineTotal:null,category:null})}
  });
- return {lines,total,missing,byCat,anyEstimated:lines.some(l=>l.estimated)};
+ return {lines,total,missing,priced,byCat,anyEstimated:lines.some(l=>l.estimated)};
 }
 function orderCost(ord){const d=orderCostDetail(ord);return{total:d.total,missing:d.missing}}
 const CATCOL={'منتجات جافة':'0B5C7A','حليب وأجبان':'1D7A4F','مشروبات':'B4531A','منظفات':'5D6B78','مستلزمات':'A479E2','خضروات وفواكه':'7CB342','أخرى':'9AA7B2'};
@@ -471,8 +471,6 @@ function barSVG(byCat,sz){
 }
 async function buildCostBook(d){
  const ord=ordH(d),det=orderCostDetail(ord);
- const yDs=dsAdd(d.ds,-1),yTotal=deptDayTotal(d.hotel,d.dept,yDs),tTotal=deptDayTotal(d.hotel,d.dept,d.ds,d.key)+det.total;
- const diff=yTotal?tTotal-yTotal:null,pct=(yTotal&&diff!=null)?Math.round(diff/yTotal*100):null;
  const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Cost',{views:[{rightToLeft:true,state:'frozen',ySplit:19}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:true,printTitlesRow:'19:19',margins:{left:.4,right:.4,top:.5,bottom:.5,header:.3,footer:.3}}});
  ws.columns=[{width:5},{width:30},{width:26},{width:14},{width:9},{width:11},{width:13}];
  const F='Tahoma',th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th};
@@ -483,11 +481,9 @@ async function buildCostBook(d){
  put('C3','رقم الطلب / Order: '+ord.no,{b:1,bd:1});
  ws.mergeCells('D3:G3');put('D3','التاريخ / Date: '+dstrOf(ord),{b:1,bd:1});ws.getRow(3).height=22;
  const kpi=(ref,merge,label,val,bg,fc)=>{ws.mergeCells(merge);put(ref,label+'\n'+val,{b:1,bg,fc:fc||'FF16222C',sz:12});};
- kpi('A5','A5:B6','إجمالي تكلفة الطلب / Order Total',money(det.total)+' د.ل','FFE4EEF3');
- kpi('C5','C5:D6','إجمالي القسم أمس / Dept Yesterday',yTotal?money(yTotal)+' د.ل':'لا يوجد / N/A','FFF4F7F9');
- const dcol=diff==null?'FF5D6B78':diff>0?'FFB4231A':diff<0?'FF1D7A4F':'FF5D6B78';
- const dtxt=diff==null?'لا تتوفر بيانات أمس / No data':(diff>0?'🔺 زيادة / Up ':diff<0?'🔻 نقص / Down ':'➖ ثابت / Same ')+money(Math.abs(diff))+' د.ل'+(pct!=null?' ('+Math.abs(pct)+'%)':'');
- kpi('E5','E5:G6','الفرق عن أمس / Diff vs Yesterday',dtxt,'FFFFF4E5',dcol);
+ kpi('A5','A5:B6','إجمالي الأصناف المسعّرة / Priced Total',money(det.total)+' د.ل','FFE4EEF3');
+ kpi('C5','C5:D6','أصناف لها سعر / Priced Items',det.priced,'FFF4F7F9');
+ kpi('E5','E5:G6','السعر غير متوفر حالياً / Pending Prices',det.missing,'FFFFF4E5','FFB4531A');
  ws.getRow(5).height=22;ws.getRow(6).height=22;
  const cats=Object.entries(det.byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
  const svg=donutSVG(det.byCat,480),png=await svgToPng(svg,480,480);
@@ -502,7 +498,7 @@ async function buildCostBook(d){
  put('B17',money(det.total)+' د.ل',{b:1,bg:'FFE4EEF3'});
  put('C17','عدد الفئات / Categories',{b:1,bg:'FFE4EEF3'});
  put('D17',cats.length,{b:1,bg:'FFE4EEF3'});
- put('E17','أصناف بلا سعر / Unpriced',{b:1,bg:'FFFFF4E5'});
+ put('E17','السعر غير متوفر / Pending',{b:1,bg:'FFFFF4E5'});
  put('F17',det.missing,{b:1,bg:'FFFFF4E5'});
  let r=19;
  ['#','الصنف / Item (AR)','Item (EN)','الفئة / Category','الوحدة / Unit','الكمية / Qty','التكلفة / Cost'].forEach((t,i)=>put('ABCDEFG'[i]+r,t,{b:1,fc:'FFFFFFFF',bg:'FF0B5C7A',bd:1,sz:10}));
@@ -511,12 +507,12 @@ async function buildCostBook(d){
   const bg=x.price==null?'FFFBE9E7':x.estimated?'FFFFF4E5':(i%2?'FFF4F8FA':null);
   put('A'+r,i+1,{bd:1,bg});put('B'+r,x.ar,{bd:1,bg,h:'right'});put('C'+r,x.en,{bd:1,bg,h:'left'});
   put('D'+r,x.category||'—',{bd:1,bg});put('E'+r,x.unit||'—',{bd:1,bg});put('F'+r,x.qty,{bd:1,bg});
-  put('G'+r,x.lineTotal==null?'بدون سعر / No price':(money(x.lineTotal)+(x.estimated?' *':'')),{bd:1,bg,b:x.lineTotal!=null,fc:x.lineTotal==null?'FFB4531A':x.estimated?'FFB4531A':null});
+  put('G'+r,x.lineTotal==null?'السعر غير متوفر حالياً / Pending price':(money(x.lineTotal)+(x.estimated?' *':'')),{bd:1,bg,b:x.lineTotal!=null,fc:x.lineTotal==null?'FFB4531A':x.estimated?'FFB4531A':null});
   r++;
  });
  ws.mergeCells(`A${r}:F${r}`);put('A'+r,'الإجمالي / Grand Total',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF',h:'right'});
  put('G'+r,money(det.total)+' د.ل',{b:1,bg:'FF0B5C7A',fc:'FFFFFFFF'});ws.getRow(r).height=22;r+=2;
- ws.mergeCells(`A${r}:G${r}`);put('A'+r,(det.missing?'⚠ '+det.missing+' صنف بدون سعر مؤكد لم يُدرج في الإجمالي / '+det.missing+' item(s) without a confirmed price were excluded from the total. ':'')+(det.anyEstimated?'* الأصناف المعلَّمة بنجمة سعرها تقديري غير مؤكد / * Items marked with an asterisk use estimated prices. ':'')+'الأسعار من قائمة الأسعار القياسية للمخزن وقد تختلف عن سعر الشراء الفعلي / Costs are from the store standard price list and may differ from actual purchase price.',{sz:8,fc:'FF5D6B78',h:'right'});
+ ws.mergeCells(`A${r}:G${r}`);put('A'+r,(det.missing?'ℹ '+det.missing+' صنف: السعر غير متوفر حالياً من الإدارة، وتظل الأصناف مدرجة في التقرير. الإجمالي أعلاه يشمل الأصناف المسعّرة فقط / '+det.missing+' item(s): price is currently pending from administration. Items remain listed; the total includes priced items only. ':'')+(det.anyEstimated?'* الأصناف المعلَّمة بنجمة سعرها تقديري غير مؤكد / * Items marked with an asterisk use estimated prices. ':'')+'الأسعار من قائمة الأسعار القياسية للمخزن وقد تختلف عن سعر الشراء الفعلي / Costs are from the store standard price list and may differ from actual purchase price.',{sz:8,fc:'FF5D6B78',h:'right'});
  r++;ws.mergeCells(`A${r}:G${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
  return wb;
 }
