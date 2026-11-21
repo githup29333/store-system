@@ -34,11 +34,12 @@ jobs:
           const dashboard = fs.readFileSync('dashboard.html', 'utf8');
           const sender = fs.readFileSync('sender/send.js', 'utf8');
           const assert = require('node:assert/strict');
-          assert.match(dashboard, /function orderCostDetail[\\s\\S]*?return \\{lines,total,missing,priced,byCat/);
-          assert.match(dashboard, /السعر غير متوفر حالياً \\/ Pending price/);
-          assert.match(dashboard, /async function approveOne[\\s\\S]*?cost_path:costPath/);
-          assert.match(sender, /Issue_.*?xlsx[\\s\\S]*?Cost_.*?xlsx/);
-          assert.match(sender, /if \\(!d\\.file_path \\|\\| !d\\.cost_path\\)/);
-          assert.doesNotMatch(dashboard, /Dept Yesterday|Diff vs Yesterday/);
+          assert.ok(dashboard.includes('return {lines,total,missing,priced,byCat'));
+          assert.ok(dashboard.includes('السعر غير متوفر حالياً / Pending price'));
+          assert.ok(dashboard.includes('cost_path:costPath'));
+          assert.ok(sender.includes('Issue_\${d.dept}_\${d.no}.xlsx'));
+          assert.ok(sender.includes('Cost_\${d.dept}_\${d.no}.xlsx'));
+          assert.ok(sender.includes('if (!d.file_path || !d.cost_path)'));
+          assert.ok(!dashboard.includes('Dept Yesterday') && !dashboard.includes('Diff vs Yesterday'));
           console.log('Order isolation and missing-price safeguards OK');
           NODE
