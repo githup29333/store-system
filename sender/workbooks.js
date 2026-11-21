@@ -87,14 +87,14 @@ async function makeIssue(order) {
   const ws = wb.addWorksheet('Issue', {views:[{rightToLeft:true,showGridLines:false}]});
   ws.columns = [{width:7},{width:32},{width:30},{width:16},{width:16},{width:25}];
   const put = (cell, value, o={}) => { style(ws.getCell(cell),o).value = value; };
-  ws.mergeCells('A1:F1'); put('A1',order.hotel,{b:1,bold:true,size:18,color:'FFFFFFFF',bg:'FF0B2638',border:1});
+  ws.mergeCells('A1:F1'); put('A1',order.hotel,{b:1,bold:true,size:18,color:'FFFFFF',bg:'0B2638',border:1});
   ws.getRow(1).height = 38;
-  ws.mergeCells('A2:F2'); put('A2','إذن صرف / ISSUE NOTE',{b:1,bold:true,size:14,color:'FFFFFFFF',bg:'FF0B5C7A',border:1});
+  ws.mergeCells('A2:F2'); put('A2','إذن صرف / ISSUE NOTE',{b:1,bold:true,size:14,color:'FFFFFF',bg:'0B5C7A',border:1});
   ws.getRow(2).height = 30;
-  ws.mergeCells('A3:C3'); put('A3','القسم / Department: ' + order.dept,{b:1,bg:'FFEAF0F4',border:1});
-  ws.mergeCells('D3:F3'); put('D3','رقم الطلب / Order: ' + order.no,{b:1,bg:'FFEAF0F4',border:1});
-  ws.mergeCells('A4:F4'); put('A4','التاريخ / Date: ' + order.date,{bg:'FFF4F7F9',border:1});
-  ['#','الصنف بالعربية / Arabic item','ITEM NAME / English','المطلوب / Requested','المصروف / Issued','ملاحظات / Remarks'].forEach((v,i)=>put('ABCDEF'[i]+'6',v,{bold:true,color:'FFFFFFFF',bg:'FF0B5C7A',border:true}));
+  ws.mergeCells('A3:C3'); put('A3','القسم / Department: ' + order.dept,{b:1,bg:'EAF0F4',border:1});
+  ws.mergeCells('D3:F3'); put('D3','رقم الطلب / Order: ' + order.no,{b:1,bg:'EAF0F4',border:1});
+  ws.mergeCells('A4:F4'); put('A4','التاريخ / Date: ' + order.date,{bg:'F4F7F9',border:1});
+  ['#','الصنف بالعربية / Arabic item','ITEM NAME / English','المطلوب / Requested','المصروف / Issued','ملاحظات / Remarks'].forEach((v,i)=>put('ABCDEF'[i]+'6',v,{bold:true,color:'FFFFFF',bg:'0B5C7A',border:true}));
   ws.getRow(6).height = 34;
   order.lines.forEach((x,i)=>{
     const r=7+i, bg=i%2?'FFF4F8FA':'FFFFFFFF';
@@ -102,7 +102,7 @@ async function makeIssue(order) {
     ws.getRow(r).height=26;
   });
   const end=7+order.lines.length;
-  ws.mergeCells('A'+end+':F'+end); put('A'+end,'إجمالي الأصناف المصروفة / Total issued lines: '+order.lines.length,{bold:true,bg:'FFE4EEF3',border:true});
+  ws.mergeCells('A'+end+':F'+end); put('A'+end,'إجمالي الأصناف المصروفة / Total issued lines: '+order.lines.length,{bold:true,bg:'E4EEF3',border:true});
   ws.getRow(end).height=25;
   ws.mergeCells('A'+(end+2)+':C'+(end+2)); put('A'+(end+2),'مقدّم الطلب / Requested by\nالتوقيع / Signature: ____________',{border:true,align:'right'});
   ws.mergeCells('D'+(end+2)+':F'+(end+2)); put('D'+(end+2),'أمين المخزن / Storekeeper\nالتوقيع / Signature: ____________',{border:true,align:'right'});
