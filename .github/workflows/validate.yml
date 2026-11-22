@@ -49,8 +49,10 @@ jobs:
           if (/\.insert\(|\.update\(|\.delete\(/i.test(script)) {
             throw new Error('Management page must remain read-only');
           }
-          const restApi = script.match(/async function api\(path,retry=true\)\\s*\\{([\\s\\S]*?)\\n\\}/);
-          if (!restApi || /method\\s*:/.test(restApi[1])) {
+          const apiStart = script.indexOf('async function api(');
+          const apiEnd = script.indexOf('\n}', apiStart);
+          const restApi = apiStart >= 0 && apiEnd > apiStart ? script.slice(apiStart, apiEnd) : '';
+          if (!restApi || /method\s*:/.test(restApi)) {
             throw new Error('Supabase REST access must remain GET-only');
           }
           console.log('Read-only management dashboard JavaScript syntax OK');
