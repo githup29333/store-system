@@ -42,6 +42,55 @@ h3{margin:18px 0 6px}
 #modal>div{background:#fff;border-radius:12px;padding:16px;max-width:640px;width:100%;max-height:85vh;overflow:auto}
 [hidden]{display:none!important}
 #msg{color:var(--bad);min-height:1.5em}
+
+/* Store System premium visual system — management console */
+:root{--bg:#f3f5f8;--card:#fff;--ink:#172333;--mut:#718096;--ac:#167c80;--ok:#16845b;--warn:#b7791f;--bad:#c2413b;--ln:#e5eaf0;--navy:#101827;--gold:#c6a15b;--shadow:0 12px 35px #1723330d}
+body{background:radial-gradient(circle at 92% 0,#e9eff7 0,transparent 32%),var(--bg);color:var(--ink);font-family:Tajawal,Arial,sans-serif;line-height:1.7}
+#login{max-width:410px!important;margin:9vh auto!important;padding:30px!important;border:1px solid var(--ln);border-radius:22px!important;box-shadow:var(--shadow);position:relative;overflow:hidden;animation:consoleIn .45s ease both}
+#login:before{content:"S";display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:var(--gold);color:var(--navy);font-size:23px;font-weight:800;margin-bottom:16px}
+#login h2{font-size:23px;color:var(--navy)}
+#login input{width:100%;margin:7px 0 12px!important;padding:12px 13px!important;border:1px solid #dce3eb!important;border-radius:11px!important}
+header{background:linear-gradient(120deg,var(--navy),#1c3447 65%,#245b62)!important;padding:17px 22px!important;box-shadow:0 8px 28px #10182718;position:relative;overflow:hidden}
+header:after{content:"";position:absolute;width:250px;height:250px;border:1px solid #ffffff20;border-radius:50%;left:-55px;top:-165px;box-shadow:0 0 0 32px #ffffff08,0 0 0 64px #ffffff05;pointer-events:none}
+header h1{font-size:21px!important;font-weight:800;position:relative;z-index:1}
+header select{background:#ffffff!important;border:1px solid #ffffff40!important;border-radius:10px!important}
+nav{max-width:1200px!important;padding:15px 14px 0!important;gap:7px!important;flex-wrap:wrap}
+nav button{border:1px solid transparent!important;border-radius:12px 12px 0 0!important;background:#e7ecf2!important;color:#5b6878!important;padding:10px 15px!important;transition:all .2s ease}
+nav button:hover{background:#fff!important;transform:translateY(-2px)}
+nav button.on{background:#fff!important;color:var(--ac)!important;border-color:var(--ln)!important;box-shadow:0 -3px 0 var(--gold) inset}
+main{max-width:1200px!important;background:transparent!important;padding:16px 14px 28px!important;min-height:70vh}
+main>section:not([hidden]){background:var(--card);border:1px solid var(--ln);border-radius:20px;padding:clamp(14px,2.5vw,24px);box-shadow:var(--shadow);animation:consoleIn .35s ease both}
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=number],select,textarea{border:1px solid #dce3eb!important;border-radius:11px!important;background:#fbfcfe!important;color:var(--ink)!important;padding:9px 12px!important;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#65a6a3!important;box-shadow:0 0 0 3px #167c8018!important;background:#fff!important}
+.btn{border:1px solid transparent!important;border-radius:11px!important;background:linear-gradient(120deg,#167c80,#216a78)!important;color:#fff!important;padding:9px 14px!important;font-weight:700!important;box-shadow:0 5px 12px #167c801b;transition:transform .18s,box-shadow .18s,filter .18s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 18px #167c8028;filter:brightness(1.04)}
+.btn.alt{background:#fff!important;color:#246a73!important;border-color:#cbdcde!important;box-shadow:none}
+.btn.bad{background:linear-gradient(120deg,#c2413b,#a82e37)!important;color:#fff!important}
+.grid{gap:14px!important;margin-bottom:16px!important}
+.kpi{background:linear-gradient(145deg,#fff,#f8fafc)!important;border:1px solid var(--ln);border-radius:16px!important;padding:16px!important;box-shadow:var(--shadow);text-align:right!important;transition:transform .2s,box-shadow .2s}
+.kpi:hover{transform:translateY(-3px);box-shadow:0 15px 35px #17233312}
+.kpi b{color:var(--ac)!important;font-size:29px!important}
+table{border-collapse:separate!important;border-spacing:0;overflow:hidden;border:1px solid var(--ln);border-radius:13px}
+th,td{border:0!important;border-bottom:1px solid var(--ln)!important;padding:10px 12px!important}
+th{background:#f5f8fa!important;color:#607184;font-weight:800}
+tr:last-child td{border-bottom:0!important}
+tbody tr:hover td{background:#fafcfd}
+.wrap{border-radius:13px}
+.bar{gap:11px!important;margin:8px 0!important}
+.bar span{color:#526477;font-weight:600}
+.bar i{height:11px!important;border-radius:20px!important;background:linear-gradient(90deg,#167c80,#75b8ad)!important;max-width:68%!important}
+.bar em{font-variant-numeric:tabular-nums;color:var(--mut)}
+.tag{padding:4px 10px!important;border-radius:30px!important}
+.t-ok{background:#e4f5ed!important;color:#16734e!important}.t-bad{background:#fde7e5!important;color:#b42318!important}.t-w{background:#fff1d8!important;color:#9a6412!important}
+h3{color:#20384b;margin:20px 0 9px!important}
+.row{gap:10px!important}
+#modal>div{border-radius:20px!important;box-shadow:0 24px 80px #10182730!important;border:1px solid var(--ln);padding:22px!important}
+#credit{color:#8793a2!important;padding:20px 10px!important}
+@keyframes consoleIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:700px){header{flex-wrap:wrap;padding:15px!important}header h1{width:100%;flex:1 1 100%;font-size:19px!important}header select{flex:1;min-width:130px}nav{padding:12px 9px 0!important;gap:5px!important}nav button{flex:1 1 28%;border-radius:10px!important;padding:9px 7px!important;font-size:13px}main{padding:10px!important}main>section:not([hidden]){border-radius:16px;padding:13px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}.kpi{padding:12px!important}.kpi b{font-size:23px!important}.row>*{max-width:100%}.wrap{max-width:100%}}
+@media(max-width:390px){.grid{grid-template-columns:1fr 1fr!important}.kpi b{font-size:20px!important}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
 </style>
 </head>
 <body>
