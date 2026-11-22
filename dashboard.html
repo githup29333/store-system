@@ -107,6 +107,21 @@ html[data-theme="dark"] tbody tr:hover td{background:#1a2939!important}
 html[data-theme="dark"] .btn.alt{background:#172638!important;color:#a4e0d9!important;border-color:#36525b!important}
 html[data-theme="dark"] .tag.t-ok{background:#153b32!important;color:#8ce0bd!important}html[data-theme="dark"] .tag.t-bad{background:#482527!important;color:#ffaaa5!important}html[data-theme="dark"] .tag.t-w{background:#49391e!important;color:#f0cb83!important}
 html[data-theme="dark"] #credit{color:#8192a6!important}
+
+/* Unified navigation drawer */
+#sideNav{position:fixed;z-index:1002;top:0;right:0;bottom:0;width:min(330px,88vw);max-width:100%;margin:0;padding:18px;background:var(--card);border-left:1px solid var(--ln);box-shadow:-18px 0 55px #10182725;display:flex;flex-direction:column;gap:14px;overflow:auto;animation:drawerIn .22s ease both}
+#sideNav[hidden],#navShade[hidden]{display:none!important}
+#sideNav .drawerHead{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--ln);color:var(--ink)}
+#sideNav .navGroup{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#sideNav .navGroup small{grid-column:1/-1;color:var(--mut);font-weight:800;padding:2px 4px}
+#sideNav button[data-t]{border:1px solid var(--ln)!important;border-radius:11px!important;background:#f5f8fa!important;color:#34495e!important;text-align:right;padding:10px 11px!important;white-space:normal}
+#sideNav button[data-t].on{background:#e6f3f1!important;color:#126d6d!important;border-color:#9ac9c4!important;box-shadow:inset -3px 0 var(--gold)}
+#navShade{position:fixed;z-index:1001;inset:0;background:#10182780;backdrop-filter:blur(2px)}
+@keyframes drawerIn{from{transform:translateX(22px);opacity:.7}to{transform:translateX(0);opacity:1}}
+html[data-theme="dark"] #sideNav{background:var(--card);border-color:var(--ln)}
+html[data-theme="dark"] #sideNav button[data-t]{background:#172638!important;color:var(--ink)!important;border-color:var(--ln)!important}
+html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;color:#a4e0d9!important}
+@media(max-width:700px){#menuToggle{order:3}header h1{order:1}header select{order:2}}
 </style>
 <script>try{if(localStorage.getItem("store-system-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 </head>
@@ -119,8 +134,8 @@ html[data-theme="dark"] #credit{color:#8192a6!important}
  <p id="msg"></p>
 </div>
 <div id="app" hidden>
- <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="v">المخزون</button><button data-t="a">التحليلات</button><button data-t="g">سجل العمليات</button><button data-t="k">الفنادق والصلاحية</button></nav>
+ <header><button class="btn alt" id="menuToggle" type="button" aria-expanded="false">☰ القائمة</button><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
+ <nav id="sideNav" hidden aria-label="القائمة الرئيسية"><div class="drawerHead"><b>أقسام لوحة التحكم</b><button class="btn alt" id="closeNav" type="button">إغلاق ✕</button></div><div class="navGroup"><small>الرئيسية</small><button data-t="s" class="on">◈ الملخص</button></div><div class="navGroup"><small>إدارة المخازن والتشغيل</small><button data-t="o">▤ الطلبات</button><button data-t="i">▦ الأصناف</button><button data-t="v">▣ المخزون</button></div><div class="navGroup"><small>التقارير والمتابعة</small><button data-t="c">▤ التكاليف</button><button data-t="a">▥ التحليلات</button><button data-t="g">◷ سجل العمليات</button></div><div class="navGroup"><small>الإعدادات والربط</small><button data-t="l">↗ الروابط</button><button data-t="d">⇧ الإرسال</button><button data-t="k">⚙ الفنادق والصلاحية</button></div></nav><div id="navShade" hidden></div>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
@@ -188,9 +203,12 @@ $('#go').onclick=async()=>{
 };
 $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
-document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
- document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','c','v','a','p','g','k'].forEach(i=>$('#'+i).hidden=i!==t)};
+const navOpen=()=>{$('#sideNav').hidden=false;$('#navShade').hidden=false;$('#menuToggle').setAttribute('aria-expanded','true')};
+const navClose=()=>{$('#sideNav').hidden=true;$('#navShade').hidden=true;$('#menuToggle').setAttribute('aria-expanded','false')};
+$('#menuToggle').onclick=navOpen;$('#closeNav').onclick=navClose;$('#navShade').onclick=navClose;
+$('#sideNav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
+ document.querySelectorAll('#sideNav button[data-t]').forEach(b=>b.className=b.dataset.t===t?'on':'');
+ ['s','o','i','l','d','c','v','a','p','g','k'].forEach(i=>$('#'+i).hidden=i!==t);navClose()};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
