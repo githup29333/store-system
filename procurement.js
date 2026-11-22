@@ -1,5 +1,5 @@
 /* Hotel-scoped purchasing, supplier management and immutable activity history. */
-var SUPPLIERS=[], PURCHASES=[], PURCHASE_LINES=[], AUDIT_LOG=[], PROCERR='', PO_OPEN='';
+var SUPPLIERS=[], PURCHASES=[], PURCHASE_LINES=[], AUDIT_LOG=[], PROCERR='', PO_OPEN='', PO_HOTEL='';
 async function loadProcurementData(){
   try{
     var r=await Promise.all([
@@ -11,7 +11,7 @@ async function loadProcurementData(){
     SUPPLIERS=r[0]||[];PURCHASES=r[1]||[];PURCHASE_LINES=r[2]||[];AUDIT_LOG=r[3]||[];PROCERR='';
   }catch(e){PROCERR=e.message||String(e);SUPPLIERS=[];PURCHASES=[];PURCHASE_LINES=[];AUDIT_LOG=[];}
 }
-function poHotelDefault(){return HSEL&&HOTELS.some(function(h){return h.code===HSEL})?HSEL:(HOTELS[0]&&HOTELS[0].code)||''}
+function poHotelDefault(){if(HSEL&&HOTELS.some(function(h){return h.code===HSEL}))return HSEL;if(PO_HOTEL&&HOTELS.some(function(h){return h.code===PO_HOTEL}))return PO_HOTEL;return (HOTELS[0]&&HOTELS[0].code)||''}
 function drawProcurement(){
   var root=document.querySelector('#p');if(!root)return;
   if(PROCERR){root.innerHTML='<h2>المشتريات والموردون</h2><p class="tag t-bad">تعذّر تحميل بيانات المشتريات: '+esc(PROCERR)+'</p><p>تأكد من تطبيق ترحيل المشتريات وسجل العمليات ثم حدّث اللوحة.</p>';return}
@@ -93,5 +93,5 @@ document.querySelector('#p').addEventListener('click',async function(e){
   }catch(err){alert('تعذّر تنفيذ العملية: '+err.message)}
 });
 document.querySelector('#p').addEventListener('change',function(e){
-  if(e.target.id==='poHotel'){drawProcurement()}
+  if(e.target.id==='poHotel'){PO_HOTEL=e.target.value;drawProcurement()}
 });
