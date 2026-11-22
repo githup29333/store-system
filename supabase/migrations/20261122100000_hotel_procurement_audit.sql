@@ -1,0 +1,2 @@
+-- Hotel-scoped procurement and append-only activity history.
+-- Existing hotel inventory and price permissions are preserved: admin-only access.
