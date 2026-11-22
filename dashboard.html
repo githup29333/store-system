@@ -155,9 +155,11 @@ const topN=(m,n)=>Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n);
 function drawS(){
  const OO=OV(),DD=DV(),fin=OO.filter(o=>o.fin),pend=OO.length-fin.length;
  const unsent=DD.filter(x=>['pending','approved','sending','failed'].includes(x.status)).length,stale=OO.filter(o=>!o.fin&&(Date.now()-new Date(o.at))>864e5).length;
- let rq=0,dv=0;const na={},rqd={},dep={},day={};
+ let rq=0,dv=0;const na={},rqd={},issued={},dep={},day={};
  OO.forEach(o=>{dep[o.dn]=(dep[o.dn]||0)+1;day[o.ds]=(day[o.ds]||0)+1;lines(o).forEach(x=>{rqd[x.id]=(rqd[x.id]||0)+1})});
- fin.forEach(o=>o.fin.it.forEach(x=>{rq+=x.req;dv+=Math.min(x.req,Math.max(0,x.iss));if(x.iss<=0)na[x.id]=(na[x.id]||0)+1}));
+ fin.forEach(o=>o.fin.it.forEach(x=>{rq+=x.req;dv+=Math.min(x.req,Math.max(0,x.iss));if(x.iss<=0)na[x.id]=(na[x.id]||0)+1;if(x.iss>0)issued[x.id]=(issued[x.id]||0)+x.iss}));
+ const sent=DD.filter(x=>x.status==='sent'&&!x.code.startsWith('BATCH|'));
+ const totalCost=sent.reduce((a,d)=>a+orderCost(ordH(d)).total,0);
  const days=Object.keys(day).sort().slice(-14).map(d=>[dt(d).slice(5),day[d]]);
  $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${OO.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div><div class="kpi"><b style="color:${unsent?'#b4231a':'#1d7a4f'}">${unsent}</b>نتائج لم تُرسل</div><div class="kpi"><b style="color:${stale?'#b4531a':'#1d7a4f'}">${stale}</b>بدون كود نهائي +24س</div></div>
  <h3>الطلبات حسب القسم</h3>${bars(topN(dep,10))}
