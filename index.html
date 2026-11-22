@@ -126,9 +126,10 @@ code{border:1px solid var(--ln);border-radius:9px!important;background:#f5f7fa!i
 <section id="p1">
  <div class="row">
   <select id="dept"><option value="R">المطعم / Restaurant</option><option value="C">الكانتين / Canteen</option><option value="L">المغسلة / Laundry</option><option value="H">خدمات الغرف / Room Service</option></select>
-  <button class="btn alt" id="addDept">+ قسم / Dept</button><button class="btn alt" id="delDept">− حذف قسم / Delete Dept</button><input type="search" id="srch" placeholder="ابحث / Search">
+  <button class="btn alt" id="addDept">+ قسم / Dept</button><button class="btn alt" id="delDept">− حذف قسم / Delete Dept</button><input type="search" id="srch" placeholder="ابحث / Search"><button class="btn alt" id="itemScan">مسح QR لصنف / Scan item QR</button><button class="btn alt" id="itemCamStop" hidden>إيقاف / Stop</button>
  </div>
  <div class="row"><input type="text" id="newItem" placeholder="أضف صنف جديد (عربي أو English) / Add new item" style="flex:1;min-width:160px"><button class="btn" id="addBtn">إضافة / Add</button></div>
+ <div id="itemCamBox" hidden><video id="itemVid" playsinline muted style="width:100%;max-height:240px;background:#000;border-radius:12px"></video></div>
  <div id="list"></div>
  <div class="row" style="margin-top:12px">
   <button class="btn" id="mk">إنشاء ورقة الطلب / Create Order Sheet</button>
@@ -524,14 +525,14 @@ const cn=t=>String(t).replace(/[|;~]/g,' ');
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
 const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
 function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});applyShared();$('#hs').textContent=hash()+' · '+cat.length}
-function tab(n){[1,2,3].forEach(i=>{$('#p'+i).hidden=n!=i;$('#t'+i).className=n==i?'on':''});if(n!=2)stopCam()}
+function tab(n){[1,2,3].forEach(i=>{$('#p'+i).hidden=n!=i;$('#t'+i).className=n==i?'on':''});if(n!=2)stopCam();if(n!=1)stopItemCam()}
 $('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);$('#t3').onclick=()=>tab(3);
 
 /* ---------- طلب القسم ---------- */
 function renderList(){
  const s=$('#srch').value.trim();
  $('#list').innerHTML=cat.map((c,i)=>({c,id:i+1})).filter(x=>!s||(x.c.n+' '+x.c.u).toLowerCase().includes(s.toLowerCase())).map(x=>
-  `<div class="item"><div class="nm">${x.c.n} <small>${x.c.u}</small></div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
+  `<div class="item"><div class="nm">${x.c.n} <small>${x.c.u}</small> ${x.c.sku?`<small dir="ltr">SKU: ${x.c.sku}</small>`:''}</div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
  const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':'';
 }
 function cntOnly(){const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':''}
@@ -559,7 +560,7 @@ $('#addBtn').onclick=async()=>{
 };
 function applyShared(){
  let rows=[];try{rows=JSON.parse(LS('shared2')||'[]')}catch(e){}
- if(rows.length){cat.length=0;rows.forEach(r=>{cat[r.id-1]={n:r.ar,u:r.en||''}})}else cat.length=Math.min(cat.length,BASE_N);
+ if(rows.length){cat.length=0;rows.forEach(r=>{cat[r.id-1]={n:r.ar,u:r.en||'',sku:r.sku||''}})}else cat.length=Math.min(cat.length,BASE_N);
 }
 async function syncShared(){
  if(!HK)return;
@@ -572,6 +573,44 @@ async function syncShared(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){syncShared();flushLog()}});
 $('#saveCat').onclick=()=>{LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم حفظ القائمة / List saved')};
+
+var ITEM_SCAN_STREAM=null,ITEM_SCAN_FRAME=0;
+function stopItemCam(){
+ if(ITEM_SCAN_FRAME)cancelAnimationFrame(ITEM_SCAN_FRAME);
+ ITEM_SCAN_FRAME=0;
+ if(ITEM_SCAN_STREAM){ITEM_SCAN_STREAM.getTracks().forEach(t=>t.stop());ITEM_SCAN_STREAM=null}
+ $('#itemCamBox').hidden=true;$('#itemCamStop').hidden=true;
+}
+async function startItemCam(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof jsQR!=='function')return toast('الكاميرا غير مدعومة؛ ابحث بالكود الداخلي / Camera unavailable');
+ stopItemCam();$('#itemCamBox').hidden=false;$('#itemCamStop').hidden=false;
+ try{
+  ITEM_SCAN_STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  const video=$('#itemVid'),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+  video.srcObject=ITEM_SCAN_STREAM;await video.play();
+  function tick(){
+   if(!ITEM_SCAN_STREAM)return;
+   if(video.readyState>=2){
+    canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const im=ctx.getImageData(0,0,canvas.width,canvas.height),hit=jsQR(im.data,im.width,im.height);
+    if(hit&&hit.data){
+     const value=hit.data.trim(),idx=cat.findIndex(x=>x&&(x.sku===value||x.barcode===value||x.code===value));
+     stopItemCam();
+     if(idx>=0){const id=idx+1;q[id]=(q[id]||0)+1;renderList();toast('تم اختيار '+cat[idx].n+' / Item added to order')}
+     else toast('الكود غير مرتبط بصنف في قائمة هذا الفندق / SKU not found in this hotel catalog');
+     return;
+    }
+   }
+   ITEM_SCAN_FRAME=requestAnimationFrame(tick);
+  }
+  tick();
+ }catch(e){stopItemCam();toast('تعذّر فتح الكاميرا: '+e.message)}
+}
+$('#itemScan').onclick=startItemCam;
+$('#itemCamStop').onclick=stopItemCam;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopItemCam()});
+
 
 function makeSheet(){if(!chk())return;
  const ids=Object.keys(q).filter(i=>q[i]>0).map(Number).sort((a,b)=>a-b);
