@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#101827">
+<title>لوحة الإدارة | Store System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#172333;--mut:#718096;--line:#e5eaf0;--navy:#101827;--gold:#c6a15b;--teal:#167c80;--green:#16845b;--amber:#b7791f;--red:#c2413b;--shadow:0 12px 35px #1723330d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 90% 0,#e9eff7 0,transparent 35%),var(--bg);font:15px/1.65 Tajawal,Arial,sans-serif;color:var(--ink)}
+button,input,select{font:inherit}.shell{max-width:1440px;margin:auto;padding:24px}
+.hero{background:linear-gradient(120deg,#101827,#1c3447 65%,#245b62);color:#fff;border-radius:24px;padding:28px 32px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.hero:after{content:"";position:absolute;width:300px;height:300px;border:1px solid #ffffff18;border-radius:50%;left:-70px;top:-160px;box-shadow:0 0 0 35px #ffffff08,0 0 0 70px #ffffff05}
+.top{display:flex;align-items:center;gap:12px;position:relative;z-index:1}.brand{width:46px;height:46px;border-radius:14px;background:#c6a15b;color:#101827;display:grid;place-items:center;font-size:22px;font-weight:800}.top h1{font-size:24px;margin:0}.top small{color:#cbd5e1;display:block}.hero p{color:#d5dde7;margin:20px 0 0;max-width:680px}.actions{margin-inline-start:auto;display:flex;gap:8px;align-items:center}.btn{border:0;border-radius:11px;padding:10px 15px;font-weight:700;cursor:pointer;background:var(--gold);color:#172333}.btn.ghost{background:#ffffff14;color:white;border:1px solid #ffffff30}.btn:disabled{opacity:.5;cursor:wait}
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0}.toolbar select{background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 14px;min-width:180px;color:var(--ink)}.stamp{color:var(--mut);font-size:13px;margin-inline-start:auto}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);animation:rise .5s both}.kpi{min-height:134px;position:relative;overflow:hidden}.kpi:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;background:#f2f5f8;left:-24px;bottom:-36px}.kpi .label{color:var(--mut);font-weight:600}.kpi strong{display:block;font-size:29px;line-height:1.25;margin:10px 0 4px;letter-spacing:-.5px}.kpi small{color:var(--mut)}.kpi .icon{position:absolute;left:17px;top:17px;font-size:21px;z-index:1}
+.section{margin-top:22px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.section h2{font-size:19px;margin:0}.section-head p{margin:3px 0 0;color:var(--mut);font-size:13px}
+.split{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow);min-width:0}.panel h3{font-size:16px;margin:0 0 14px}
+.bars{display:grid;gap:12px}.barrow{display:grid;grid-template-columns:minmax(100px,1fr) 2fr auto;gap:10px;align-items:center;font-size:13px}.track{height:10px;background:#eef2f6;border-radius:20px;overflow:hidden}.fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--teal),#7ab9b1);animation:grow .8s ease both}.amount{font-variant-numeric:tabular-nums;color:var(--mut)}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:560px}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{color:var(--mut);font-size:12px;font-weight:700;background:#f8fafc}td{font-size:13px}.status{display:inline-flex;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}.low{background:#fff1d8;color:#9a6412}.zero{background:#fde7e5;color:#b42318}.ok{background:#e4f5ed;color:#16734e}.missing{background:#edf1f5;color:#657386}
+.notice{border:1px solid #f0d9a9;background:#fff9eb;color:#79551a;border-radius:13px;padding:12px 14px;font-size:13px;margin-top:12px}.empty{padding:20px;text-align:center;color:var(--mut)}.footer{text-align:center;color:#8793a2;font-size:12px;padding:28px 8px}.login{max-width:410px;margin:9vh auto;background:#fff;padding:30px;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}.login h2{margin:0 0 5px}.login p{color:var(--mut);margin:0 0 20px}.login input{display:block;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:10px 0}.login .btn{width:100%;margin-top:8px}.err{color:var(--red);min-height:24px;font-size:13px}
+#app[hidden],#login[hidden]{display:none!important}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes grow{from{width:0}}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.split{grid-template-columns:1fr}.shell{padding:14px}.hero{padding:22px}.top h1{font-size:20px}}
+@media(max-width:520px){.grid{grid-template-columns:1fr 1fr;gap:9px}.kpi{padding:13px;min-height:120px}.kpi strong{font-size:23px}.actions{width:100%;margin:10px 0 0}.top{flex-wrap:wrap}.stamp{width:100%;margin:0}}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+ <div class="brand" style="margin-bottom:18px">S</div><h2>بوابة الإدارة</h2><p>عرض مؤشرات المنظومة والتكاليف والمخزون — صلاحية قراءة فقط</p>
+ <input id="email" type="email" placeholder="البريد الإلكتروني" autocomplete="username">
+ <input id="password" type="password" placeholder="كلمة المرور" autocomplete="current-password">
+ <button class="btn" id="loginBtn">دخول إلى الملخص</button><div class="err" id="error"></div>
+</div>
+<div id="app" hidden>
+ <div class="shell">
+  <header class="hero">
+   <div class="top"><div class="brand">S</div><div><h1>Store System <span style="color:#d8bd82">/</span> لوحة الإدارة</h1><small>EXECUTIVE OVERVIEW · READ ONLY</small></div>
+    <div class="actions"><button class="btn ghost" id="refresh">تحديث البيانات ↻</button><button class="btn ghost" id="logout">خروج</button></div>
+   </div>
+   <p>نظرة تنفيذية موحّدة على حركة الطلبات، جاهزية المخزون، وتكلفة الصرف بين الفنادق. هذه الصفحة مخصصة للمشاهدة ولا تحتوي على أدوات تعديل أو صرف.</p>
+  </header>
+  <div class="toolbar"><label for="hotel">الفندق:</label><select id="hotel"><option value="">كل الفنادق</option></select><span class="stamp" id="updated">جاري تحميل البيانات…</span></div>
+  <div class="section"><div class="section-head"><div><h2>المؤشرات الرئيسية</h2><p>ملخص الأداء وحركة الطلبات</p></div></div><div class="grid" id="kpis"></div></div>
+  <div class="section split">
+   <div class="panel"><h3>تكلفة الصرف حسب الفندق — هذا الشهر</h3><div class="bars" id="hotelCosts"></div></div>
+   <div class="panel"><h3>حالة الطلبات</h3><div class="bars" id="orderStates"></div></div>
+  </div>
+  <div class="section split">
+   <div class="panel"><h3>تنبيهات المخزون</h3><div id="stockAlerts"></div></div>
+   <div class="panel"><h3>الأصناف الأكثر صرفًا</h3><div class="bars" id="topItems"></div></div>
+  </div>
+  <div class="section"><div class="section-head"><div><h2>مقارنة تكلفة الفنادق شهريًا</h2><p>تعتمد على الطلبات المرسلة والأسعار المرتبطة حاليًا، مع استبعاد الأصناف غير المسعّرة من الإجمالي.</p></div></div>
+   <div class="panel"><div class="tablewrap" id="monthly"></div><div class="notice">ملاحظة محاسبية: المقارنة تستخدم الأسعار الحالية المرتبطة بالأصناف، وليست لقطة سعر تاريخية محفوظة وقت الصرف. الأصناف غير المسعّرة لا تدخل في الإجمالي.</div></div>
+  </div>
+  <div class="section"><div class="section-head"><div><h2>تفاصيل النواقص</h2><p>الأصناف التي وصلت إلى حد إعادة الطلب أو نفد رصيدها</p></div></div><div class="panel"><div class="tablewrap" id="lowTable"></div></div></div>
+  <footer class="footer" id="credit">© 2026 Theo — جميع الحقوق محفوظة / All rights reserved</footer>
+ </div>
+</div>
+<script>
+const SB='https://xthhojjcblknukwgksxw.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
+const $=s=>document.querySelector(s), enc=encodeURIComponent;
+let session=null,DATA={orders:[],items:[],hotels:[],prices:[],links:[],deliveries:[],inventory:[]};
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dateText=s=>{if(!s||String(s).length!==6)return '—';return '20'+s.slice(0,2)+'-'+s.slice(2,4)+'-'+s.slice(4,6)};
+const norm=s=>String(s||'').toLowerCase().replace(/[\s\-–()*×/.,]+/g,'');
+const unitGroups={'قطعة':['وحدة','قطعة'],'حزمة':['حزمة'],'صندوق':['صندوق'],'كيلو':['كيلو','كجم','كغ','kg','KG']};
+function unitMatch(price,unit){return !unit||!unitGroups[unit]||unitGroups[unit].includes(price.unit)}
+async function auth(body,grant){
+ const r=await fetch(SB+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_description||j.msg||j.message||'فشل تسجيل الدخول');
+ session={access:j.access_token,refresh:j.refresh_token};try{sessionStorage.setItem('store_admin_session',JSON.stringify(session))}catch(e){}
+}
+async function api(path,retry=true){
+ const r=await fetch(SB+'/rest/v1/'+path,{headers:{apikey:KEY,Authorization:'Bearer '+(session&&session.access||''),'Content-Type':'application/json'}});
+ if(r.status===401&&retry&&session&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');return api(path,false)}
+ if(!r.ok)throw new Error('تعذّر قراءة البيانات ('+r.status+'): '+(await r.text()).slice(0,180));
+ return r.json();
+}
+function logout(){session=null;try{sessionStorage.removeItem('store_admin_session')}catch(e){}$('#app').hidden=true;$('#login').hidden=false}
+$('#logout').onclick=logout;
+$('#loginBtn').onclick=async()=>{const b=$('#loginBtn');b.disabled=true;b.textContent='جاري التحقق…';$('#error').textContent='';
+ try{await auth({email:$('#email').value.trim(),password:$('#password').value},'password');await start()}
+ catch(e){$('#error').textContent=e.message}
+ finally{b.disabled=false;b.textContent='دخول إلى الملخص'}};
+$('#password').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
+$('#refresh').onclick=load;
+$('#hotel').onchange=render;
+function parseOrder(code){
+ const f=String(code||'').split('|'),isFinal=f[0]==='EBR1F',items={};
+ (f[9]||'').split(';').filter(Boolean).forEach(t=>{const a=t.split('~');items[+a[0]]={name:a[1]||'',en:a[2]||''}});
+ const lines=(f[6]||'').split(',').filter(Boolean).map(t=>{const a=t.split(':');return{id:+a[0],req:+a[1],iss:isFinal?+a[2]:0,unit:isFinal?(a[3]||'') : ''}});
+ return{isFinal,dept:f[1]||'',no:f[2]||'',ds:f[3]||'',deptName:f[7]||f[1]||'',items,lines};
+}
+function priceFor(id,name,unit){
+ const L=DATA.links.find(x=>+x.item_id===+id);
+ if(L&&L.method==='none')return null;
+ if(L&&L.price_id){const p=DATA.prices.find(x=>+x.id===+L.price_id&&!x.archived);if(p&&unitMatch(p,unit))return p;
+  if(p){const alt=DATA.prices.find(x=>!x.archived&&norm(x.name)===norm(p.name)&&unitMatch(x,unit));if(alt)return alt}}
+ let p=DATA.prices.find(x=>!x.archived&&x.code&&DATA.items.find(i=>+i.id===+id)?.code===x.code&&unitMatch(x,unit));
+ if(!p)p=DATA.prices.find(x=>!x.archived&&norm(x.name)===norm(name)&&unitMatch(x,unit));
+ return p||null;
+}
+function costOf(d){
+ const o=parseOrder(d.code);let total=0,missing=0,issued=0;const cats={};
+ o.lines.filter(x=>x.iss>0).forEach(x=>{issued+=x.iss;const item=DATA.items.find(i=>+i.id===x.id),snap=o.items[x.id],name=snap&&snap.name||item&&item.ar||('صنف #'+x.id);
+  const p=priceFor(x.id,name,x.unit);if(p){const v=x.iss*(+p.cost||0);total+=v;cats[p.category||'أخرى']=(cats[p.category||'أخرى']||0)+v}else missing++});
+ return{total,missing,issued,lines:o.lines,cats,order:o};
+}
+function barRows(el,rows,suffix){
+ if(!rows.length){el.innerHTML='<div class="empty">لا توجد بيانات كافية حتى الآن</div>';return}
+ const max=Math.max(1,...rows.map(x=>x.value));
+ el.innerHTML=rows.map(x=>'<div class="barrow"><span>'+esc(x.label)+'</span><div class="track"><div class="fill" style="width:'+Math.max(1,x.value/max*100)+'%"></div></div><span class="amount">'+esc(x.display||x.value)+esc(suffix||'')+'</span></div>').join('');
+}
+function render(){
+ const selected=$('#hotel').value,hotels=DATA.hotels.filter(h=>!selected||h.code===selected);
+ const orders=DATA.orders.filter(x=>!selected||x.hotel===selected),deliveries=DATA.deliveries.filter(x=>!selected||x.hotel===selected);
+ const sent=deliveries.filter(d=>d.status==='sent'&&d.dept!=='ALL'&&!String(d.code||'').startsWith('BATCH|'));
+ const now=new Date(),month=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+ const thisMonth=sent.filter(d=>('20'+String(d.ds||'').slice(0,2)+'-'+String(d.ds||'').slice(2,4))===month);
+ const costMap=new Map(),monthly={};let totalCost=0,missing=0;
+ sent.forEach(d=>{const c=costOf(d),h=d.hotel||'—',m='20'+String(d.ds||'').slice(0,2)+'-'+String(d.ds||'').slice(2,4);
+  costMap.set(h,(costMap.get(h)||0)+c.total);monthly[m]=monthly[m]||{};monthly[m][h]=(monthly[m][h]||0)+c.total;totalCost+=c.total;missing+=c.missing});
+ const currentCost=thisMonth.reduce((a,d)=>a+costOf(d).total,0);
+ const pending=deliveries.filter(d=>['pending','approved','sending','failed'].includes(d.status)).length;
+ const req=orders.filter(o=>String(o.code||'').split('|')[0]!=='EBR1F').length;
+ const finals=orders.filter(o=>String(o.code||'').split('|')[0]==='EBR1F').length;
+ const inventory=DATA.inventory.filter(x=>!selected||x.hotel_code===selected);
+ const low=inventory.filter(x=>+x.reorder_level>0&&+x.quantity<=+x.reorder_level);
+ const zero=inventory.filter(x=>+x.quantity<=0);
+ const stockNoRecord=inventory.length===0;
+ const kpis=[
+  ['طلبات مسجلة',orders.length,'▤'],['طلبات مكتملة بالصرف',finals,'✓'],['بانتظار المعالجة',pending,'◷'],['تكلفة هذا الشهر',money(currentCost)+' د.ل','◈'],
+  ['طلبات مرسلة',sent.length,'↗'],['أصناف تحت حد الطلب',low.length,'!'],['أرصدة صفرية',zero.length,'×'],['أصناف بلا سعر',missing,'≈']
+ ];
+ $('#kpis').innerHTML=kpis.map((x,i)=>'<div class="card kpi" style="animation-delay:'+i*45+'ms"><span class="icon">'+x[2]+'</span><span class="label">'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+(i===7?'في الطلبات المرسلة':'')+'</small></div>').join('');
+ const hotelRows=hotels.map(h=>({label:h.name,value:costMap.get(h.code)||0,display:money(costMap.get(h.code)||0)+' د.ل'})).sort((a,b)=>b.value-a.value);
+ barRows($('#hotelCosts'),hotelRows,'');
+ const states=[{label:'مرسلة',value:deliveries.filter(d=>d.status==='sent').length},{label:'مكتملة بانتظار الإرسال',value:deliveries.filter(d=>d.status==='pending'||d.status==='approved').length},{label:'فشل',value:deliveries.filter(d=>d.status==='failed').length},{label:'قيد الإرسال',value:deliveries.filter(d=>d.status==='sending').length}];
+ barRows($('#orderStates'),states,'');
+ const itemTotals={};
+ sent.forEach(d=>{const o=parseOrder(d.code);o.lines.forEach(x=>{if(x.iss>0)itemTotals[x.id]=(itemTotals[x.id]||0)+x.iss})});
+ const tops=Object.entries(itemTotals).map(([id,v])=>{const it=DATA.items.find(x=>+x.id===+id);return{label:it&&it.ar||'صنف #'+id,value:v,display:String(v)}}).sort((a,b)=>b.value-a.value).slice(0,7);
+ barRows($('#topItems'),tops,'');
+ const alerts=low.map(x=>({x,status:+x.quantity<=0?'نفد':'تحت الحد'}));
+ $('#stockAlerts').innerHTML=stockNoRecord?'<div class="empty">لم يتم تسجيل أرصدة افتتاحية لهذا الفندق بعد.<br>ابدأ بتسجيل الرصيد من لوحة المخزون؛ بعدها ستظهر التنبيهات تلقائيًا.</div>':alerts.length?'<div class="tablewrap"><table><tr><th>الصنف</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr>'+alerts.slice(0,8).map(a=>{const it=DATA.items.find(i=>+i.id===+a.x.item_id);return'<tr><td>'+esc(it&&it.ar||'صنف #'+a.x.item_id)+'</td><td>'+esc(a.x.quantity)+' '+esc(a.x.unit)+'</td><td>'+esc(a.x.reorder_level)+'</td><td><span class="status '+(+a.x.quantity<=0?'zero':'low')+'">'+a.status+'</span></td></tr>'}).join('')+'</table></div>':'<div class="empty">لا توجد أصناف تحت حد إعادة الطلب حاليًا</div>';
+ const months=Object.keys(monthly).sort().reverse().slice(0,12),hotelNames=hotels.map(h=>h.code);
+ $('#monthly').innerHTML=months.length?'<table><tr><th>الشهر</th>'+hotels.map(h=>'<th>'+esc(h.name)+'</th>').join('')+'<th>الإجمالي</th></tr>'+months.map(m=>{let sum=0;return'<tr><td><b>'+m+'</b></td>'+hotelNames.map(h=>{const v=monthly[m][h]||0;sum+=v;return'<td>'+money(v)+' د.ل</td>'}).join('')+'<td><b>'+money(sum)+' د.ل</b></td></tr>'}).join('')+'</table>':'<div class="empty">لا توجد طلبات مرسلة تدخل في المقارنة حتى الآن</div>';
+ const rows=low.slice().sort((a,b)=>(+a.quantity-(+a.reorder_level))-(+b.quantity-(+b.reorder_level))).map(x=>{const it=DATA.items.find(i=>+i.id===+x.item_id);return'<tr><td>'+esc((DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code)+'</td><td>'+esc(it&&it.ar||'صنف #'+x.item_id)+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td>'+esc(x.reorder_level)+'</td><td><span class="status '+(+x.quantity<=0?'zero':'low')+'">'+(+x.quantity<=0?'نفد':'اطلب الآن')+'</span></td></tr>'}).join('');
+ $('#lowTable').innerHTML=rows?'<table><tr><th>الفندق</th><th>الصنف</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr>'+rows+'</table>':'<div class="empty">'+(stockNoRecord?'لا توجد أرصدة مسجلة بعد':'لا توجد نواقص مسجلة')+'</div>';
+ $('#updated').textContent='آخر تحديث: '+new Date().toLocaleString('ar-LY')+' · البيانات للعرض فقط';
+}
+async function load(){
+ $('#updated').textContent='جاري تحديث البيانات…';$('#refresh').disabled=true;
+ try{
+  const out=await Promise.all([
+   api('orders?select=*&order=created_at.desc&limit=5000'),
+   api('items?select=id,ar,en,code,sku,hotels&order=id.asc&limit=5000'),
+   api('hotels?select=code,name,active&active=eq.true&order=name.asc'),
+   api('prices?select=id,code,name,unit,cost,category,archived&limit=5000'),
+   api('item_price_link?select=item_id,price_id,method&limit=5000'),
+   api('deliveries?select=key,hotel,dept,no,ds,dn,code,status,rev,sent_at&order=updated_at.desc&limit=5000'),
+   api('hotel_inventory?select=hotel_code,item_id,quantity,reorder_level,unit&limit=10000')
+  ]);
+  DATA={orders:out[0],items:out[1],hotels:out[2],prices:out[3],links:out[4],deliveries:out[5],inventory:out[6]};
+  const sel=$('#hotel'),old=sel.value;sel.innerHTML='<option value="">كل الفنادق</option>'+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+'</option>').join('');sel.value=old;
+  render();
+ }catch(e){$('#updated').textContent='تعذّر تحميل البيانات: '+e.message}
+ finally{$('#refresh').disabled=false}
+}
+async function start(){ $('#login').hidden=true;$('#app').hidden=false;await load() }
+try{const saved=JSON.parse(sessionStorage.getItem('store_admin_session')||'null');if(saved&&saved.access){session=saved;start().catch(()=>logout())}}catch(e){}
+</script>
+</body></html>
