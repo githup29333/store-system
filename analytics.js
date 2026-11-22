@@ -1,6 +1,6 @@
 /* Analytics center: hotel/date scoped reporting from completed, sent orders. */
 var AN_RANGE = {from:'', to:'', dept:''};
-function anISO(ds){return /^\\d{6}$/.test(String(ds||''))?'20'+ds.slice(0,2)+'-'+ds.slice(2,4)+'-'+ds.slice(4):''}
+function anISO(ds){return /^\d{6}$/.test(String(ds||''))?'20'+ds.slice(0,2)+'-'+ds.slice(2,4)+'-'+ds.slice(4):''}
 function anDefaultRange(){
   if(!AN_RANGE.from||!AN_RANGE.to){
     var end=new Date(),start=new Date();start.setDate(start.getDate()-29);
