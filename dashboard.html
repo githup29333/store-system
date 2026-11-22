@@ -152,9 +152,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
  <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
 </div>
 <div id="modal" hidden><div id="mb"></div></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
- <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+
  <script src="inventory.js"></script>
  <script src="monthly-cost.js"></script>
  <script src="analytics.js"></script>
@@ -172,8 +170,10 @@ setInterval(()=>{if(S&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت ال�
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى')});
 
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match',INVENTORY=[],MOVEMENTS=[],INVERR='';
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match',INVENTORY=[],MOVEMENTS=[],INVERR='',INVENTORY_LOADED=false,AUDIT_LOADED=false,ACTIVE_TAB='s';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+let excelLoader=null;
+function ensureExcelJS(){if(window.ExcelJS)return Promise.resolve(window.ExcelJS);if(!excelLoader)excelLoader=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=()=>resolve(window.ExcelJS);s.onerror=()=>{excelLoader=null;reject(new Error('تعذّر تحميل مكتبة Excel. تحقق من الاتصال ثم حاول مجددًا.'))};document.head.appendChild(s)});return excelLoader;}
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const DSEL=new Set(),enc=encodeURIComponent;
 const OV=()=>HSEL?O.filter(o=>o.hotel===HSEL):O,DV=()=>HSEL?DEL.filter(d=>d.hotel===HSEL):DEL,RV=()=>HSEL?REC.filter(r=>r.hotel===HSEL):REC;
@@ -207,9 +207,13 @@ $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 const navOpen=()=>{$('#sideNav').hidden=false;$('#navShade').hidden=false;$('#menuToggle').setAttribute('aria-expanded','true')};
 const navClose=()=>{$('#sideNav').hidden=true;$('#navShade').hidden=true;$('#menuToggle').setAttribute('aria-expanded','false')};
 $('#menuToggle').onclick=navOpen;$('#closeNav').onclick=navClose;$('#navShade').onclick=navClose;
-$('#sideNav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
+$('#sideNav').onclick=e=>{const btn=e.target.closest('button[data-t]');if(!btn)return;const t=btn.dataset.t;ACTIVE_TAB=t;
  document.querySelectorAll('#sideNav button[data-t]').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','c','v','a','p','g','k','u'].forEach(i=>$('#'+i).hidden=i!==t);navClose();if(t==='u')loadUsers().catch(e=>$('#u').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>')};
+ ['s','o','i','l','d','c','v','a','g','k','u'].forEach(i=>{const el=$('#'+i);if(el)el.hidden=i!==t});navClose();
+ try{if(t==='u')loadUsers().catch(e=>$('#u').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');
+ else if(t==='v')loadInventoryOnce();else if(t==='g'){if(!AUDIT_LOADED){$('#g').innerHTML='<p>جارٍ تحميل سجل العمليات…</p>';loadAuditData().then(()=>{AUDIT_LOADED=true;drawAudit()})}else drawAudit()}
+ else if(t==='a')drawAnalytics();else if(t==='c')drawC();else if(t==='d')drawD();else if(t==='k')drawK();else if(t==='l')drawL();else if(t==='i')drawI();else if(t==='o')drawO();else if(t==='s')drawS();}
+ catch(err){const root=$('#'+t);if(root)root.innerHTML='<p class="tag t-bad">'+esc(err.message)+'</p>'}};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
@@ -230,7 +234,9 @@ function build(rows){
 const nm=id=>NM[id]||SH[id]||(BASE[id-1]?{n:BASE[id-1][0],u:BASE[id-1][1]||''}:{n:'صنف #'+id,u:''});
 const lines=o=>o.fin?o.fin.it:Object.keys(o.req).map(id=>({id:+id,req:o.req[id]}));
 
+async function loadInventoryOnce(){if(INVENTORY_LOADED)return drawV();INVENTORY_LOADED=true;$('#v').innerHTML='<p>جارٍ تحميل المخزون…</p>';try{[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}drawV()}
 async function load(){
+ INVENTORY_LOADED=false;AUDIT_LOADED=false;
  try{
   const [orders,items]=await Promise.all([api('orders?select=*&order=created_at.desc&limit=3000'),api('items?select=*&order=id.asc&limit=2000')]);
   ITEMS=items;SH={};items.forEach(x=>SH[x.id]={n:x.ar,u:x.en});
@@ -242,8 +248,9 @@ async function load(){
   AUTOCFG=await api('app_secrets?select=value&key=eq.auto_send_config').then(r=>{try{return r[0]?JSON.parse(r[0].value):AUTOCFG}catch(e){return AUTOCFG}}).catch(()=>AUTOCFG);
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
- try{[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}
- await loadAuditData();drawS();drawO();drawI();drawL();drawD();drawC();drawV();drawAnalytics();drawAudit();drawK();
+ INVENTORY=[];MOVEMENTS=[];INVERR='';
+ drawS();
+ $('#o').innerHTML='<p>افتح هذا القسم لعرض الطلبات.</p>';$('#i').innerHTML='<p>افتح هذا القسم لعرض الأصناف.</p>';$('#l').innerHTML='<p>افتح هذا القسم لعرض الروابط.</p>';$('#d').innerHTML='<p>افتح هذا القسم لعرض الإرسال.</p>';$('#c').innerHTML='<p>افتح هذا القسم لعرض التكاليف.</p>';$('#v').innerHTML='<p>افتح هذا القسم لتحميل بيانات المخزون.</p>';$('#a').innerHTML='<p>افتح هذا القسم لعرض التحليلات.</p>';$('#g').innerHTML='<p>افتح هذا القسم لتحميل سجل العمليات.</p>';$('#k').innerHTML='<p>افتح هذا القسم لعرض إعدادات الفنادق.</p>';
 }
 async function start(){
  if(S&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}
@@ -393,6 +400,7 @@ async function upload(path,buf){
  if(!up.ok)throw new Error(await up.text());
 }
 async function approveOne(d){
+ await ensureExcelJS();
  const now=new Date().toISOString(),q='deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev;
  let path=d.file_path,costPath=d.cost_path||null;
  if(!d.code.startsWith('BATCH|')){
@@ -422,6 +430,7 @@ async function bulkEach(){
  catch(e){alert('تعذّر التنفيذ: '+e.message)}
 }
 async function xmulti(list){
+ await ensureExcelJS();
  const wb=new ExcelJS.Workbook(),sm=wb.addWorksheet('Summary',{views:[{rightToLeft:true}]});
  sm.columns=[{width:16},{width:30},{width:14},{width:14},{width:14}];
  const hd=['رقم الطلب\nOrder No.','القسم\nDepartment','التاريخ\nDate','الأصناف المطلوبة\nRequested lines','الأصناف المصروفة\nIssued lines'];
@@ -479,7 +488,7 @@ function fillHF(){
  const v=HSEL;$('#hf').innerHTML='<option value="">كل الفنادق</option>'+HOTELS.map(h=>`<option value="${esc(h.code)}">${esc(h.name)} (${esc(h.code)})</option>`).join('');
  $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;
 }
-$('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD();drawV();drawC();drawAnalytics();drawAudit()};
+$('#hf').onchange=()=>{HSEL=$('#hf').value;const redraw={s:drawS,o:drawO,i:drawI,l:drawL,d:drawD,c:drawC,v:drawV,a:drawAnalytics,g:drawAudit,k:drawK};if(ACTIVE_TAB==='v'&&!INVENTORY_LOADED)loadInventoryOnce();else if(redraw[ACTIVE_TAB])redraw[ACTIVE_TAB]()};
 const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
 
 /* ---------- التكاليف ---------- */
@@ -598,6 +607,7 @@ function barSVG(byCat,sz){
  <text x="${W-12}" y="22" text-anchor="end" font-family="Tahoma,Arial,sans-serif" font-size="17" font-weight="bold" fill="#0B5C7A">قيمة التكلفة حسب الفئة / Cost by category</text>${body}</svg>`;
 }
 async function buildCostBook(d){
+ await ensureExcelJS();
  const ord=ordH(d),det=orderCostDetail(ord);
  const wb=new ExcelJS.Workbook();
  wb.creator='Store System';wb.subject='Premium bilingual per-order cost report';wb.title='Premium Order Cost Dashboard';
