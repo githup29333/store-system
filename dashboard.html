@@ -120,7 +120,7 @@ html[data-theme="dark"] #credit{color:#8192a6!important}
 </div>
 <div id="app" hidden>
  <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="v">المخزون</button><button data-t="k">الفنادق والصلاحية</button></nav>
+ <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="v">المخزون</button><button data-t="a">التحليلات</button><button data-t="p">المشتريات</button><button data-t="g">سجل العمليات</button><button data-t="k">الفنادق والصلاحية</button></nav>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
@@ -129,6 +129,9 @@ html[data-theme="dark"] #credit{color:#8192a6!important}
   <section id="d" hidden></section>
   <section id="c" hidden></section>
   <section id="v" hidden></section>
+  <section id="a" hidden></section>
+  <section id="p" hidden></section>
+  <section id="g" hidden></section>
   <section id="k" hidden></section>
  </main>
  <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
@@ -139,6 +142,8 @@ html[data-theme="dark"] #credit{color:#8192a6!important}
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
  <script src="inventory.js"></script>
  <script src="monthly-cost.js"></script>
+ <script src="analytics.js"></script>
+ <script src="procurement.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const THEME_KEY='store-system-theme';
@@ -186,7 +191,7 @@ $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','c','v','k'].forEach(i=>$('#'+i).hidden=i!==t)};
+ ['s','o','i','l','d','c','v','a','p','g','k'].forEach(i=>$('#'+i).hidden=i!==t)};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
@@ -220,7 +225,7 @@ async function load(){
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
  try{[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}
- drawS();drawO();drawI();drawL();drawD();drawC();drawV();drawK();
+ await loadProcurementData();drawS();drawO();drawI();drawL();drawD();drawC();drawV();drawAnalytics();drawProcurement();drawAudit();drawK();
 }
 async function start(){
  if(S&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}
@@ -443,7 +448,7 @@ function fillHF(){
  const v=HSEL;$('#hf').innerHTML='<option value="">كل الفنادق</option>'+HOTELS.map(h=>`<option value="${esc(h.code)}">${esc(h.name)} (${esc(h.code)})</option>`).join('');
  $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;
 }
-$('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD();drawV();drawC()};
+$('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD();drawV();drawC();drawAnalytics();drawProcurement();drawAudit()};
 const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
 
 /* ---------- التكاليف ---------- */
@@ -690,7 +695,7 @@ function drawC(){
  const linked=new Set(LINKS.filter(l=>l.price_id).map(l=>l.item_id)).size;
  const decided=new Set(LINKS.map(l=>l.item_id));
  const unresolved=ITEMS.filter(it=>!decided.has(it.id));
- const nav=`<nav style="padding:0;margin-bottom:10px"><button data-ct="match" class="${CTAB==='match'?'on':''}">مطابقة الأسعار (${unresolved.length})</button><button data-ct="list" class="${CTAB==='list'?'on':''}">قائمة الأسعار</button><button data-ct="orders" class="${CTAB==='orders'?'on':''}">تكلفة الطلبات</button><button data-ct="cmp" class="${CTAB==='cmp'?'on':''}">المقارنة اليومية</button><button <button data-ct="monthly">مقارنة الفنادق شهريًا</button>data-ct="pie" class="${CTAB==='pie'?'on':''}">توزيع الفئات</button></nav>`;
+ const nav=`<nav style="padding:0;margin-bottom:10px"><button data-ct="match" class="${CTAB==='match'?'on':''}">مطابقة الأسعار (${unresolved.length})</button><button data-ct="list" class="${CTAB==='list'?'on':''}">قائمة الأسعار</button><button data-ct="orders" class="${CTAB==='orders'?'on':''}">تكلفة الطلبات</button><button data-ct="cmp" class="${CTAB==='cmp'?'on':''}">المقارنة اليومية</button><button data-ct="monthly">مقارنة الفنادق شهريًا</button><button data-ct="pie" class="${CTAB==='pie'?'on':''}">توزيع الفئات</button></nav>`;
  let body='';
  if(CTAB==='match'){
   const rows=unresolved.map(it=>{
