@@ -24,8 +24,13 @@ jobs:
       - name: Run workbook tests
         working-directory: sender
         run: npm test
-      - name: Check inventory, reporting and procurement scripts
-        run: node --check inventory.js && node --check monthly-cost.js && node --check analytics.js && node --check procurement.js
+      - name: Check warehouse, reporting and audit scripts
+        run: node --check inventory.js && node --check monthly-cost.js && node --check analytics.js && node --check audit.js
+      - name: Ensure purchasing UI is absent
+        run: |
+          ! grep -q 'data-t="p"' dashboard.html
+          ! grep -q 'procurement.js' dashboard.html
+          ! grep -q 'receive_hotel_purchase_order' dashboard.html inventory.js
       - name: Check dashboard JavaScript syntax
         run: |
           node <<'NODE'
