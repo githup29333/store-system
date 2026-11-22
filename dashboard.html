@@ -161,10 +161,11 @@ function drawS(){
  const sent=DD.filter(x=>x.status==='sent'&&!x.code.startsWith('BATCH|'));
  const totalCost=sent.reduce((a,d)=>a+orderCost(ordH(d)).total,0);
  const days=Object.keys(day).sort().slice(-14).map(d=>[dt(d).slice(5),day[d]]);
- $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${OO.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div><div class="kpi"><b style="color:${unsent?'#b4231a':'#1d7a4f'}">${unsent}</b>نتائج لم تُرسل</div><div class="kpi"><b style="color:${stale?'#b4531a':'#1d7a4f'}">${stale}</b>بدون كود نهائي +24س</div></div>
+ $('#s').innerHTML=`<div class="grid"><div class="kpi"><b>${OO.length}</b>إجمالي الطلبات</div><div class="kpi"><b>${fin.length}</b>تم الصرف</div><div class="kpi"><b>${pend}</b>بانتظار الصرف</div><div class="kpi"><b>${rq?Math.round(dv*100/rq):0}%</b>نسبة التلبية</div><div class="kpi"><b>${ITEMS.length}</b>أصناف مشتركة</div><div class="kpi"><b style="color:${unsent?'#b4231a':'#1d7a4f'}">${unsent}</b>نتائج لم تُرسل</div><div class="kpi"><b style="color:${stale?'#b4531a':'#1d7a4f'}">${stale}</b>بدون كود نهائي +24س</div><div class="kpi"><b>${money(totalCost)} د.ل</b>تكلفة الطلبات المرسلة</div><div class="kpi"><b>${sent.length}</b>طلبات داخلة في التكلفة</div></div>
  <h3>الطلبات حسب القسم</h3>${bars(topN(dep,10))}
  <h3>آخر 14 يوم</h3>${bars(days)}
  <h3>الأكثر طلباً</h3>${bars(topN(rqd,10).map(([id,c])=>[nm(id).n,c]))}
+ <h3>الأكثر صرفاً</h3>${bars(topN(issued,10).map(([id,c])=>[nm(id).n,Math.round(c*100)/100]))}
  <h3>الأكثر عدم توفراً</h3>${bars(topN(na,10).map(([id,c])=>[nm(id).n,c]),'#b4231a')}`;
 }
 function drawO(){
