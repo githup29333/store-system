@@ -23,6 +23,8 @@ jobs:
       - name: Run workbook tests
         working-directory: sender
         run: npm test
+      - name: Check inventory and monthly cost scripts
+        run: node --check inventory.js && node --check monthly-cost.js
       - name: Check dashboard JavaScript syntax
         run: |
           node <<'NODE'
