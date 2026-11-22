@@ -35,6 +35,24 @@ function drawProcurement(){
         (ls.map(function(x){var it=ITEMS.find(function(i){return i.id===x.item_id});return '<tr><td>'+esc(it&&it.ar||'صنف #'+x.item_id)+'</td><td>'+x.quantity+'</td><td>'+esc(x.unit)+'</td><td>'+money(x.unit_cost)+'</td><td>'+money(x.line_total||x.quantity*x.unit_cost)+'</td><td>'+x.received_quantity+'</td><td>'+(o.status==='draft'?'<button class="btn alt" data-po-line-edit="'+x.id+'">تعديل</button> <button class="btn bad" data-po-line-del="'+x.id+'">حذف</button>':'—')+'</td></tr>'}).join('')||'<tr><td colspan="7">لم تتم إضافة أصناف بعد</td></tr>')+'</table>'+(o.notes?'<p>'+esc(o.notes)+'</p>':'')+'</td></tr>':'';
       return '<tr><td><b>'+esc(o.order_no)+'</b></td><td>'+esc((HOTELS.find(function(h){return h.code===o.hotel_code})||{}).name||o.hotel_code)+'</td><td>'+esc(sup&&sup.name||'—')+'</td><td>'+new Date(o.created_at).toLocaleDateString('ar-LY')+'</td><td>'+ls.length+'</td><td>'+money(total)+' د.ل</td><td><span class="tag '+(o.status==='received'?'t-ok':o.status==='cancelled'?'t-bad':'t-w')+'">'+(status[o.status]||o.status)+'</span></td><td>'+actions+'</td></tr>'+expanded;
     }).join('')||'<tr><td colspan="8">لا توجد طلبات شراء لهذا الفندق بعد</td></tr>')+'</table></div>';
+  var comparisons={};
+  PURCHASE_LINES.forEach(function(line){
+    var po=PURCHASES.find(function(x){return x.id===line.purchase_order_id});
+    if(!po||!['ordered','received'].includes(po.status)||(HSEL&&po.hotel_code!==HSEL)||!(+line.unit_cost>0))return;
+    var supplier=SUPPLIERS.find(function(x){return x.id===po.supplier_id});
+    if(!supplier)return;
+    var key=po.hotel_code+'|'+line.item_id+'|'+line.unit;
+    var group=comparisons[key]||(comparisons[key]={hotel:po.hotel_code,item:line.item_id,unit:line.unit,prices:{}});
+    var previous=group.prices[supplier.id];
+    if(!previous||String(po.created_at)>previous.date)group.prices[supplier.id]={name:supplier.name,cost:+line.unit_cost,date:String(po.created_at)};
+  });
+  var compareRows=Object.values(comparisons).map(function(g){
+    var item=ITEMS.find(function(x){return x.id===g.item}),prices=Object.values(g.prices).sort(function(a,b){return a.cost-b.cost});
+    if(!prices.length)return '';
+    var low=prices[0].cost,high=prices[prices.length-1].cost;
+    return '<tr><td>'+esc((HOTELS.find(function(h){return h.code===g.hotel})||{}).name||g.hotel)+'</td><td>'+esc(item&&item.ar||'صنف #'+g.item)+'</td><td>'+esc(g.unit)+'</td><td>'+prices.map(function(x){return esc(x.name)+': '+money(x.cost)}).join('<br>')+'</td><td><b>'+money(low)+'</b></td><td>'+money(high)+'</td><td>'+money(high-low)+'</td></tr>';
+  }).join('');
+  html+='<h3>مقارنة أسعار الموردين</h3><p style="color:var(--mut)">تعرض أحدث سعر مسجل لكل مورد للصنف والوحدة نفسيهما داخل الفندق نفسه. المقارنة لا تخلط أسعار الفنادق.</p><div class="wrap"><table><tr><th>الفندق</th><th>الصنف</th><th>الوحدة</th><th>أسعار الموردين</th><th>الأقل</th><th>الأعلى</th><th>الفرق</th></tr>'+(compareRows||'<tr><td colspan="7">ستظهر المقارنة بعد تسجيل طلبات شراء بأسعار فعلية</td></tr>')+'</table></div>';
   root.innerHTML=html;
 }
 function drawAudit(){
