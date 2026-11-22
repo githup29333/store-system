@@ -135,7 +135,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
 </div>
 <div id="app" hidden>
  <header><button class="btn alt" id="menuToggle" type="button" aria-expanded="false">☰ القائمة</button><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav id="sideNav" hidden aria-label="القائمة الرئيسية"><div class="drawerHead"><b>أقسام لوحة التحكم</b><button class="btn alt" id="closeNav" type="button">إغلاق ✕</button></div><div class="navGroup"><small>الرئيسية</small><button data-t="s" class="on">◈ الملخص</button></div><div class="navGroup"><small>إدارة المخازن والتشغيل</small><button data-t="o">▤ الطلبات</button><button data-t="i">▦ الأصناف</button><button data-t="v">▣ المخزون</button></div><div class="navGroup"><small>التقارير والمتابعة</small><button data-t="c">▤ التكاليف</button><button data-t="a">▥ التحليلات</button><button data-t="g">◷ سجل العمليات</button></div><div class="navGroup"><small>الإعدادات والربط</small><button data-t="l">↗ الروابط</button><button data-t="d">⇧ الإرسال</button><button data-t="k">⚙ الفنادق والصلاحية</button></div></nav><div id="navShade" hidden></div>
+ <nav id="sideNav" hidden aria-label="القائمة الرئيسية"><div class="drawerHead"><b>أقسام لوحة التحكم</b><button class="btn alt" id="closeNav" type="button">إغلاق ✕</button></div><div class="navGroup"><small>الرئيسية</small><button data-t="s" class="on">◈ الملخص</button></div><div class="navGroup"><small>إدارة المخازن والتشغيل</small><button data-t="o">▤ الطلبات</button><button data-t="i">▦ الأصناف</button><button data-t="v">▣ المخزون</button></div><div class="navGroup"><small>التقارير والمتابعة</small><button data-t="c">▤ التكاليف</button><button data-t="a">▥ التحليلات</button><button data-t="g">◷ سجل العمليات</button></div><div class="navGroup"><small>إدارة النظام</small><button data-t="u">♙ المستخدمون والصلاحيات</button></div><div class="navGroup"><small>الإعدادات والربط</small><button data-t="l">↗ الروابط</button><button data-t="d">⇧ الإرسال</button><button data-t="k">⚙ الفنادق والصلاحية</button></div></nav><div id="navShade" hidden></div>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
@@ -147,6 +147,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
   <section id="a" hidden></section>
   <section id="g" hidden></section>
   <section id="k" hidden></section>
+  <section id="u" hidden></section>
  </main>
  <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
 </div>
@@ -208,7 +209,7 @@ const navClose=()=>{$('#sideNav').hidden=true;$('#navShade').hidden=true;$('#men
 $('#menuToggle').onclick=navOpen;$('#closeNav').onclick=navClose;$('#navShade').onclick=navClose;
 $('#sideNav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll('#sideNav button[data-t]').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','c','v','a','p','g','k'].forEach(i=>$('#'+i).hidden=i!==t);navClose()};
+ ['s','o','i','l','d','c','v','a','p','g','k','u'].forEach(i=>$('#'+i).hidden=i!==t);navClose();if(t==='u')loadUsers().catch(e=>$('#u').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>')};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
@@ -783,6 +784,30 @@ $('#c').onclick=async e=>{
  }
 };
 $('#c').oninput=e=>{if(e.target.id==='pq')drawPList()};
+
+// Protected owner-only user administration.
+const UMODULES={orders:'الطلبات',items:'الأصناف',inventory:'المخزون',prices:'التكاليف والأسعار',hotels:'الفنادق',deliveries:'الإرسال والتسليم',reports:'التقارير',settings:'الإعدادات',audit:'سجل العمليات'};
+const UACTIONS={read:'عرض',create:'إضافة',update:'تعديل',delete:'حذف'};
+let USER_ROWS=[],USER_ACTIVITY=[];
+async function userAdmin(action,payload={}){const r=await fetch(SB+'/functions/v1/sbfenv',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json'},body:JSON.stringify({action,...payload})});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
+function fullPermissions(){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={};Object.keys(UACTIONS).forEach(a=>p[m][a]=true)});return p}
+function permissionEditor(p){p=p||{};return '<div class="wrap"><table><tr><th>القسم</th>'+Object.values(UACTIONS).map(x=>'<th>'+x+'</th>').join('')+'</tr>'+Object.entries(UMODULES).map(([m,n])=>'<tr><td>'+n+'</td>'+Object.keys(UACTIONS).map(a=>'<td style="text-align:center"><input type="checkbox" data-perm="'+m+'.'+a+'" '+(p[m]&&p[m][a]?'checked':'')+'></td>').join('')+'</tr>').join('')+'</table></div>'}
+function readPermissions(root){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={};Object.keys(UACTIONS).forEach(a=>{const el=root.querySelector('[data-perm="'+m+'.'+a+'"]');p[m][a]=!!(el&&el.checked)})});return p}
+async function loadUsers(){const result=await userAdmin('list');USER_ROWS=result.users||[];USER_ACTIVITY=result.activity||[];drawUsers()}
+function drawUsers(){
+ const root=$('#u');if(!root)return;
+ const rows=USER_ROWS.map(x=>'<tr><td><b>'+esc(x.display_name)+'</b><br><small dir="ltr">'+esc(x.username)+'</small></td><td dir="ltr">'+esc(x.email||'—')+'</td><td>'+(x.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'?'<span class="tag t-ok">المالك الأعلى</span>':x.is_paralyzed?'<span class="tag t-w">مشلول — مشاهدة فقط</span>':x.is_active?'<span class="tag t-ok">فعّال</span>':'<span class="tag t-bad">موقوف</span>')+'</td><td>'+(x.must_change_password?'<span class="tag t-w">كلمة مرور مؤقتة</span>':'—')+'</td><td>'+(x.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'?'—':'<button class="btn alt" data-uedit="'+x.id+'">تعديل الصلاحيات</button> <button class="btn '+(x.is_paralyzed?'':'bad')+'" data-uparalyze="'+x.id+'" data-val="'+(!x.is_paralyzed)+'">'+(x.is_paralyzed?'إلغاء الشلل':'شلل')+'</button> <button class="btn alt" data-ureset="'+x.id+'">تعيين كلمة مرور</button>')+'</td></tr>').join('');
+ const logs=USER_ACTIVITY.map(x=>'<tr><td>'+new Date(x.created_at).toLocaleString('ar-LY')+'</td><td>'+esc(x.actor_username)+'</td><td>'+esc(x.action)+'</td><td>'+esc(x.target_username||'—')+'</td><td><code>'+esc(JSON.stringify(x.details||{}))+'</code></td></tr>').join('');
+ root.innerHTML='<h2 style="margin-top:0">إدارة المستخدمين والصلاحيات</h2><p class="st">هذه الصفحة للمالك THEO فقط. زر الشلل يسحب صلاحيات التشغيل من قاعدة البيانات ويترك الحساب في وضع المشاهدة فقط. لا يمكن تعديل حساب المالك الأعلى.</p><h3>إضافة مستخدم جديد</h3><div class="grid"><label>اسم المستخدم (للتعريف)<input id="un" type="text" placeholder="مثال: malak" style="display:block;width:100%"></label><label>الاسم الظاهر<input id="ud" type="text" placeholder="الاسم" style="display:block;width:100%"></label><label>البريد الإلكتروني لتسجيل الدخول<input id="ue" type="email" placeholder="user@example.com" dir="ltr" style="display:block;width:100%"></label><label>كلمة المرور المؤقتة<input id="up" type="password" minlength="8" placeholder="8 أحرف على الأقل" dir="ltr" style="display:block;width:100%"></label></div><p style="color:var(--mut)">حدد الصلاحيات الأولية:</p><div id="newPerm">'+permissionEditor(fullPermissions())+'</div><div class="row"><button class="btn" id="ucreate">إنشاء المستخدم</button></div><h3>المستخدمون الحاليون</h3><div class="wrap"><table><tr><th>المستخدم</th><th>البريد</th><th>الحالة</th><th>الأمان</th><th>الإجراءات</th></tr>'+rows+'</table></div><h3>سجل نشاط المستخدمين — خاص بالمالك</h3><div class="wrap"><table><tr><th>التاريخ</th><th>المنفذ</th><th>العملية</th><th>المستهدف</th><th>التفاصيل</th></tr>'+logs+'</table></div>';
+}
+async function editUserPermissions(id){const u=USER_ROWS.find(x=>x.id===id);if(!u)return;const holder=document.createElement('div');holder.innerHTML=permissionEditor(u.permissions);const modal=$('#mb');modal.innerHTML='<h3>صلاحيات '+esc(u.username)+'</h3><label>الاسم الظاهر<input id="editDisplay" value="'+esc(u.display_name)+'" style="width:100%"></label>'+holder.innerHTML+'<div class="row" style="margin-top:12px"><button class="btn" id="saveUserPerm">حفظ</button><button class="btn alt" id="cancelUserPerm">إلغاء</button></div>';$('#modal').hidden=false;$('#cancelUserPerm').onclick=()=>$('#modal').hidden=true;$('#saveUserPerm').onclick=async()=>{try{await userAdmin('update',{id,display_name:$('#editDisplay').value.trim(),permissions:readPermissions(modal)});$('#modal').hidden=true;await loadUsers();alert('تم حفظ الصلاحيات')}catch(e){alert('تعذّر الحفظ: '+e.message)}}}
+$('#u').onclick=async e=>{const b=e.target.closest('button');if(!b)return;try{
+ if(b.id==='ucreate'){const username=$('#un').value.trim(),display_name=$('#ud').value.trim(),email=$('#ue').value.trim(),password=$('#up').value;if(!username||!display_name||!email||!password)return alert('أكمل بيانات المستخدم الأربعة');if(!confirm('إنشاء المستخدم '+username+' بالصلاحيات المحددة؟'))return;b.disabled=true;const out=await userAdmin('create',{username,display_name,email,password,permissions:readPermissions($('#newPerm'))});alert('تم إنشاء الحساب.\nاسم المستخدم للتعريف: '+out.user.username+'\nتسجيل الدخول بالبريد: '+out.user.email+'\nسلّم كلمة المرور المؤقتة للمستخدم بأمان.');await loadUsers();return}
+ if(b.dataset.uedit)return editUserPermissions(b.dataset.uedit);
+ if(b.dataset.uparalyze){const value=b.dataset.val==='true';if(!confirm(value?'سحب جميع صلاحيات هذا المستخدم وتركه للمشاهدة فقط؟':'إعادة تفعيل صلاحيات المستخدم؟'))return;await userAdmin('paralyze',{id:b.dataset.uparalyze,value});await loadUsers();return}
+ if(b.dataset.ureset){const password=prompt('كلمة المرور الجديدة المؤقتة (8 أحرف على الأقل):');if(password===null)return;await userAdmin('reset_password',{id:b.dataset.ureset,password});alert('تم تعيين كلمة المرور المؤقتة الجديدة.');await loadUsers()}
+ }catch(err){alert('تعذّر تنفيذ العملية: '+err.message)}finally{if(b)b.disabled=false}};
+
 function drawK(){
  if(!HOTELS.length){$('#k').innerHTML='<p style="color:#b4231a">جدول الفنادق غير موجود. نفّذ ملف 7-hotels.sql في Supabase (SQL Editor) ثم حدّث الصفحة.</p>';return}
  const base=location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,''),t=fmtD(new Date());
