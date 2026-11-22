@@ -36,6 +36,21 @@ jobs:
           new Function(html.slice(start + 8, end));
           console.log('Dashboard JavaScript syntax OK');
           NODE
+      - name: Check read-only management dashboard JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('admin.html', 'utf8');
+          const start = html.lastIndexOf('<script>');
+          const end = html.indexOf('</script>', start);
+          if (start < 0 || end < 0) throw new Error('Inline admin script not found');
+          new Function(html.slice(start + 8, end));
+          const script = html.slice(start + 8, end);
+          if (/\.insert\(|\.update\(|\.delete\(|method:\s*['"](?:POST|PATCH|PUT|DELETE)['"]/i.test(script)) {
+            throw new Error('Management page must remain read-only');
+          }
+          console.log('Read-only management dashboard JavaScript syntax OK');
+          NODE
       - name: Check per-order and missing-price safeguards
         run: |
           node <<'NODE'
