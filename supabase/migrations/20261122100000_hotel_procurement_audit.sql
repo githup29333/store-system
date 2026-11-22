@@ -114,7 +114,7 @@ drop trigger if exists audit_items on public.items;
 create trigger audit_items after insert or update or delete on public.items for each row execute function public.write_admin_audit_log();
 
 create or replace function public.receive_hotel_purchase_order(p_order_id uuid)
-returns void language plpgsql security definer
+returns void language plpgsql security invoker
 set search_path = pg_catalog, public, auth
 as $$
 declare v_order public.hotel_purchase_orders%rowtype; v_line record; v_count integer := 0;
