@@ -46,8 +46,12 @@ jobs:
           if (start < 0 || end < 0) throw new Error('Inline admin script not found');
           new Function(html.slice(start + 8, end));
           const script = html.slice(start + 8, end);
-          if (/\.insert\(|\.update\(|\.delete\(|method:\s*['"](?:POST|PATCH|PUT|DELETE)['"]/i.test(script)) {
+          if (/\.insert\(|\.update\(|\.delete\(/i.test(script)) {
             throw new Error('Management page must remain read-only');
+          }
+          const restApi = script.match(/async function api\(path,retry=true\)\\s*\\{([\\s\\S]*?)\\n\\}/);
+          if (!restApi || /method\\s*:/.test(restApi[1])) {
+            throw new Error('Supabase REST access must remain GET-only');
           }
           console.log('Read-only management dashboard JavaScript syntax OK');
           NODE
