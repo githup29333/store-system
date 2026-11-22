@@ -70,6 +70,7 @@ h3{margin:18px 0 6px}
 <div id="modal" hidden><div id="mb"></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
  <script src="inventory.js"></script>
+ <script src="monthly-cost.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
@@ -610,7 +611,7 @@ function drawC(){
  const linked=new Set(LINKS.filter(l=>l.price_id).map(l=>l.item_id)).size;
  const decided=new Set(LINKS.map(l=>l.item_id));
  const unresolved=ITEMS.filter(it=>!decided.has(it.id));
- const nav=`<nav style="padding:0;margin-bottom:10px"><button data-ct="match" class="${CTAB==='match'?'on':''}">مطابقة الأسعار (${unresolved.length})</button><button data-ct="list" class="${CTAB==='list'?'on':''}">قائمة الأسعار</button><button data-ct="orders" class="${CTAB==='orders'?'on':''}">تكلفة الطلبات</button><button data-ct="cmp" class="${CTAB==='cmp'?'on':''}">المقارنة اليومية</button><button data-ct="pie" class="${CTAB==='pie'?'on':''}">توزيع الفئات</button></nav>`;
+ const nav=`<nav style="padding:0;margin-bottom:10px"><button data-ct="match" class="${CTAB==='match'?'on':''}">مطابقة الأسعار (${unresolved.length})</button><button data-ct="list" class="${CTAB==='list'?'on':''}">قائمة الأسعار</button><button data-ct="orders" class="${CTAB==='orders'?'on':''}">تكلفة الطلبات</button><button data-ct="cmp" class="${CTAB==='cmp'?'on':''}">المقارنة اليومية</button><button <button data-ct="monthly">مقارنة الفنادق شهريًا</button>data-ct="pie" class="${CTAB==='pie'?'on':''}">توزيع الفئات</button></nav>`;
  let body='';
  if(CTAB==='match'){
   const rows=unresolved.map(it=>{
@@ -633,7 +634,7 @@ function drawC(){
    const arrow=diff==null?'':diff>0?'🔺':diff<0?'🔻':'➖';
    return `<tr><td>${dt(ds)}</td><td>${money(cur)}</td><td>${diff==null?'—':arrow+' '+money(Math.abs(diff))+(pct!=null?' ('+Math.abs(pct)+'%)':'')}</td></tr>`}).join('')||'<tr><td colspan="3">لا توجد بيانات</td></tr>';
   body=`<table><tr><th>اليوم</th><th>إجمالي التكلفة</th><th>الفرق عن اليوم السابق الذي فيه بيانات</th></tr>${rows}</table><p style="color:var(--mut)">المقارنة بأسعار اليوم الحالية وليست بأسعار يوم الصرف الفعلي.</p>`;
- }else if(CTAB==='pie'){
+ }else if(CTAB==='monthly'){body=renderMonthlyCost()}else if(CTAB==='pie'){
   const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|'));
   const byCat={};L.forEach(d=>{const ord=ordH(d);linesOf(ord).forEach(x=>{const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n)||resolvePrice(x.id,nm.u);if(p)byCat[p.category]=(byCat[p.category]||0)+x.iss*p.cost})});
   const tot=Object.values(byCat).reduce((a,b)=>a+b,0)||1;
