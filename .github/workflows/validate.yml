@@ -23,18 +23,29 @@ jobs:
       - name: Run workbook tests
         working-directory: sender
         run: npm test
-      - name: Check inventory and monthly cost scripts
-        run: node --check inventory.js && node --check monthly-cost.js
+      - name: Check inventory, reporting and procurement scripts
+        run: node --check inventory.js && node --check monthly-cost.js && node --check analytics.js && node --check procurement.js
       - name: Check dashboard JavaScript syntax
         run: |
           node <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('dashboard.html', 'utf8');
-          const start = html.indexOf('<script>');
+          const start = html.lastIndexOf('<script>');
           const end = html.indexOf('</script>', start);
           if (start < 0 || end < 0) throw new Error('Inline dashboard script not found');
           new Function(html.slice(start + 8, end));
           console.log('Dashboard JavaScript syntax OK');
+          NODE
+      - name: Check worker portal JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const start = html.lastIndexOf('<script>');
+          const end = html.indexOf('</script>', start);
+          if (start < 0 || end < 0) throw new Error('Worker inline script not found');
+          new Function(html.slice(start + 8, end));
+          console.log('Worker portal JavaScript syntax OK');
           NODE
       - name: Check read-only management dashboard JavaScript syntax
         run: |
