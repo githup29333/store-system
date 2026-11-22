@@ -247,6 +247,19 @@ async function load(){
 }
 async function start(){
  if(S&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}
+ if(S){try{
+  const state=await userAdmin('my_status');
+  if(!state.user||!state.user.is_active){logout('هذا الحساب موقوف. تواصل مع THEO.');return}
+  if(state.user.must_change_password){
+   const p=prompt('هذه كلمة مرور مؤقتة. أنشئ كلمة مرور جديدة (8 أحرف على الأقل):');
+   if(!p){logout('يجب تغيير كلمة المرور قبل الدخول');return}
+   const p2=prompt('أعد كتابة كلمة المرور الجديدة للتأكيد:');
+   if(p!==p2){logout('كلمتا المرور غير متطابقتين. سجّل الدخول وحاول مجددًا.');return}
+   await userAdmin('change_password',{password:p});
+   alert('تم تغيير كلمة المرور بنجاح.');
+  }
+ }catch(e){logout('تعذّر التحقق من صلاحيات الحساب: '+e.message);return}}
+
  lastActive=Date.now();try{sessionStorage.setItem('store_last_active',String(lastActive))}catch(e){}
  $('#login').hidden=true;$('#app').hidden=false;
  try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}
