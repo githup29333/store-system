@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/daily-hotel-reports
+      - main
   pull_request:
     branches:
       - main
