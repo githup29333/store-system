@@ -22,7 +22,7 @@ function drawProcurement(){
   var status={draft:'مسودة',ordered:'تم إرسال الطلب',received:'تم الاستلام',cancelled:'ملغي'};
   var html='<h2 style="margin-top:0">المشتريات والموردون</h2><div class="row"><label>الفندق <select id="poHotel">'+hotels+'</select></label><span style="color:var(--mut)">كل مورد وطلب شراء مرتبط بفندق واحد فقط.</span></div>'+
     '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div><h3>إضافة مورد</h3><div class="row"><input id="spName" placeholder="اسم المورد" style="flex:1;min-width:150px"></div><div class="row"><input id="spContact" placeholder="الشخص المسؤول"><input id="spPhone" placeholder="الهاتف" dir="ltr"></div><div class="row"><input id="spEmail" placeholder="البريد الإلكتروني" dir="ltr" style="flex:1"></div><textarea id="spNotes" rows="2" placeholder="ملاحظات المورد" style="width:100%"></textarea><button class="btn" id="spAdd">حفظ المورد</button></div>'+
-    '<div><h3>إنشاء طلب شراء</h3><div class="row"><select id="poSupplier" style="flex:1"><option value="">اختر المورد</option>'+supplierOptions+'</select></div><textarea id="poNotes" rows="2" placeholder="ملاحظات الطلب" style="width:100%"></textarea><button class="btn" id="poCreate" '+(supplierOptions?'':'disabled')+'>إنشاء مسودة شراء</button><p style="color:var(--mut)">أضف الأصناف والكميات والأسعار، ثم حوّل المسودة إلى طلب معتمد.</p></div></div>'+
+    '<div><h3>إنشاء طلب شراء</h3><div class="row"><select id="poSupplier" style="flex:1"><option value="">اختر المورد</option>'+supplierOptions+'</select></div><textarea id="poNotes" rows="2" placeholder="ملاحظات الطلب" style="width:100%"></textarea><button class="btn" id="poCreate" '+(supplierOptions?'':'disabled')+'>إنشاء مسودة شراء</button> <button class="btn alt" id="poCreateFromLow" '+(supplierOptions?'':'disabled')+'>مسودة من نواقص المخزون</button><p style="color:var(--mut)">اقتراح النواقص يرفع الرصيد المستهدف إلى ضعف حد إعادة الطلب، ويستخدم السعر الحالي إن توفر. راجع المسودة قبل اعتمادها.</p></div></div>'+
     '<h3>الموردون ('+suppliers.length+')</h3><div class="wrap"><table><tr><th>الفندق</th><th>المورد</th><th>جهة الاتصال</th><th>الهاتف</th><th>الحالة</th></tr>'+
     (suppliers.map(function(s){return '<tr><td>'+esc((HOTELS.find(function(h){return h.code===s.hotel_code})||{}).name||s.hotel_code)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.contact||'—')+'</td><td dir="ltr">'+esc(s.phone||'—')+'</td><td><span class="tag '+(s.active?'t-ok':'t-w')+'">'+(s.active?'نشط':'موقوف')+'</span></td></tr>'}).join('')||'<tr><td colspan="5">لا يوجد موردون لهذا النطاق بعد</td></tr>')+'</table></div>'+
     '<h3>طلبات الشراء ('+orders.length+')</h3><div class="wrap"><table><tr><th>رقم الطلب</th><th>الفندق</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>التكلفة التقديرية</th><th>الحالة</th><th>الإجراءات</th></tr>'+
@@ -72,6 +72,22 @@ document.querySelector('#p').addEventListener('click',async function(e){
       var sup=SUPPLIERS.find(function(x){return x.id===sid&&x.hotel_code===hotel});if(!sup)return alert('المورد لا يتبع الفندق المختار');
       await api('hotel_purchase_orders',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({hotel_code:hotel,supplier_id:sid,notes:$('#poNotes').value.trim()})});
       await loadProcurementData();drawProcurement();return;
+    }
+    if(b.id==='poCreateFromLow'){
+      var hotel=$('#poHotel').value,sid=$('#poSupplier').value;
+      if(!hotel||!sid)return alert('اختر الفندق والمورد أولاً');
+      var sup=SUPPLIERS.find(function(x){return x.id===sid&&x.hotel_code===hotel});if(!sup)return alert('المورد لا يتبع الفندق المختار');
+      var low=INVENTORY.filter(function(x){return x.hotel_code===hotel&&+x.reorder_level>0&&+x.quantity<=+x.reorder_level});
+      if(!low.length)return alert('لا توجد أصناف تحت حد إعادة الطلب لهذا الفندق');
+      var created=await api('hotel_purchase_orders',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({hotel_code:hotel,supplier_id:sid,notes:'مسودة مقترحة تلقائياً من تنبيهات المخزون — راجع الكميات والأسعار قبل الاعتماد'})});
+      var order=created&&created[0];if(!order)throw new Error('تعذّر إنشاء مسودة الشراء');
+      var lines=low.map(function(x){
+        var link=LINKS.find(function(l){return l.item_id===x.item_id&&l.price_id}),price=link&&PRICES.find(function(p){return p.id===link.price_id&&!p.archived});
+        var target=+x.reorder_level*2,qty=Math.max(0,target-(+x.quantity||0));
+        return {purchase_order_id:order.id,item_id:x.item_id,quantity:qty,unit:x.unit||(price&&price.unit)||'قطعة',unit_cost:price?+price.cost:0,note:price?'سعر من قائمة الأسعار الحالية':'بانتظار إدخال السعر'};
+      }).filter(function(x){return x.quantity>0});
+      if(lines.length)await api('hotel_purchase_order_items',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(lines)});
+      await loadProcurementData();PO_OPEN=order.id;drawProcurement();return;
     }
     if(b.dataset.poView){PO_OPEN=PO_OPEN===b.dataset.poView?'':b.dataset.poView;drawProcurement();return}
     if(b.dataset.poLine){openPurchaseLine(b.dataset.poLine);return}
