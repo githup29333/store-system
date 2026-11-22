@@ -54,7 +54,7 @@ h3{margin:18px 0 6px}
 </div>
 <div id="app" hidden>
  <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="k">الفنادق والصلاحية</button></nav>
+ <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="v">المخزون</button><button data-t="k">الفنادق والصلاحية</button></nav>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
@@ -62,6 +62,7 @@ h3{margin:18px 0 6px}
   <section id="l" hidden></section>
   <section id="d" hidden></section>
   <section id="c" hidden></section>
+  <section id="v" hidden></section>
   <section id="k" hidden></section>
  </main>
  <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
@@ -71,7 +72,7 @@ h3{margin:18px 0 6px}
 <script>
 const $=s=>document.querySelector(s);
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match';
+let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match',INVENTORY=[],MOVEMENTS=[],INVERR='';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const DSEL=new Set(),enc=encodeURIComponent;
@@ -106,7 +107,7 @@ $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
 $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 document.querySelector('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
  document.querySelectorAll('nav button').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','c','k'].forEach(i=>$('#'+i).hidden=i!==t)};
+ ['s','o','i','l','d','c','v','k'].forEach(i=>$('#'+i).hidden=i!==t)};
 
 function parse(r){
  const f=r.code.split('|'),fin=f[0]==='EBR1F';
@@ -139,7 +140,8 @@ async function load(){
   AUTOCFG=await api('app_secrets?select=value&key=eq.auto_send_config').then(r=>{try{return r[0]?JSON.parse(r[0].value):AUTOCFG}catch(e){return AUTOCFG}}).catch(()=>AUTOCFG);
   DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
- drawS();drawO();drawI();drawL();drawD();drawC();drawK();
+ try{[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}
+ drawS();drawO();drawI();drawL();drawD();drawC();drawV();drawK();
 }
 async function start(){
  $('#login').hidden=true;$('#app').hidden=false;
@@ -357,7 +359,7 @@ function fillHF(){
  const v=HSEL;$('#hf').innerHTML='<option value="">كل الفنادق</option>'+HOTELS.map(h=>`<option value="${esc(h.code)}">${esc(h.name)} (${esc(h.code)})</option>`).join('');
  $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;
 }
-$('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD()};
+$('#hf').onchange=()=>{HSEL=$('#hf').value;drawS();drawO();drawD();drawV();drawC()};
 const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
 
 /* ---------- التكاليف ---------- */
