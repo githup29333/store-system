@@ -91,6 +91,22 @@ h3{color:#20384b;margin:20px 0 9px!important}
 @media(max-width:390px){.grid{grid-template-columns:1fr 1fr!important}.kpi b{font-size:20px!important}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 
+
+/* Dark appearance */
+html[data-theme="dark"]{color-scheme:dark;--bg:#0b1220;--card:#121d2b;--ink:#e7edf5;--mut:#9aabbd;--ac:#63c7bd;--ok:#45bd8c;--warn:#e5b45e;--bad:#f07872;--ln:#2a394c;--shadow:0 14px 36px #0004}
+html[data-theme="dark"] body{background:radial-gradient(circle at 90% 0,#17283a 0,transparent 34%),var(--bg)!important;color:var(--ink)!important}
+html[data-theme="dark"] #login,html[data-theme="dark"] main>section:not([hidden]),html[data-theme="dark"] #modal>div{background:var(--card)!important;color:var(--ink)!important;border-color:var(--ln)!important}
+html[data-theme="dark"] nav button{background:#1b293a!important;color:#b8c6d5!important;border-color:#2a394c!important}
+html[data-theme="dark"] nav button.on{background:var(--card)!important;color:#8ce0d5!important;border-color:var(--ln)!important}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#0e1826!important;color:var(--ink)!important;border-color:#34465b!important}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#8193a7!important}
+html[data-theme="dark"] .kpi{background:linear-gradient(145deg,#172436,#121d2b)!important;border-color:var(--ln)!important}
+html[data-theme="dark"] th{background:#1b2a3c!important;color:#bdcad8!important}
+html[data-theme="dark"] td{color:var(--ink)!important;border-color:var(--ln)!important}
+html[data-theme="dark"] tbody tr:hover td{background:#1a2939!important}
+html[data-theme="dark"] .btn.alt{background:#172638!important;color:#a4e0d9!important;border-color:#36525b!important}
+html[data-theme="dark"] .tag.t-ok{background:#153b32!important;color:#8ce0bd!important}html[data-theme="dark"] .tag.t-bad{background:#482527!important;color:#ffaaa5!important}html[data-theme="dark"] .tag.t-w{background:#49391e!important;color:#f0cb83!important}
+html[data-theme="dark"] #credit{color:#8192a6!important}
 </style>
 </head>
 <body>
@@ -102,7 +118,7 @@ h3{color:#20384b;margin:20px 0 9px!important}
  <p id="msg"></p>
 </div>
 <div id="app" hidden>
- <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
+ <header><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
  <nav><button data-t="s" class="on">الملخص</button><button data-t="o">الطلبات</button><button data-t="i">الأصناف</button><button data-t="l">الروابط</button><button data-t="d">الإرسال</button><button data-t="c">التكاليف</button><button data-t="v">المخزون</button><button data-t="k">الفنادق والصلاحية</button></nav>
  <main>
   <section id="s"></section>
@@ -124,6 +140,16 @@ h3{color:#20384b;margin:20px 0 9px!important}
  <script src="monthly-cost.js"></script>
 <script>
 const $=s=>document.querySelector(s);
+const THEME_KEY='store-system-theme';
+function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}}
+applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
+$('#themeToggle').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+const IDLE_LIMIT=30*60*1000;let lastActive=Number(sessionStorage.getItem('store_last_active')||Date.now());
+function markActive(){if(!S)return;const n=Date.now();if(n-lastActive>30000){lastActive=n;try{sessionStorage.setItem('store_last_active',String(n))}catch(e){}}}
+['pointerdown','keydown','touchstart','mousemove'].forEach(ev=>document.addEventListener(ev,markActive,{passive:true}));
+setInterval(()=>{if(S&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى')},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى')});
+
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
 let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GHTOK=null,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],CTAB='match',INVENTORY=[],MOVEMENTS=[],INVERR='';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -140,8 +166,7 @@ async function auth(body,gt){
  try{r=await fetch(SB+'/auth/v1/token?grant_type='+gt,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)})}
  catch(e){throw new Error('تعذّر الاتصال بالخادم، قد تكون الشبكة تحجب Supabase ('+e.message+')')}
  if(!r.ok){let j={};try{j=await r.json()}catch(e){}const m=j.error_description||j.msg||j.message||('HTTP '+r.status);throw new Error(ERR[m]||m)}
- const j=await r.json();S={a:j.access_token,r:j.refresh_token};
- try{sessionStorage.setItem('s',JSON.stringify(S))}catch(e){}
+ const j=await r.json();S={a:j.access_token,r:j.refresh_token};lastActive=Date.now();try{sessionStorage.setItem('store_last_active',String(lastActive));sessionStorage.setItem('s',JSON.stringify(S))}catch(e){}
 }
 async function api(path,opt={},retry=true){
  const r=await fetch(SB+'/rest/v1/'+path,{...opt,headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json',...(opt.headers||{})}});
@@ -149,7 +174,7 @@ async function api(path,opt={},retry=true){
  if(!r.ok)throw new Error(await r.text());
  const tx=await r.text();return tx?JSON.parse(tx):null;
 }
-function logout(m){S=null;try{sessionStorage.removeItem('s')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||''}
+function logout(m){S=null;try{sessionStorage.removeItem('s');sessionStorage.removeItem('store_last_active')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||''}
 $('#go').onclick=async()=>{
  const b=$('#go');$('#msg').textContent='';b.disabled=true;b.textContent='جاري الدخول…';
  try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');$('#pw').value='';await start()}
@@ -197,6 +222,8 @@ async function load(){
  drawS();drawO();drawI();drawL();drawD();drawC();drawV();drawK();
 }
 async function start(){
+ if(S&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}
+ lastActive=Date.now();try{sessionStorage.setItem('store_last_active',String(lastActive))}catch(e){}
  $('#login').hidden=true;$('#app').hidden=false;
  try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}
  load();
