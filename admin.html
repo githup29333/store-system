@@ -159,14 +159,14 @@ async function load(){
   const out=await Promise.all([
    api('orders?select=*&order=created_at.desc&limit=5000'),
    api('items?select=id,ar,en,code,sku,hotels&order=id.asc&limit=5000'),
-   api('hotels?select=code,name,active&active=eq.true&order=name.asc'),
+   api('hotels?select=code,name,active&order=name.asc'),
    api('prices?select=id,code,name,unit,cost,category,archived&limit=5000'),
    api('item_price_link?select=item_id,price_id,method&limit=5000'),
    api('deliveries?select=key,hotel,dept,no,ds,dn,code,status,rev,sent_at&order=updated_at.desc&limit=5000'),
    api('hotel_inventory?select=hotel_code,item_id,quantity,reorder_level,unit&limit=10000')
   ]);
   DATA={orders:out[0],items:out[1],hotels:out[2],prices:out[3],links:out[4],deliveries:out[5],inventory:out[6]};
-  const sel=$('#hotel'),old=sel.value;sel.innerHTML='<option value="">كل الفنادق</option>'+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+'</option>').join('');sel.value=old;
+  const sel=$('#hotel'),old=sel.value;sel.innerHTML='<option value="">كل الفنادق</option>'+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+(h.active===false?' (موقوف)':'')+'</option>').join('');sel.value=old;
   render();
  }catch(e){$('#updated').textContent='تعذّر تحميل البيانات: '+e.message}
  finally{$('#refresh').disabled=false}
