@@ -1,7 +1,7 @@
 name: send-issue-emails
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '2-59/5 * * * *'
   workflow_dispatch:
     inputs:
       mode:
