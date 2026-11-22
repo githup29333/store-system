@@ -6,7 +6,7 @@ function drawV(){
  var h=invHotel(),records=INVENTORY.filter(function(x){return x.hotel_code===h}),byId=new Map(records.map(function(x){return [x.item_id,x]}));
  var q=(document.querySelector('#vq')&&document.querySelector('#vq').value||'').trim().toLowerCase();
  var items=ITEMS.filter(function(it){return !it.hotels||!it.hotels.length||it.hotels.includes(h)});
- var rows=items.map(function(it){var r=byId.get(it.id),p=resolvePrice(it.id,it.ar,it.en);return {it:it,r:r,qty:+(r&&r.quantity||0),min:+(r&&r.reorder_level||0),unit:(r&&r.unit)||(p&&p.unit)||'قطعة'}}).filter(function(x){return !q||(x.it.ar+' '+x.it.en+' '+x.it.sku+' '+x.it.code).toLowerCase().includes(q)});
+ var rows=items.map(function(it){var r=byId.get(it.id),link=LINKS.find(function(l){return l.item_id===it.id&&l.price_id}),p=link&&PRICES.find(function(z){return z.id===link.price_id&&!z.archived});return {it:it,r:r,qty:+(r&&r.quantity||0),min:+(r&&r.reorder_level||0),unit:(r&&r.unit)||(p&&p.unit)||'قطعة'}}).filter(function(x){return !q||(x.it.ar+' '+x.it.en+' '+x.it.sku+' '+x.it.code).toLowerCase().includes(q)});
  var low=rows.filter(function(x){return x.min>0&&x.qty<=x.min}).length,zero=rows.filter(function(x){return x.qty<=0}).length;
  var recent=MOVEMENTS.filter(function(x){return x.hotel_code===h}).slice(0,12);
  var html='<div class="row"><b style="font-size:18px;flex:1">إدارة المخزون</b><button class="btn alt" id="vscan">مسح QR بالكاميرا</button><select id="vh">'+HOTELS.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===h?'selected':'')+'>'+esc(x.name)+' ('+esc(x.code)+')</option>'}).join('')+'</select><button class="btn alt" id="vrefresh">تحديث</button></div>';
@@ -38,7 +38,7 @@ document.querySelector('#v').addEventListener('click',async function(e){
   if(b.dataset.vqr){printItemQR(+b.dataset.vqr);return}
   if(b.id==='vlow'){VLOW=!VLOW;document.querySelectorAll('#vrows tr[data-search]').forEach(function(r){r.hidden=VLOW&&r.dataset.low!=='1'});b.textContent=VLOW?'عرض كل الأصناف':'عرض النواقص فقط';return}
   var id=+(b.dataset.vin||b.dataset.vout||b.dataset.vadj||b.dataset.vmin||0);if(!id)return;
-  var h=invHotel(),it=ITEMS.find(function(x){return x.id===id}),r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===id}),p=resolvePrice(id,it.ar,it.en),unit=(r&&r.unit)||(p&&p.unit)||'قطعة';
+  var h=invHotel(),it=ITEMS.find(function(x){return x.id===id}),r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===id}),link=LINKS.find(function(l){return l.item_id===id&&l.price_id}),p=link&&PRICES.find(function(z){return z.id===link.price_id&&!z.archived}),unit=(r&&r.unit)||(p&&p.unit)||'قطعة';
   if(b.dataset.vmin){
    var v=prompt('حد إعادة الطلب لصنف '+it.ar+' ('+unit+'):',String(r&&r.reorder_level||0));if(v===null)return;var n=Number(v);if(!Number.isFinite(n)||n<0)return alert('أدخل رقمًا صحيحًا');
    if(r)await api('hotel_inventory?hotel_code=eq.'+enc(h)+'&item_id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({reorder_level:n,updated_at:new Date().toISOString()})});
