@@ -24,6 +24,20 @@ button,input,select{font:inherit}.shell{max-width:1440px;margin:auto;padding:24p
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes grow{from{width:0}}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.split{grid-template-columns:1fr}.shell{padding:14px}.hero{padding:22px}.top h1{font-size:20px}}
 @media(max-width:520px){.grid{grid-template-columns:1fr 1fr;gap:9px}.kpi{padding:13px;min-height:120px}.kpi strong{font-size:23px}.actions{width:100%;margin:10px 0 0}.top{flex-wrap:wrap}.stamp{width:100%;margin:0}}
+
+/* Dark appearance */
+html[data-theme="dark"]{color-scheme:dark;--bg:#0b1220;--card:#121d2b;--ink:#e7edf5;--mut:#9aabbd;--line:#2a394c;--navy:#101827;--gold:#d4b36d;--teal:#63c7bd;--green:#45bd8c;--amber:#e5b45e;--red:#f07872;--shadow:0 14px 36px #0004}
+html[data-theme="dark"] body{background:radial-gradient(circle at 90% 0,#17283a 0,transparent 35%),var(--bg)!important;color:var(--ink)!important}
+html[data-theme="dark"] .card,html[data-theme="dark"] .panel,html[data-theme="dark"] .login{background:var(--card)!important;color:var(--ink)!important;border-color:var(--line)!important}
+html[data-theme="dark"] .kpi:after{background:#26364a!important}
+html[data-theme="dark"] .toolbar select,html[data-theme="dark"] .login input{background:#0e1826!important;color:var(--ink)!important;border-color:#34465b!important}
+html[data-theme="dark"] th{background:#1b2a3c!important;color:#bdcad8!important;border-color:var(--line)!important}
+html[data-theme="dark"] td{color:var(--ink)!important;border-color:var(--line)!important}
+html[data-theme="dark"] .track{background:#26364a!important}
+html[data-theme="dark"] .notice{background:#382f1d!important;color:#f0d59b!important;border-color:#66502b!important}
+html[data-theme="dark"] .status.low{background:#49391e!important;color:#f0cb83!important}html[data-theme="dark"] .status.zero{background:#482527!important;color:#ffaaa5!important}html[data-theme="dark"] .status.ok{background:#153b32!important;color:#8ce0bd!important}html[data-theme="dark"] .status.missing{background:#26364a!important;color:#bdcad8!important}
+html[data-theme="dark"] .login p,html[data-theme="dark"] .section-head p,html[data-theme="dark"] .stamp,html[data-theme="dark"] .amount,html[data-theme="dark"] .footer{color:var(--mut)!important}
+html[data-theme="dark"] .err{color:#ff9690!important}
 </style>
 </head>
 <body>
@@ -37,7 +51,7 @@ button,input,select{font:inherit}.shell{max-width:1440px;margin:auto;padding:24p
  <div class="shell">
   <header class="hero">
    <div class="top"><div class="brand">S</div><div><h1>Store System <span style="color:#d8bd82">/</span> لوحة الإدارة</h1><small>EXECUTIVE OVERVIEW · READ ONLY</small></div>
-    <div class="actions"><button class="btn ghost" id="refresh">تحديث البيانات ↻</button><button class="btn ghost" id="logout">خروج</button></div>
+    <div class="actions"><button class="btn ghost" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn ghost" id="refresh">تحديث البيانات ↻</button><button class="btn ghost" id="logout">خروج</button></div>
    </div>
    <p>نظرة تنفيذية موحّدة على حركة الطلبات، جاهزية المخزون، وتكلفة الصرف بين الفنادق. هذه الصفحة مخصصة للمشاهدة ولا تحتوي على أدوات تعديل أو صرف.</p>
   </header>
@@ -62,7 +76,16 @@ button,input,select{font:inherit}.shell{max-width:1440px;margin:auto;padding:24p
 const SB='https://xthhojjcblknukwgksxw.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
 const $=s=>document.querySelector(s), enc=encodeURIComponent;
+const THEME_KEY='store-system-theme';
+function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}}
+applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
+$('#themeToggle').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 let session=null,DATA={orders:[],items:[],hotels:[],prices:[],links:[],deliveries:[],inventory:[]};
+const IDLE_LIMIT=30*60*1000;let lastActive=Number(sessionStorage.getItem('store_admin_last_active')||Date.now());
+function markActive(){if(!session)return;const n=Date.now();if(n-lastActive>30000){lastActive=n;try{sessionStorage.setItem('store_admin_last_active',String(n))}catch(e){}}}
+['pointerdown','keydown','touchstart','mousemove'].forEach(ev=>document.addEventListener(ev,markActive,{passive:true}));
+setInterval(()=>{if(session&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى')},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&session&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى')});
 const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const dateText=s=>{if(!s||String(s).length!==6)return '—';return '20'+s.slice(0,2)+'-'+s.slice(2,4)+'-'+s.slice(4,6)};
@@ -72,7 +95,7 @@ function unitMatch(price,unit){return !unit||!unitGroups[unit]||unitGroups[unit]
 async function auth(body,grant){
  const r=await fetch(SB+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_description||j.msg||j.message||'فشل تسجيل الدخول');
- session={access:j.access_token,refresh:j.refresh_token};try{sessionStorage.setItem('store_admin_session',JSON.stringify(session))}catch(e){}
+ session={access:j.access_token,refresh:j.refresh_token};lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive));sessionStorage.setItem('store_admin_session',JSON.stringify(session))}catch(e){}
 }
 async function api(path,retry=true){
  const r=await fetch(SB+'/rest/v1/'+path,{headers:{apikey:KEY,Authorization:'Bearer '+(session&&session.access||''),'Content-Type':'application/json'}});
@@ -80,7 +103,7 @@ async function api(path,retry=true){
  if(!r.ok)throw new Error('تعذّر قراءة البيانات ('+r.status+'): '+(await r.text()).slice(0,180));
  return r.json();
 }
-function logout(){session=null;try{sessionStorage.removeItem('store_admin_session')}catch(e){}$('#app').hidden=true;$('#login').hidden=false}
+function logout(message){session=null;try{sessionStorage.removeItem('store_admin_session');sessionStorage.removeItem('store_admin_last_active')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;if(message)$('#error').textContent=message}
 $('#logout').onclick=logout;
 $('#loginBtn').onclick=async()=>{const b=$('#loginBtn');b.disabled=true;b.textContent='جاري التحقق…';$('#error').textContent='';
  try{await auth({email:$('#email').value.trim(),password:$('#password').value},'password');await start()}
@@ -171,7 +194,7 @@ async function load(){
  }catch(e){$('#updated').textContent='تعذّر تحميل البيانات: '+e.message}
  finally{$('#refresh').disabled=false}
 }
-async function start(){ $('#login').hidden=true;$('#app').hidden=false;await load() }
+async function start(){if(session&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive))}catch(e){}$('#login').hidden=true;$('#app').hidden=false;await load() }
 try{const saved=JSON.parse(sessionStorage.getItem('store_admin_session')||'null');if(saved&&saved.access){session=saved;start().catch(()=>logout())}}catch(e){}
 </script>
 </body></html>
