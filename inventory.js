@@ -26,17 +26,17 @@ function downloadInventoryTemplate(){
   var r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===it.id}),link=LINKS.find(function(x){return x.item_id===it.id&&x.price_id}),p=link&&PRICES.find(function(x){return x.id===link.price_id&&!x.archived});
   rows.push([it.sku||'',it.ar||'',r? r.quantity:'',r&&r.unit||p&&p.unit||'قطعة',r?r.reorder_level:'']);
  });
- var csv='\\uFEFF'+rows.map(function(row){return row.map(csvCell).join(',')}).join('\\r\\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ var csv='\uFEFF'+rows.map(function(row){return row.map(csvCell).join(',')}).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='inventory-opening-'+h+'.csv';a.click();setTimeout(function(){URL.revokeObjectURL(url)},1200);
 }
 function parseInventoryCsv(text){
- text=String(text||'').replace(/^\\uFEFF/,'');
- var first=(text.split(/\\r?\\n/)[0]||''),delimiter=first.includes(';')&&!first.includes(',')?';':',',rows=[],row=[],cell='',quoted=false;
+ text=String(text||'').replace(/^\uFEFF/,'');
+ var first=(text.split(/\r?\n/)[0]||''),delimiter=first.includes(';')&&!first.includes(',')?';':',',rows=[],row=[],cell='',quoted=false;
  for(var i=0;i<text.length;i++){
   var ch=text[i];
   if(ch==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++}else quoted=!quoted}
   else if(ch===delimiter&&!quoted){row.push(cell);cell=''}
-  else if((ch==='\\n'||ch==='\\r')&&!quoted){if(ch==='\\r'&&text[i+1]==='\\n')i++;row.push(cell);if(row.some(function(x){return String(x).trim()!==''}))rows.push(row);row=[];cell=''}
+  else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(function(x){return String(x).trim()!==''}))rows.push(row);row=[];cell=''}
   else cell+=ch;
  }
  row.push(cell);if(row.some(function(x){return String(x).trim()!==''}))rows.push(row);
