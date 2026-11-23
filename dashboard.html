@@ -238,9 +238,9 @@ function build(rows){
  const m={};
  rows.slice().sort((a,b)=>a.created_at<b.created_at?-1:1).forEach(r=>{
   const p=parse(r),k=(r.hotel||'')+'|'+p.dept+'|'+p.no+'|'+p.ds;
-  const o=m[k]||(m[k]={k,hotel:r.hotel||'',dept:p.dept,no:p.no,ds:p.ds,dn:p.dn,req:{},fin:null,at:p.at,dev:p.dev});
+  const o=m[k]||(m[k]={k,hotel:r.hotel||'',dept:p.dept,no:p.no,ds:p.ds,dn:p.dn,req:{},fin:null,approved:true,at:p.at,dev:p.dev});
   o.at=p.at;
-  if(p.fin)o.fin={it:p.it,wk:p.wk||p.dev};else{p.it.forEach(x=>o.req[x.id]=x.req);o.dev=p.dev}
+  if(p.fin)o.fin={it:p.it,wk:p.wk||p.dev};else{o.approved=o.approved&&r.approved===true;p.it.forEach(x=>o.req[x.id]=x.req);o.dev=p.dev}
  });
  return Object.values(m).sort((a,b)=>a.at<b.at?1:-1);
 }
@@ -311,11 +311,23 @@ function drawS(){
 function drawO(){
  $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"></div><div class="wrap"><table><tr><th>الفندق</th><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
  const f=()=>{const q=$('#oq').value.trim().toLowerCase();
-  $('#ob').innerHTML=OV().filter(o=>!q||(o.no+' '+o.dn).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.hotel)}</td><td><b>${esc(o.no)}</b></td><td>${esc(o.dn)}</td><td>${dt(o.ds)}</td><td><span class="tag ${o.fin?'t-ok':'t-w'}">${o.fin?'تم الصرف':'بانتظار الصرف'}</span></td><td>${lines(o).length}</td><td>${esc(o.fin?o.fin.wk:o.dev)}</td><td><button class="btn alt" data-v="${esc(o.k)}">تفاصيل</button> <button class="btn bad" data-d="${esc(o.k)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد طلبات</td></tr>'};
+  $('#ob').innerHTML=OV().filter(o=>!q||(o.no+' '+o.dn).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.hotel)}</td><td><b>${esc(o.no)}</b></td><td>${esc(o.dn)}</td><td>${dt(o.ds)}</td><td><span class="tag ${o.fin||o.approved?'t-ok':'t-w'}">${o.fin?'تم الصرف':o.approved?'تم التصديق — بانتظار الصرف':'بانتظار التصديق'}</span></td><td>${lines(o).length}</td><td>${esc(o.fin?o.fin.wk:o.dev)}</td><td><button class="btn alt" data-v="${esc(o.k)}">تفاصيل</button> ${!o.fin&&!o.approved?`<button class="btn" data-ap="${esc(o.k)}">+ تصديق</button> `:''} <button class="btn bad" data-d="${esc(o.k)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد طلبات</td></tr>'};
  $('#oq').oninput=f;f();
 }
+function currentAuthUid(){try{const p=S.a.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(atob(p+'='.repeat((4-p.length%4)%4))).sub||null}catch(e){return null}}
 $('#o').onclick=async e=>{
  const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.ap){
+  const o=O.find(x=>x.k===b.dataset.ap);if(!o||o.fin||o.approved)return;
+  if(!confirm('تصديق الطلب '+o.no+'؟'))return;
+  b.disabled=true;b.textContent='جارٍ التصديق…';
+  try{
+   const rows=await api('orders?hotel=eq.'+enc(o.hotel)+'&dept=eq.'+enc(o.dept)+'&no=eq.'+enc(o.no)+'&kind=eq.request',{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({approved:true,approved_at:new Date().toISOString(),approved_by:currentAuthUid()})});
+   if(!rows||!rows.length)throw new Error('لم يتم تحديث الطلب. تحقق من صلاحية تعديل الطلبات.');
+   await load();alert('تم تصديق الطلب '+o.no+' بنجاح');
+  }catch(err){b.disabled=false;b.textContent='+ تصديق';alert('تعذّر تصديق الطلب: '+err.message)}
+  return;
+ }
  if(b.dataset.v){const o=O.find(x=>x.k===b.dataset.v);
   const rows=lines(o).map(x=>{const n=nm(x.id),st=o.fin?(x.iss<=0?'غير متوفر':x.iss<x.req?'جزئي':'تم'):'—';return `<tr><td>${esc(n.n)}<br><small dir="ltr">${esc(n.u)}</small></td><td>${x.req}</td><td>${o.fin?Math.max(0,x.iss):'—'}</td><td>${st}</td></tr>`}).join('');
   $('#mb').innerHTML=`<h3 style="margin-top:0">طلب ${esc(o.no)} — ${esc(o.dn)} — ${dt(o.ds)}</h3><table><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th><th>الحالة</th></tr>${rows}</table><p><button class="btn" onclick="$('#modal').hidden=true">إغلاق</button></p>`;$('#modal').hidden=false}
