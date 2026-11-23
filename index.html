@@ -909,11 +909,15 @@ function copyFinal(){
 }
 
 function parseFinal(t){
- const l=t.split(/\s*(?=EBR1F?\|)/).map(x=>x.trim()).find(x=>x.startsWith('EBR1F|'));if(!l)return null;
- const f=l.split('|');if(f.length<7)return null;
- const [,dept,no,ds,total,h,items,dn,wk,nms]=f,names={};
- (nms||'').split(';').filter(Boolean).forEach(t=>{const [id,a,b]=t.split('~');names[id]={n:a,u:b||''}});
- return{dept,no,ds,dn,names,items:items.split(',').map(x=>{const [id,rq,is]=x.split(':');return{id:+id,req:+rq,iss:+is}})};
+ const l=String(t||'').split(/\s*(?=EBR1F?\|)/).map(x=>x.trim()).find(x=>x.startsWith('EBR1F|'));if(!l||l.length>30000)return null;
+ const f=l.split('|');if(f.length<10)return null;
+ const [,dept,no,ds,total,h,items,dn,wk,nms]=f;
+ if(!/^[A-Za-z0-9_-]{1,16}$/.test(dept)||!/^[A-Za-z0-9_-]{1,64}$/.test(no)||!/^[0-9]{6}$/.test(ds)||!/^[0-9]{1,3}$/.test(total)||+total<1||+total>100||!/^[a-z0-9]+$/i.test(h)||!items)return null;
+ const names={};
+ for(const entry of (nms||'').split(';').filter(Boolean)){const z=entry.split('~');if(z.length<2||!/^[0-9]{1,10}$/.test(z[0])||z[1].length>120||(z[2]||'').length>120)return null;names[z[0]]={n:z[1],u:z[2]||''}}
+ const seen=new Set(),parsed=items.split(',').map(x=>{const m=x.match(/^([0-9]{1,10}):([0-9]{1,9}(?:\.[0-9]{1,3})?):([0-9]{1,9}(?:\.[0-9]{1,3})?):[^,]*$/);if(!m)return null;const id=+m[1],req=+m[2],iss=+m[3];if(!Number.isSafeInteger(id)||id<=0||!Number.isFinite(req)||req<=0||!Number.isFinite(iss)||iss<0||iss>req||seen.has(id))return null;seen.add(id);return{id,req,iss}});
+ if(!parsed.length||parsed.length>500||parsed.some(x=>!x))return null;
+ return{dept,no,ds,total:+total,h,dn,wk,names,items:parsed};
 }
 let RES=null;
 const LAB=[['غير متوفر','Not available','#b4231a','#fbe9e7'],['جزئي','Partial','#b4531a','#fff4e5'],['تم','Fulfilled','#1d7a4f','#ffffff']];
