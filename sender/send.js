@@ -145,7 +145,7 @@ async function sendBatch(group, to, cc, hotelName, ctx){
  try{
   if(!to.length)throw new Error('لا يوجد مستلم لهذا الفندق / no To recipient');
   const files=await require('./batch-workbooks').generateBatchWorkbooks(claimed,ctx);
-  for(const [name,buf] of [['Issue_Departments.xlsx',files.issue],['Cost_Departments.xlsx',files.cost)]){
+  for(const [name,buf] of [['Issue_Departments.xlsx',files.issue],['Cost_Departments.xlsx',files.cost]]){
    if(!buf||buf.length<100||buf.subarray(0,2).toString()!=='PK')throw new Error('ملف Excel المجمّع غير صالح: '+name);
   }
   mailAttempted=true;
