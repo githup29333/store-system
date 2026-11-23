@@ -223,7 +223,8 @@ async function main(){
   const cfgRows=await rest('app_secrets?select=value&key=eq.auto_send_config');
   let cfg={};try{cfg=JSON.parse(cfgRows[0]?.value||'{}')}catch(e){}
   if(!cfg.enabled){
-   console.log('Automatic sending is disabled; approved manual orders will still be processed');
+   console.log('Automatic sending is disabled; all scheduled email dispatch is paused');
+   return;
   }else{
    const tz=cfg.timezone||'Africa/Tripoli',now=localParts(new Date(),tz);
    if(!atOrAfter(now,cfg.time||'15:00')){
