@@ -247,7 +247,7 @@ function build(rows){
 const nm=id=>NM[id]||SH[id]||(BASE[id-1]?{n:BASE[id-1][0],u:BASE[id-1][1]||''}:{n:'صنف #'+id,u:''});
 const lines=o=>o.fin?o.fin.it:Object.keys(o.req).map(id=>({id:+id,req:o.req[id]}));
 
-async function loadInventoryOnce(){if(INVENTORY_LOADED)return drawV();INVENTORY_LOADED=true;$('#v').innerHTML='<p>جارٍ تحميل المخزون…</p>';try{await ensureJsQR();[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}drawV()}
+async function loadInventoryOnce(){if(INVENTORY_LOADED)return drawV();INVENTORY_LOADED=true;$('#v').innerHTML='<p>جارٍ تحميل المخزون…</p>';try{[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}drawV()}
 async function load(){
  INVENTORY_LOADED=false;AUDIT_LOADED=false;DELERR=false;
  try{
