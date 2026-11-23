@@ -10,7 +10,7 @@ const URL_=E.SUPABASE_URL.replace(/\/$/,'');
 const KEY=E.SUPABASE_SERVICE_KEY;
 const H={apikey:KEY,Authorization:'Bearer '+KEY,'Content-Type':'application/json'};
 const PORT=+E.SMTP_PORT||465,SECURE=E.SMTP_SECURE?E.SMTP_SECURE==='true':PORT===465;
-const FROM=E.MAIL_FROM||E.SMTP_USER,MAXTRY=+E.MAX_ATTEMPTS||3,LIMIT=+E.MAX_PER_RUN||20;
+const FROM=E.MAIL_FROM||E.SMTP_USER,MAXTRY=+E.MAX_ATTEMPTS||3,LIMIT=+E.MAX_PER_RUN||100;
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const enc=encodeURIComponent;
 const transport=nodemailer.createTransport({
@@ -131,6 +131,58 @@ async function sendOne(d,to,cc,hotelName){
  }
 }
 
+
+async function sendBatch(group, to, cc, hotelName, ctx){
+ const claimed=[];
+ for(const d of group){
+  const got=await rest('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev+'&status=eq.approved',{
+   method:'PATCH',headers:REP,body:JSON.stringify({status:'sending',attempts:(d.attempts||0)+1,updated_at:new Date().toISOString()})
+  });
+  if(got&&got.length)claimed.push(d);
+ }
+ if(!claimed.length)return true;
+ let mailAttempted=false;
+ try{
+  if(!to.length)throw new Error('لا يوجد مستلم لهذا الفندق / no To recipient');
+  const files=await require('./batch-workbooks').generateBatchWorkbooks(claimed,ctx);
+  for(const [name,buf] of [['Issue_Departments.xlsx',files.issue],['Cost_Departments.xlsx',files.cost]]){
+   if(!buf||buf.length<100||buf.subarray(0,2).toString()!=='PK')throw new Error('ملف Excel المجمّع غير صالح: '+name);
+  }
+  mailAttempted=true;
+  const orderNos=claimed.map(d=>d.no).filter(Boolean);
+  const info=await transport.sendMail({
+   from:FROM,to,cc,
+   subject:(hotelName?'['+hotelName+'] ':'')+'تقرير الصرف والتكلفة المجمّع / Consolidated Issue & Cost — '+claimed.length+' طلب',
+   text:'مرفق ملف الصرف وملف التكلفة المجمّعان. يحتوي كل ملف على ورقة مستقلة لكل قسم، وجُمعت طلبات القسم الواحد في ورقته. عدد الطلبات: '+claimed.length+'. أرقام الطلبات: '+orderNos.join('، ')+'.\n\nAttached are the consolidated issue and cost workbooks. Each department has its own worksheet, with its orders grouped together.',
+   attachments:[
+    {filename:'Issue_Departments.xlsx',content:files.issue,contentType:XL},
+    {filename:'Cost_Departments.xlsx',content:files.cost,contentType:XL}
+   ]
+  });
+  const rejected=(info.rejected||[]).map(x=>x.address||x);
+  if(!(info.accepted||[]).length)throw new Error('SMTP accepted no recipients');
+  for(const d of claimed){
+   const done=await rest('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev+'&status=eq.sending',{
+    method:'PATCH',headers:REP,body:JSON.stringify({status:'sent',sent_at:new Date().toISOString(),error:rejected.length?'رُفض لبعض المستلمين / rejected: '+rejected.join(', '):null})
+   });
+   if(!done||!done.length)throw new Error('MAIL_ACCEPTED_DB_UPDATE_MISSED: '+d.key);
+  }
+  console.log('Sent one consolidated email for '+claimed.length+' orders, departments: '+files.departments.join(', '));
+  return true;
+ }catch(e){
+  let msg=String(e.message||e).slice(0,280);
+  const ambiguous=mailAttempted;
+  if(ambiguous)msg='نتيجة الإرسال غير مؤكدة؛ افحص البريد قبل إعادة المحاولة / SMTP outcome is ambiguous; verify mailbox before retry. '+msg;
+  for(const d of claimed){
+   await rest('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev+'&status=eq.sending',{
+    method:'PATCH',headers:REP,body:JSON.stringify({status:ambiguous?'failed':'approved',error:msg,updated_at:new Date().toISOString()})
+   }).catch(()=>{});
+  }
+  console.error('Consolidated email failed: '+msg);
+  return false;
+ }
+}
+
 async function runTest(){
  await transport.verify();
  const to=E.TEST_TO||E.SMTP_USER,hotel=E.TEST_HOTEL||'EBR';
@@ -171,7 +223,8 @@ async function main(){
   const cfgRows=await rest('app_secrets?select=value&key=eq.auto_send_config');
   let cfg={};try{cfg=JSON.parse(cfgRows[0]?.value||'{}')}catch(e){}
   if(!cfg.enabled){
-   console.log('Automatic sending is disabled; approved manual orders will still be processed');
+   console.log('Automatic sending is disabled; all scheduled email dispatch is paused; approved manual orders will still be processed only after an explicit manual run');
+   return;
   }else{
    const tz=cfg.timezone||'Africa/Tripoli',now=localParts(new Date(),tz);
    if(!atOrAfter(now,cfg.time||'15:00')){
@@ -206,8 +259,11 @@ async function main(){
   to:uniq(rec.filter(r=>r.hotel===h&&r.kind==='to').map(addr)),
   cc:uniq(rec.filter(r=>r.hotel===h&&r.kind==='cc').map(addr))
  });
+ const ctx=await loadContext();
+ const grouped=new Map();
+ for(const d of rows){if(!grouped.has(d.hotel))grouped.set(d.hotel,[]);grouped.get(d.hotel).push(d);}
  let ok=true;
- for(const d of rows){const g=by(d.hotel);ok=(await sendOne(d,g.to,g.cc,hname[d.hotel]||''))&&ok;}
+ for(const [hotel,orders] of grouped){const g=by(hotel);ok=(await sendBatch(orders,g.to,g.cc,hname[hotel]||'',ctx))&&ok;}
  if(!ok)process.exitCode=1;
 }
 main().catch(e=>{console.error('Fatal: '+(e.message||e));process.exit(1);});

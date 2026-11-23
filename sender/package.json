@@ -5,7 +5,7 @@
   "description": "يرسل نتائج الصرف الموافق عليها بالإيميل (Supabase + SMTP)",
   "scripts": {
     "start": "node send.js",
-    "test": "node test-workbooks.js"
+    "test": "node test-workbooks.js && node test-batch-workbooks.js"
   },
   "dependencies": {
     "nodemailer": "^6.9.0",
