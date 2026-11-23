@@ -72,6 +72,24 @@ Deno.serve(async (req: Request) => {
 
     if (action === "health") return respond({ ok: true, serviceKeyConfigured: true, ownerVerified: true });
 
+    if (action === "set_dispatch_token") {
+      const githubToken = String(body.token || "").trim();
+      if (githubToken.length < 20 || githubToken.length > 255 || /\\s/.test(githubToken)) {
+        return respond({ error: "Invalid GitHub token format" }, 400);
+      }
+      const { error } = await admin.from("app_secrets").upsert({
+        key: "gh_dispatch", value: githubToken, updated_at: new Date().toISOString(),
+      }, { onConflict: "key" });
+      if (error) throw error;
+      return respond({ ok: true, configured: true });
+    }
+
+    if (action === "delete_dispatch_token") {
+      const { error } = await admin.from("app_secrets").delete().eq("key", "gh_dispatch");
+      if (error) throw error;
+      return respond({ ok: true, configured: false });
+    }
+
     if (action === "dispatch_status" || action === "dispatch") {
       const { data: secret, error: secretError } = await admin.from("app_secrets")
         .select("value").eq("key", "gh_dispatch").maybeSingle();
