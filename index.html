@@ -818,7 +818,7 @@ function initDev(){
 }
 $('#saveSet').onclick=()=>{const d=$('#devCode').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6);if(!d)return toast('اكتب رمزاً / Enter a code');LS('dev',d);LS('fix',$('#fixDept').value);LS('rcpt',$('#rcpt').value.trim());applyFix();toast('تم الحفظ / Saved: '+d)};
 $('#exCat').onclick=()=>dl('catalog.txt',new Blob([$('#catTxt').value],{type:'text/plain;charset=utf-8'}));
-$('#imCat').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#catTxt').value=await f.text();LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم استيراد القائمة / Imported');e.target.value=''};
+$('#imCat').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(!/\.txt$/i.test(f.name)||f.size>1048576){toast('يسمح بملف TXT فقط وبحجم لا يتجاوز 1 ميجابايت / TXT files only, max 1 MB');e.target.value='';return}try{$('#catTxt').value=await f.text();LS('cat2',$('#catTxt').value);loadCat();renderList();toast('تم استيراد القائمة / Imported')}catch(err){toast('تعذّر قراءة الملف / Could not read file')}finally{e.target.value=''}};
 
 /* ---------- الأقسام ---------- */
 function fillDepts(){
