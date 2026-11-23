@@ -74,6 +74,47 @@ jobs:
           }
           console.log('Read-only management dashboard JavaScript syntax OK');
           NODE
+      - name: Check security hardening regressions
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { execFileSync } = require('node:child_process');
+          const assert = require('node:assert/strict');
+          const dashboard = fs.readFileSync('dashboard.html', 'utf8');
+          const worker = fs.readFileSync('index.html', 'utf8');
+          const admin = fs.readFileSync('admin.html', 'utf8');
+          const edge = fs.readFileSync('supabase/functions/sbfenv/index.ts', 'utf8');
+          const workerEdge = fs.readFileSync('supabase/functions/hotel-portal/index.ts', 'utf8');
+          const migrations = fs.readdirSync('supabase/migrations').map(f => fs.readFileSync('supabase/migrations/' + f, 'utf8')).join('\n');
+
+          assert.ok(!dashboard.includes('GHTOK'));
+          assert.ok(!dashboard.includes('api.github.com/repos/githup29333/store-system/actions/workflows/send.yml/dispatches'));
+          assert.ok(dashboard.includes("ownerAction('dispatch_status')"));
+          assert.ok(dashboard.includes("ownerAction('set_dispatch_token'"));
+          assert.ok(worker.includes('const escHtml='));
+          assert.ok(worker.includes('escHtml(x.c.n)'));
+          assert.ok(worker.includes('escHtml(c.n)'));
+          assert.ok(worker.includes('escHtml(x.n.n)'));
+          assert.ok(worker.includes('history.replaceState'));
+          assert.ok(worker.includes('rq<=0||is<0||is>rq'));
+          assert.ok(worker.includes('iss>req'));
+          assert.ok(worker.includes('/functions/v1/hotel-portal'));
+          assert.ok(!worker.includes('/rest/v1/rpc/'));
+          assert.ok(worker.includes('1 MB'));
+          assert.ok(edge.includes('if (action === "set_dispatch_token")'));
+          assert.ok(edge.includes('if (action === "delete_dispatch_token")'));
+          assert.ok(edge.includes('user.id !== OWNER'));
+          assert.ok(workerEdge.includes('hotel_info') && workerEdge.includes('hotel_log'));
+          assert.ok(workerEdge.includes('^[A-Za-z0-9_-]{32}$'));
+          assert.ok(migrations.includes('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, PUBLIC'));
+          assert.ok(migrations.includes('allowed_mime_types'));
+          assert.ok(migrations.includes("key <> 'gh_dispatch'"));
+          assert.ok(migrations.includes('GRANT EXECUTE ON FUNCTION public.hotel_log(text, text, text, text, text, text) TO service_role'));
+          assert.ok(!/(service_role|sb_secret_)/i.test(dashboard + worker + admin));
+          const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split(/\r?\n/);
+          assert.ok(!tracked.some(p => /(^|\/)\.env$/.test(p)), 'A real .env file must never be committed');
+          console.log('Security regression guards OK');
+          NODE
       - name: Check per-order and missing-price safeguards
         run: |
           node <<'NODE'
