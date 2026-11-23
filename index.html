@@ -529,7 +529,7 @@ const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1
 const HK=(()=>{try{const u=new URLSearchParams(location.search).get('h');if(u){LS('hk',u);return u}}catch(e){}return LS('hk')||''})();
 let HNAME=LS('hname')||'',INVALID=!HK;
 const rpc=(fn,args)=>fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{...SBH,'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'});
-let cat=[],q={},o=null,last='';
+let cat=[],q={},o=null,last='',FINAL_SAVING=false;
 const BASE_N=DEF.split('\n').filter(Boolean).length;
 const item=id=>(o&&o.names&&o.names[id])||cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
 const cn=t=>String(t).replace(/[|;~]/g,' ');
@@ -677,10 +677,10 @@ function renderIssue(){
  const deptCtl=WM?`<select id="odept">${Object.keys(D).map(k=>`<option value="${k}" ${k===o.dept?'selected':''}>${D[k]}</option>`).join('')}</select>`:D[o.dept];
  $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${deptCtl} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th><th>الوحدة<br>Unit</th></tr>${rows}</table>
- <div class="row" style="margin-top:12px">${WM?'<button class="btn ok" id="fc">نسخ الكود النهائي / Copy final code</button>':'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button>'}</div>`;
+ <div class="row" style="margin-top:12px">${WM?(o.submitted?'<button class="btn ok" id="fc" disabled>تم تسجيل الصرف ✓ / Issued</button>':'<button class="btn ok" id="fc" '+(FINAL_SAVING?'disabled':'')+'>صرف / Issue</button>'):'<button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button>'}</div>`;
 }
 $('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){o.items[t.dataset.iss].iss=+t.value||0}else if(t.dataset.un){o.items[t.dataset.un].unit=t.value}else if(t.id==='odept'){o.dept=t.value}renderIssue()};
-$('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc')copyFinal()};
+$('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc'){if(WM)issueOrder();else copyFinal()}};
 $('#load').onclick=()=>ingest($('#paste').value);
 
 const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
@@ -870,6 +870,23 @@ async function flushLog(){
  flushing=false;
 }
 addEventListener('online',flushLog);setInterval(flushLog,60000);
+async function issueOrder(){
+ if(!chk()||!o||o.submitted||FINAL_SAVING)return;
+ if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). هل تريد تسجيل الكميات المصروفة الآن؟ / Order incomplete. Record the issued quantities anyway?'))return;
+ if(!confirm('تأكيد الصرف الفعلي للطلب '+o.no+'؟ سيتم تسجيل الكميات المصروفة وتجهيز الطلب للإرسال. / Confirm actual issuance for order '+o.no+'? Issued quantities will be recorded and queued for delivery.'))return;
+ FINAL_SAVING=true;renderIssue();
+ try{
+  const code=finalCode();
+  const r=await rpc('hotel_log',{k:HK,p_kind:'final',p_code:code,p_dept:o.dept,p_no:o.no,p_device:LS('dev')||''});
+  if(!r.ok){const msg=await r.text().catch(()=> '');throw new Error(msg||('HTTP '+r.status))}
+  o.submitted=true;save();renderIssue();
+  try{await navigator.clipboard.writeText(code)}catch(e){}
+  toast('تم تسجيل الصرف بنجاح — الطلب جاهز للإرسال / Issuance recorded — order queued for delivery');
+ }catch(e){
+  toast('تعذّر تسجيل الصرف: '+String(e.message||e).slice(0,150)+' / Could not record issuance');
+ }finally{FINAL_SAVING=false;renderIssue()}
+}
+
 function copyFinal(){
  if(!chk()||!o)return;
  if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
