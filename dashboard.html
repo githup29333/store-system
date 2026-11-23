@@ -159,6 +159,19 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
  <script src="audit.js"></script>
 <script>
 const $=s=>document.querySelector(s);
+const lazyLibraries={};
+function ensureLibrary(key,src,globalName){
+ if(window[globalName])return Promise.resolve(window[globalName]);
+ if(!lazyLibraries[key])lazyLibraries[key]=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src=src;script.async=true;
+  script.onload=()=>window[globalName]?resolve(window[globalName]):reject(new Error('لم يتم تحميل المكتبة '+key));
+  script.onerror=()=>{delete lazyLibraries[key];reject(new Error('تعذّر تحميل المكتبة '+key+'؛ تحقق من الاتصال'))};
+  document.head.appendChild(script);
+ });
+ return lazyLibraries[key];
+}
+const ensureQRCode=()=>ensureLibrary('QR','https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js','qrcode');
+const ensureJsQR=()=>ensureLibrary('قارئ QR','https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js','jsQR');
 const THEME_KEY='store-system-theme';
 function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
@@ -236,20 +249,24 @@ const lines=o=>o.fin?o.fin.it:Object.keys(o.req).map(id=>({id:+id,req:o.req[id]}
 
 async function loadInventoryOnce(){if(INVENTORY_LOADED)return drawV();INVENTORY_LOADED=true;$('#v').innerHTML='<p>جارٍ تحميل المخزون…</p>';try{[INVENTORY,MOVEMENTS]=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVERR=''}catch(e){INVENTORY=[];MOVEMENTS=[];INVERR=e.message}drawV()}
 async function load(){
- INVENTORY_LOADED=false;AUDIT_LOADED=false;
+ INVENTORY_LOADED=false;AUDIT_LOADED=false;DELERR=false;
  try{
-  const [orders,items]=await Promise.all([api('orders?select=*&order=created_at.desc&limit=3000'),api('items?select=*&order=id.asc&limit=2000')]);
+  // Independent reads run together to remove serial network round-trips.
+  const [orders,items,hotels,priceData,secretRows,deliveryData]=await Promise.all([
+   api('orders?select=*&order=created_at.desc&limit=3000'),
+   api('items?select=*&order=id.asc&limit=2000'),
+   api('hotels?select=*&order=created_at.asc').catch(()=>[]),
+   Promise.all([api('prices?select=*&order=id.asc&limit=2000'),api('item_price_link?select=*&limit=2000')]).catch(()=>[[],[]]),
+   api('app_secrets?select=key,value&key=in.(gh_dispatch,auto_send_config)').catch(()=>[]),
+   Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')]).catch(()=>{DELERR=true;return [[],[]]})
+  ]);
   ITEMS=items;SH={};items.forEach(x=>SH[x.id]={n:x.ar,u:x.en});
-  O=build(orders);
-  HOTELS=await api('hotels?select=*&order=created_at.asc').catch(()=>[]);
-  fillHF();
-  try{[PRICES,LINKS]=await Promise.all([api('prices?select=*&order=id.asc&limit=2000'),api('item_price_link?select=*&limit=2000')])}catch(e){PRICES=[];LINKS=[]}
-  GHTOK=await api('app_secrets?select=value&key=eq.gh_dispatch').then(r=>r[0]&&r[0].value||null).catch(()=>null);
-  AUTOCFG=await api('app_secrets?select=value&key=eq.auto_send_config').then(r=>{try{return r[0]?JSON.parse(r[0].value):AUTOCFG}catch(e){return AUTOCFG}}).catch(()=>AUTOCFG);
-  DELERR=false;try{[DEL,REC]=await Promise.all([api('deliveries?select=*&order=updated_at.desc&limit=500'),api('recipients?select=*&order=id.asc')])}catch(e){DEL=[];REC=[];DELERR=true}
+  O=build(orders);HOTELS=hotels;fillHF();PRICES=priceData[0];LINKS=priceData[1];
+  const secrets=Object.fromEntries(secretRows.map(x=>[x.key,x.value]));GHTOK=secrets.gh_dispatch||null;
+  try{AUTOCFG=secrets.auto_send_config?JSON.parse(secrets.auto_send_config):AUTOCFG}catch(e){}
+  [DEL,REC]=deliveryData;
  }catch(e){$('#s').innerHTML='<p style="color:#b4231a">تعذّر تحميل البيانات: '+esc(e.message)+'</p>'}
- INVENTORY=[];MOVEMENTS=[];INVERR='';
- drawS();
+ INVENTORY=[];MOVEMENTS=[];INVERR='';drawS();
  $('#o').innerHTML='<p>افتح هذا القسم لعرض الطلبات.</p>';$('#i').innerHTML='<p>افتح هذا القسم لعرض الأصناف.</p>';$('#l').innerHTML='<p>افتح هذا القسم لعرض الروابط.</p>';$('#d').innerHTML='<p>افتح هذا القسم لعرض الإرسال.</p>';$('#c').innerHTML='<p>افتح هذا القسم لعرض التكاليف.</p>';$('#v').innerHTML='<p>افتح هذا القسم لتحميل بيانات المخزون.</p>';$('#a').innerHTML='<p>افتح هذا القسم لعرض التحليلات.</p>';$('#g').innerHTML='<p>افتح هذا القسم لتحميل سجل العمليات.</p>';$('#k').innerHTML='<p>افتح هذا القسم لعرض إعدادات الفنادق.</p>';
 }
 async function start(){
@@ -269,8 +286,8 @@ async function start(){
 
  lastActive=Date.now();try{sessionStorage.setItem('store_last_active',String(lastActive))}catch(e){}
  $('#login').hidden=true;$('#app').hidden=false;
- try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}
- load();
+ const baseLoad=(async()=>{try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}})();
+ await Promise.all([baseLoad,load()]);
 }
 const bars=(arr,col)=>{const mx=Math.max(1,...arr.map(a=>a[1]));return arr.map(a=>`<div class="bar"><span>${esc(a[0])}</span><i style="width:${Math.round(a[1]*100/mx)}%;max-width:60%;min-width:3px${col?';background:'+col:''}"></i><em>${a[1]}</em></div>`).join('')||'<p>لا توجد بيانات</p>'};
 const topN=(m,n)=>Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n);
