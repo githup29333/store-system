@@ -74,7 +74,6 @@ jobs:
           }
           console.log('Read-only management dashboard JavaScript syntax OK');
           NODE
-
       - name: Check security hardening regressions
         run: |
           node <<'NODE'
@@ -86,7 +85,7 @@ jobs:
           const admin = fs.readFileSync('admin.html', 'utf8');
           const edge = fs.readFileSync('supabase/functions/sbfenv/index.ts', 'utf8');
           const workerEdge = fs.readFileSync('supabase/functions/hotel-portal/index.ts', 'utf8');
-          const migrations = fs.readdirSync('supabase/migrations').map(f => fs.readFileSync('supabase/migrations/' + f, 'utf8')).join('\\n');
+          const migrations = fs.readdirSync('supabase/migrations').map(f => fs.readFileSync('supabase/migrations/' + f, 'utf8')).join('\n');
 
           assert.ok(!dashboard.includes('GHTOK'));
           assert.ok(!dashboard.includes('api.github.com/repos/githup29333/store-system/actions/workflows/send.yml/dispatches'));
@@ -106,43 +105,14 @@ jobs:
           assert.ok(edge.includes('if (action === "delete_dispatch_token")'));
           assert.ok(edge.includes('user.id !== OWNER'));
           assert.ok(workerEdge.includes('hotel_info') && workerEdge.includes('hotel_log'));
-          assert.ok(workerEdge.includes('^[A-Za-z0-9_-]{32}
-          const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split(/\\r?\\n/);
-          assert.ok(!tracked.some(p => /(^|\\/)\\.env$/.test(p)), 'A real .env file must never be committed');
-          console.log('Security regression guards OK');
-          NODE
-      - name: Check per-order and missing-price safeguards
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const dashboard = fs.readFileSync('dashboard.html', 'utf8');
-          const sender = fs.readFileSync('sender/send.js', 'utf8');
-          const assert = require('node:assert/strict');
-          assert.ok(dashboard.includes('return {lines,total,missing,priced,byCat'));
-          assert.ok(dashboard.includes('بانتظار السعر'));
-          assert.ok(dashboard.includes('ملخص الإدارة') && dashboard.includes('تفاصيل الأصناف'));
-          assert.ok(dashboard.includes('cost_path:costPath'));
-          assert.ok(sender.includes("'Issue_'+d.dept+'_'+d.no+'.xlsx'"));
-          assert.ok(sender.includes("'Cost_'+d.dept+'_'+d.no+'.xlsx'"));
-          assert.ok(sender.includes('if(!d.file_path||!d.cost_path)'));
-          assert.ok(sender.includes("r.hotel===h"));
-          assert.ok(sender.includes("status=eq.pending"));
-          assert.ok(sender.includes("Africa/Tripoli"));
-          assert.ok(sender.includes('approved manual orders will still be processed'));
-          assert.ok(sender.includes('dept=neq.ALL'));
-          assert.ok(sender.includes('verify mailbox before retry'));
-
-          assert.ok(!dashboard.includes('Dept Yesterday') && !dashboard.includes('Diff vs Yesterday'));
-          console.log('Order isolation and missing-price safeguards OK');
-          NODE
-));
+          assert.ok(workerEdge.includes('^[A-Za-z0-9_-]{32}$'));
           assert.ok(migrations.includes('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, PUBLIC'));
           assert.ok(migrations.includes('allowed_mime_types'));
           assert.ok(migrations.includes("key <> 'gh_dispatch'"));
           assert.ok(migrations.includes('GRANT EXECUTE ON FUNCTION public.hotel_log(text, text, text, text, text, text) TO service_role'));
           assert.ok(!/(service_role|sb_secret_)/i.test(dashboard + worker + admin));
-          const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split(/\\r?\\n/);
-          assert.ok(!tracked.some(p => /(^|\\/)\\.env$/.test(p)), 'A real .env file must never be committed');
+          const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split(/\r?\n/);
+          assert.ok(!tracked.some(p => /(^|\/)\.env$/.test(p)), 'A real .env file must never be committed');
           console.log('Security regression guards OK');
           NODE
       - name: Check per-order and missing-price safeguards
