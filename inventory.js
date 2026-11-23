@@ -45,10 +45,10 @@ function parseInventoryCsv(text){
  var si=find(['sku','item_sku','كود','الكود','الكود الداخلي']),qi=find(['quantity','qty','الرصيد','الكمية']),ui=find(['unit','الوحدة']),mi=find(['reorder_level','min_stock','حد الطلب','الحد الأدنى']);
  if(si<0||qi<0||mi<0)throw new Error('الأعمدة المطلوبة: sku, quantity, reorder_level');
  return rows.map(function(r){
-  var sku=String(r[si]||'').trim(),qty=String(r[qi]||'').trim().replace(',','.'),min=String(r[mi]||'').trim().replace(',','.'),unit=ui>=0?String(r[ui]||'').trim():'';
+  var sku=String(r[si]||'').trim(),qty=String(r[qi]||'').trim().replace(',','.'),min=String(r[mi]||'').trim().replace(',','.'),unit=ui>=0?String(r[ui]||'').trim():'';if(sku.length>64||unit.length>40)throw new Error('SKU أو الوحدة أطول من الحد المسموح');
   if(!sku)return null;
   if(qty===''||min==='')throw new Error('أكمل الكمية وحد الطلب لكل SKU: '+sku);
-  var q=Number(qty),m=Number(min);if(!Number.isFinite(q)||q<0||!Number.isFinite(m)||m<0)throw new Error('قيمة غير صحيحة في SKU: '+sku);
+  var q=Number(qty),m=Number(min);if(!Number.isFinite(q)||q<0||q>999999999||!Number.isFinite(m)||m<0||m>999999999||!/^\d+(\.\d{1,3})?$/.test(qty)||!/^\d+(\.\d{1,3})?$/.test(min))throw new Error('قيمة غير صحيحة في SKU: '+sku);
   if(!unit){var it=ITEMS.find(function(x){return x.sku===sku}),r0=it&&INVENTORY.find(function(x){return x.hotel_code===invHotel()&&x.item_id===it.id}),l=it&&LINKS.find(function(x){return x.item_id===it.id&&x.price_id}),p=l&&PRICES.find(function(x){return x.id===l.price_id&&!x.archived});unit=r0&&r0.unit||p&&p.unit||'قطعة'}
   return {sku:sku,quantity:q,unit:unit,reorder_level:m};
  }).filter(Boolean);
@@ -56,7 +56,9 @@ function parseInventoryCsv(text){
 async function importInventoryCsv(file){
  if(!file)return;
  try{
+  if(!/\.csv$/i.test(file.name)||file.size>5*1024*1024)throw new Error('يسمح بملف CSV فقط وبحجم لا يتجاوز 5 ميجابايت');
   var rows=parseInventoryCsv(await file.text());
+  if(rows.length>10000)throw new Error('عدد الصفوف يتجاوز الحد المسموح (10,000)');
   if(!rows.length)return alert('لم يتم العثور على صفوف صالحة');
   if(!confirm('سيتم استيراد '+rows.length+' صنف إلى الفندق '+invHotel()+'. سيتم استبدال الرصيد الحالي لكل صنف وتسجيل حركة تسوية. متابعة؟'))return;
   var count=await api('rpc/import_hotel_inventory',{method:'POST',body:JSON.stringify({p_hotel_code:invHotel(),p_rows:rows})});
