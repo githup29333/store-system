@@ -22,6 +22,6 @@ const {generateBatchWorkbooks}=require('./batch-workbooks');
  assert.equal(restaurant.getCell('D6').value,'R-2');
  const cost=new ExcelJS.Workbook();await cost.xlsx.load(out.cost);
  assert.equal(cost.worksheets.length,2);
- assert.equal(cost.getWorksheet('Restaurant').getCell('I8').value,20);
+ assert.equal(cost.getWorksheet('Restaurant').getCell('I7').value,20);
  console.log('Batch workbook tests passed: two files, one worksheet per department, orders grouped by department.');
 })().catch(e=>{console.error(e);process.exit(1);});
