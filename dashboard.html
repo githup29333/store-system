@@ -309,14 +309,27 @@ function drawS(){
  <h3>الأكثر عدم توفراً</h3>${bars(topN(na,10).map(([id,c])=>[nm(id).n,c]),'#b4231a')}`;
 }
 function drawO(){
- $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"></div><div class="wrap"><table><tr><th>الفندق</th><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
+ const pending=OV().filter(o=>!o.fin&&!o.approved).length;
+ $('#o').innerHTML=`<div class="row"><input type="search" id="oq" placeholder="ابحث برقم الطلب أو القسم" style="flex:1"><button class="btn" data-apall="1" ${pending?'':'disabled'}>تصديق الكل (${pending})</button></div><div class="wrap"><table><tr><th>الفندق</th><th>الرقم</th><th>القسم</th><th>التاريخ</th><th>الحالة</th><th>الأصناف</th><th>الجهاز</th><th></th></tr><tbody id="ob"></tbody></table></div>`;
  const f=()=>{const q=$('#oq').value.trim().toLowerCase();
   $('#ob').innerHTML=OV().filter(o=>!q||(o.no+' '+o.dn).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.hotel)}</td><td><b>${esc(o.no)}</b></td><td>${esc(o.dn)}</td><td>${dt(o.ds)}</td><td><span class="tag ${o.fin||o.approved?'t-ok':'t-w'}">${o.fin?'تم الصرف':o.approved?'تم التصديق — بانتظار الصرف':'بانتظار التصديق'}</span></td><td>${lines(o).length}</td><td>${esc(o.fin?o.fin.wk:o.dev)}</td><td><button class="btn alt" data-v="${esc(o.k)}">تفاصيل</button> ${!o.fin&&!o.approved?`<button class="btn" data-ap="${esc(o.k)}">+ تصديق</button> `:''} <button class="btn bad" data-d="${esc(o.k)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد طلبات</td></tr>'};
  $('#oq').oninput=f;f();
 }
+async function refreshOrdersOnly(){const q=$('#oq')?$('#oq').value:'';const rows=await api('orders?select=*&order=created_at.desc&limit=3000');O=build(rows);drawS();if(ACTIVE_TAB==='o'){drawO();if(q){$('#oq').value=q;$('#oq').dispatchEvent(new Event('input'))}}}
 function currentAuthUid(){try{const p=S.a.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(atob(p+'='.repeat((4-p.length%4)%4))).sub||null}catch(e){return null}}
 $('#o').onclick=async e=>{
  const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.apall){
+  const pending=OV().filter(o=>!o.fin&&!o.approved);
+  if(!pending.length)return alert('لا توجد طلبات بانتظار التصديق.');
+  if(!confirm('تصديق جميع الطلبات غير المصدّقة ('+pending.length+' طلب)؟'+(HSEL?'\nالفندق: '+HSEL:'\nجميع الفنادق')))return;
+  b.disabled=true;b.textContent='جارٍ تصديق الكل…';
+  try{let path='orders?kind=eq.request&approved=eq.false';if(HSEL)path+='&hotel=eq.'+enc(HSEL);
+   const rows=await api(path,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({approved:true,approved_at:new Date().toISOString(),approved_by:currentAuthUid()})});
+   if(!rows||!rows.length)throw new Error('لم يتم اعتماد أي طلب. تحقق من الصلاحيات أو حدّث الصفحة.');
+   await refreshOrdersOnly();alert('تم تصديق '+rows.length+' سجل طلب بنجاح. الطلبات الآن جاهزة للصرف.');
+  }catch(err){b.disabled=false;b.textContent='تصديق الكل ('+pending.length+')';alert('تعذّر تصديق الكل: '+err.message)}return;
+ }
  if(b.dataset.ap){
   const o=O.find(x=>x.k===b.dataset.ap);if(!o||o.fin||o.approved)return;
   if(!confirm('تصديق الطلب '+o.no+'؟'))return;
@@ -324,7 +337,7 @@ $('#o').onclick=async e=>{
   try{
    const rows=await api('orders?hotel=eq.'+enc(o.hotel)+'&dept=eq.'+enc(o.dept)+'&no=eq.'+enc(o.no)+'&kind=eq.request',{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({approved:true,approved_at:new Date().toISOString(),approved_by:currentAuthUid()})});
    if(!rows||!rows.length)throw new Error('لم يتم تحديث الطلب. تحقق من صلاحية تعديل الطلبات.');
-   await load();alert('تم تصديق الطلب '+o.no+' بنجاح');
+   await refreshOrdersOnly();alert('تم تصديق الطلب '+o.no+' بنجاح');
   }catch(err){b.disabled=false;b.textContent='+ تصديق';alert('تعذّر تصديق الطلب: '+err.message)}
   return;
  }
@@ -333,7 +346,7 @@ $('#o').onclick=async e=>{
   $('#mb').innerHTML=`<h3 style="margin-top:0">طلب ${esc(o.no)} — ${esc(o.dn)} — ${dt(o.ds)}</h3><table><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th><th>الحالة</th></tr>${rows}</table><p><button class="btn" onclick="$('#modal').hidden=true">إغلاق</button></p>`;$('#modal').hidden=false}
  if(b.dataset.d){const o=O.find(x=>x.k===b.dataset.d);
   if(!confirm('حذف الطلب '+o.no+' من لوحة التحكم؟ (لا يحذف نسخ الأجهزة)'))return;
-  try{await api('orders?dept=eq.'+encodeURIComponent(o.dept)+'&no=eq.'+encodeURIComponent(o.no),{method:'DELETE'});load()}catch(err){alert('تعذّر الحذف: '+err.message)}}
+  try{await api('orders?dept=eq.'+encodeURIComponent(o.dept)+'&no=eq.'+encodeURIComponent(o.no),{method:'DELETE'});await refreshOrdersOnly()}catch(err){alert('تعذّر الحذف: '+err.message)}}
 };
 function drawI(){
  $('#i').innerHTML=`<p>كل الأصناف (الأساسية والمضافة). عمود <b>الفنادق</b>: فارغ = مشترك لكل الفنادق، أو أكواد مفصولة بفاصلة (مثل <span dir="ltr">EBR,H2</span>) ليظهر الصنف لهذه الفنادق فقط.</p><div class="row"><input type="search" id="iq" placeholder="ابحث" style="flex:1"></div><div class="wrap"><table><tr><th>#</th><th>كود Odoo</th><th>عربي</th><th>English</th><th>الفنادق</th><th></th></tr><tbody id="ib"></tbody></table></div>`;
