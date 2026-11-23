@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>منظومة الصرف / Issuance System — QR</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{--bg:#e9edf0;--card:#fff;--ink:#16222c;--mut:#5d6b78;--ac:#0b5c7a;--ok:#1d7a4f;--warn:#b4531a;--ln:#cfd7de}
 *{box-sizing:border-box}
@@ -192,6 +189,20 @@ code{border:1px solid var(--ln);border-radius:9px!important;background:#f5f7fa!i
 
 <script>
 const $=s=>document.querySelector(s);
+const lazyLibraries={};
+function loadLibrary(key,src,globalName){
+ if(window[globalName])return Promise.resolve(window[globalName]);
+ if(!lazyLibraries[key])lazyLibraries[key]=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');script.src=src;script.async=true;
+  script.onload=()=>window[globalName]?resolve(window[globalName]):reject(new Error('لم يتم تحميل المكتبة '+key));
+  script.onerror=()=>{delete lazyLibraries[key];reject(new Error('تعذّر تحميل المكتبة '+key+'؛ تحقق من الاتصال'))};
+  document.head.appendChild(script);
+ });
+ return lazyLibraries[key];
+}
+const ensureExcelJS=()=>loadLibrary('ExcelJS','https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js','ExcelJS');
+const ensureQRCode=()=>loadLibrary('QR','https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js','qrcode');
+const ensureJsQR=()=>loadLibrary('قارئ QR','https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js','jsQR');
 const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
 const D={R:'المطعم / Restaurant',C:'الكانتين / Canteen',L:'المغسلة / Laundry',H:'خدمات الغرف / Room Service'};
 try{const sv=JSON.parse(LS('depts')||'null');if(sv&&Object.keys(sv).length){Object.keys(D).forEach(k=>delete D[k]);Object.assign(D,sv)}}catch(e){}
@@ -582,9 +593,10 @@ function stopItemCam(){
  $('#itemCamBox').hidden=true;$('#itemCamStop').hidden=true;
 }
 async function startItemCam(){
- if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof jsQR!=='function')return toast('الكاميرا غير مدعومة؛ ابحث بالكود الداخلي / Camera unavailable');
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return toast('الكاميرا غير مدعومة؛ ابحث بالكود الداخلي / Camera unavailable');
  stopItemCam();$('#itemCamBox').hidden=false;$('#itemCamStop').hidden=false;
  try{
+  await ensureJsQR();
   ITEM_SCAN_STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
   const video=$('#itemVid'),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
   video.srcObject=ITEM_SCAN_STREAM;await video.play();
@@ -612,7 +624,7 @@ $('#itemCamStop').onclick=stopItemCam;
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopItemCam()});
 
 
-function makeSheet(){if(!chk())return;
+async function makeSheet(){if(!chk())return;await ensureQRCode();
  const ids=Object.keys(q).filter(i=>q[i]>0).map(Number).sort((a,b)=>a-b);
  if(!ids.length)return toast('اختر صنفاً واحداً على الأقل / Select at least one item');
  const n=(+LS('cnt')||0)+1;LS('cnt',n);
@@ -631,7 +643,7 @@ function makeSheet(){if(!chk())return;
  w.innerHTML=`<hr class="np">${pages}<div class="row np" style="margin-top:12px"><button class="btn ok" onclick="print()">طباعة / Print (${parts.length} ${parts.length>1?'أوراق / sheets':'ورقة / sheet'})</button></div>`;
  w.scrollIntoView({behavior:'smooth'});
 }
-$('#mk').onclick=makeSheet;
+$('#mk').onclick=()=>makeSheet().catch(e=>toast(e.message||'تعذّر إنشاء ورقة الطلب'));
 $('#sheetWrap').onclick=e=>{const b=e.target.closest('[data-copy]');if(!b)return;const c=JSON.parse($('#sheetWrap').dataset.codes)[b.dataset.copy];navigator.clipboard.writeText(c).then(()=>toast('تم نسخ الكود / Code copied'),()=>toast('انسخ الكود يدوياً / Copy it manually'))};
 
 /* ---------- استلام وصرف ---------- */
@@ -702,8 +714,9 @@ function addSheet(wb,ord,name){
  r++;ws.mergeCells(`A${r}:F${r}`);put('A'+r,CREDIT,{sz:9,fc:'FF8A97A3'});
  return ws;
 }
-async function xbook(){const wb=new ExcelJS.Workbook();addSheet(wb,o,'Issue');return wb.xlsx.writeBuffer()}
+async function xbook(){await ensureExcelJS();const wb=new ExcelJS.Workbook();addSheet(wb,o,'Issue');return wb.xlsx.writeBuffer()}
 async function xmulti(list){
+ await ensureExcelJS();
  const wb=new ExcelJS.Workbook(),sm=wb.addWorksheet('Summary',{views:[{rightToLeft:true}]});
  sm.columns=[{width:16},{width:30},{width:14},{width:14},{width:14}];
  const hd=['رقم الطلب\nOrder No.','القسم\nDepartment','التاريخ\nDate','الأصناف المطلوبة\nRequested lines','الأصناف المصروفة\nIssued lines'];
@@ -924,7 +937,7 @@ async function resPng(){
  cv.toBlob(bl=>dl('Order_'+r.no+'_result.png',bl),'image/png');
 }
 async function resXls(){
- if(!RES)return;const {L,c,title,date,r}=RES;
+ if(!RES)return;await ensureExcelJS();const {L,c,title,date,r}=RES;
  const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Result',{views:[{rightToLeft:true}],pageSetup:{paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0}});
  ws.columns=[{width:6},{width:38},{width:34},{width:12},{width:12},{width:22}];
  const th={style:'thin',color:{argb:'FF9AA7B2'}},BD={top:th,left:th,bottom:th,right:th};
@@ -974,7 +987,7 @@ $('#credit').textContent=CREDIT;
 let stream=null,scanning=false;
 const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
 async function startCam(){
- try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+ try{await ensureJsQR();stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
   const v=$('#vid');v.srcObject=stream;await v.play();$('#camBox').hidden=false;$('#stopCam').hidden=false;scanning=true;tick()}
  catch(e){toast('تعذّر فتح الكاميرا — الصق الكود بدلاً منها / Camera unavailable — paste the code instead')}
 }
