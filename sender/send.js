@@ -153,7 +153,7 @@ async function sendBatch(group, to, cc, hotelName, ctx){
   const info=await transport.sendMail({
    from:FROM,to,cc,
    subject:(hotelName?'['+hotelName+'] ':'')+'تقرير الصرف والتكلفة المجمّع / Consolidated Issue & Cost — '+claimed.length+' طلب',
-   text:'مرفق ملف الصرف وملف التكلفة المجمّعان. يحتوي كل ملف على ورقة مستقلة لكل قسم، وجُمعت طلبات القسم الواحد في ورقته. عدد الطلبات: '+claimed.length+'. أرقام الطلبات: '+orderNos.join('، ')+'.\\n\\nAttached are the consolidated issue and cost workbooks. Each department has its own worksheet, with its orders grouped together.',
+   text:'مرفق ملف الصرف وملف التكلفة المجمّعان. يحتوي كل ملف على ورقة مستقلة لكل قسم، وجُمعت طلبات القسم الواحد في ورقته. عدد الطلبات: '+claimed.length+'. أرقام الطلبات: '+orderNos.join('، ')+'.\n\nAttached are the consolidated issue and cost workbooks. Each department has its own worksheet, with its orders grouped together.',
    attachments:[
     {filename:'Issue_Departments.xlsx',content:files.issue,contentType:XL},
     {filename:'Cost_Departments.xlsx',content:files.cost,contentType:XL}
@@ -223,7 +223,7 @@ async function main(){
   const cfgRows=await rest('app_secrets?select=value&key=eq.auto_send_config');
   let cfg={};try{cfg=JSON.parse(cfgRows[0]?.value||'{}')}catch(e){}
   if(!cfg.enabled){
-   console.log('Automatic sending is disabled; all scheduled email dispatch is paused');
+   console.log('Automatic sending is disabled; all scheduled email dispatch is paused; approved manual orders require an explicit manual run');
    return;
   }else{
    const tz=cfg.timezone||'Africa/Tripoli',now=localParts(new Date(),tz);
