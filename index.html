@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
 <title>منظومة الصرف / Issuance System — QR</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -527,13 +528,14 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 const WM=/[?&]m=worker/.test(location.search);
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',SBH={apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98'};
-const HK=(()=>{try{const u=new URLSearchParams(location.search).get('h');if(u){LS('hk',u);return u}}catch(e){}return LS('hk')||''})();
+const HK=(()=>{try{const u=new URL(location.href),v=u.searchParams.get('h');if(v){LS('hk',v);u.searchParams.delete('h');history.replaceState(null,'',u.pathname+u.search+u.hash);return v}}catch(e){}return LS('hk')||''})();
 let HNAME=LS('hname')||'',INVALID=!HK;
 const rpc=(fn,args)=>fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{...SBH,'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'});
 let cat=[],q={},o=null,last='',FINAL_SAVING=false;
 const BASE_N=DEF.split('\n').filter(Boolean).length;
 const item=id=>(o&&o.names&&o.names[id])||cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
 const cn=t=>String(t).replace(/[|;~]/g,' ');
+const escHtml=t=>String(t==null?'':t).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
 const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
 function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});applyShared();$('#hs').textContent=hash()+' · '+cat.length}
@@ -544,7 +546,7 @@ $('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);$('#t3').onclick=()=>tab
 function renderList(){
  const s=$('#srch').value.trim();
  $('#list').innerHTML=cat.map((c,i)=>({c,id:i+1})).filter(x=>!s||(x.c.n+' '+x.c.u).toLowerCase().includes(s.toLowerCase())).map(x=>
-  `<div class="item"><div class="nm">${x.c.n} <small>${x.c.u}</small> ${x.c.sku?`<small dir="ltr">SKU: ${x.c.sku}</small>`:''}</div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
+  `<div class="item"><div class="nm">${escHtml(x.c.n)} <small>${escHtml(x.c.u)}</small> ${x.c.sku?`<small dir="ltr">SKU: ${escHtml(x.c.sku)}</small>`:''}</div>`<div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
  const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':'';
 }
 function cntOnly(){const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':''}
@@ -639,8 +641,8 @@ async function makeSheet(){if(!chk())return;
  logOrder('request',codes);
  const pages=parts.map((p,i)=>{
   const g=qrcode(0,'M');g.addData(codes[i]);g.make();
-  const rows=p.map((k,j)=>`<tr><td>${i*PG+j+1}</td><td>${cat[k-1].n}</td><td>${cat[k-1].u}</td><td>${q[k]}</td><td></td></tr>`).join('');
-  return `<div class="pg"><h2 style="margin:6px 0">طلب صرف / Issue Request — ${D[dept]}</h2><p>رقم الطلب / Order No.: <b>${no}</b> &nbsp; التاريخ / Date: <b>${dt}</b> &nbsp; ورقة / Sheet: <b>${i+1} / ${parts.length}</b></p><table><tr><th>#</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table><div class="qrs"><figure>${g.createSvgTag({cellSize:4,margin:2,scalable:true})}<code class="np">${codes[i]}</code><button class="btn alt np" data-copy="${i}">نسخ الكود / Copy code</button></figure></div><div class="sig"><div>توقيع مقدّم الطلب / Requested by</div><div>توقيع أمين المخزن / Storekeeper</div></div><div class="credit">${CREDIT}</div></div>`}).join('');
+  const rows=p.map((k,j)=>`<tr><td>${i*PG+j+1}</td><td>${escHtml(cat[k-1].n)}</td><td>${escHtml(cat[k-1].u)}</td><td>${q[k]}</td><td></td></tr>`).join('');
+  return `<div class="pg"><h2 style="margin:6px 0">طلب صرف / Issue Request — ${escHtml(D[dept])}</h2><p>رقم الطلب / Order No.: <b>${escHtml(no)}</b> &nbsp; التاريخ / Date: <b>${dt}</b> &nbsp; ورقة / Sheet: <b>${i+1} / ${parts.length}</b></p><table><tr><th>#</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th></tr>${rows}</table><div class="qrs"><figure>${g.createSvgTag({cellSize:4,margin:2,scalable:true})}<code class="np">${escHtml(codes[i])}</code><button class="btn alt np" data-copy="${i}">نسخ الكود / Copy code</button></figure></div><div class="sig"><div>توقيع مقدّم الطلب / Requested by</div><div>توقيع أمين المخزن / Storekeeper</div></div><div class="credit">${CREDIT}</div></div>`}).join('');
  const w=$('#sheetWrap');w.hidden=false;w.dataset.codes=JSON.stringify(codes);
  w.innerHTML=`<hr class="np">${pages}<div class="row np" style="margin-top:12px"><button class="btn ok" onclick="print()">طباعة / Print (${parts.length} ${parts.length>1?'أوراق / sheets':'ورقة / sheet'})</button></div>`;
  w.scrollIntoView({behavior:'smooth'});
@@ -673,18 +675,18 @@ function renderIssue(){
  ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
  const UN=['قطعة','حزمة','صندوق','كيلو'];
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
-  if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${c.n}</b><small class="worker-unit">${c.u||it.unit||''}</small></td><td><b>${it.req}</b> <small>${it.unit}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" aria-label="الكمية المصروفة من ${c.n}"></td></tr>`;
+  if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(c.n)}</b><small class="worker-unit">${escHtml(c.u||it.unit||'')}</small></td><td><b>${it.req}</b> <small>${escHtml(it.unit)}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" aria-label="الكمية المصروفة من ${escHtml(c.n)}"></td></tr>`;
   const unSel=`<select data-un="${id}" disabled>${UN.map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select>`;
-  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${c.n}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${c.u}</td><td>${it.req}</td><td><input type="number" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
+  return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${escHtml(c.n)}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${escHtml(c.u)}</td><td>${it.req}</td><td><input type="number" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
  if(WM){
   const short=ids.filter(id=>o.items[id].iss<o.items[id].req).length;
-  $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">طلب رقم <b>${o.no}</b></div><div>${D[o.dept]||o.dept}</div><div class="worker-order-status">${miss?'باقي أجزاء من الطلب — امسحها أولاً':short?short+' أصناف بها نقص':'كل الكميات متوفرة'}</div></div>
+  $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">طلب رقم <b>${escHtml(o.no)}</b></div><div>${escHtml(D[o.dept]||o.dept)}</div><div class="worker-order-status">${miss?'باقي أجزاء من الطلب — امسحها أولاً':short?short+' أصناف بها نقص':'كل الكميات متوفرة'}</div></div>
   <table class="worker-order-table"><thead><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th></tr></thead><tbody>${rows}</tbody></table>
   <p class="st ${miss?'bad':''}">${miss?'لا يمكن تسجيل الصرف قبل تحميل جميع أجزاء الطلب.':'الكميات المصروفة تبدأ مساوية للمطلوب. غيّر الصنف الذي لم تتوفر كميته فقط.'}</p>
   <div class="row" style="margin-top:12px"><button class="btn ok" id="fc" ${FINAL_SAVING||miss||o.submitted?'disabled':''}>${o.submitted?'تم تسجيل الصرف ✓':'تأكيد الصرف'}</button></div>`;
   return;
  }
- $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${D[o.dept]||o.dept} — طلب / Order ${o.no} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+o.worker:''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
+ $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${escHtml(D[o.dept]||o.dept)} — طلب / Order ${escHtml(o.no)} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+escHtml(o.worker):''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th><th>الوحدة<br>Unit</th></tr>${rows}</table>
  <div class="row" style="margin-top:12px"><button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button></div>`;
 }
@@ -775,7 +777,7 @@ function save(){if(!o)return;const m=ORD();m[o.key]=o;LS('ords',JSON.stringify(m
 function renderSaved(){
  const s=($('#ordSrch').value||'').trim().toLowerCase();
  const m=Object.values(ORD()).filter(x=>!s||(x.no+' '+(D[x.dept]||'')).toLowerCase().includes(s)).sort((a,b)=>b.ds.localeCompare(a.ds)||b.no.localeCompare(a.no));
- $('#saved').innerHTML=m.map(x=>WM?`<div class="item"><div class="nm"><b>طلب ${x.no}</b> — ${D[x.dept]||x.dept} <small>20${x.ds.slice(0,2)}-${x.ds.slice(2,4)}-${x.ds.slice(4)}</small></div><button class="btn alt" data-open="${x.key}">${x.submitted?'عرض':'فتح'} الطلب</button></div>`:`<div class="item"><input type="checkbox" data-sel="${x.key}" ${SEL.has(x.key)?'checked':''}><div class="nm"><b>${x.no}</b> — ${D[x.dept]||x.dept} <small>20${x.ds.slice(0,2)}-${x.ds.slice(2,4)}-${x.ds.slice(4)} · ${Object.keys(x.parts).length}/${x.total}</small></div><button class="btn alt" data-open="${x.key}">فتح / Open</button><button class="btn alt" data-del="${x.key}">حذف / Delete</button></div>`).join('')||'<p>لا توجد طلبات / No orders</p>';
+ $('#saved').innerHTML=m.map(x=>WM?`<div class="item"><div class="nm"><b>طلب ${escHtml(x.no)}</b> — ${escHtml(D[x.dept]||x.dept)} <small>20${escHtml(x.ds.slice(0,2))}-${escHtml(x.ds.slice(2,4))}-${escHtml(x.ds.slice(4))}</small></div><button class="btn alt" data-open="${escHtml(x.key)}">${x.submitted?'عرض':'فتح'} الطلب</button></div>`:`<div class="item"><input type="checkbox" data-sel="${escHtml(x.key)}" ${SEL.has(x.key)?'checked':''}><div class="nm"><b>${escHtml(x.no)}</b> — ${escHtml(D[x.dept]||x.dept)} <small>20${escHtml(x.ds.slice(0,2))}-${escHtml(x.ds.slice(2,4))}-${escHtml(x.ds.slice(4))} · ${Object.keys(x.parts).length}/${x.total}</small></div><button class="btn alt" data-open="${escHtml(x.key)}">فتح / Open</button><button class="btn alt" data-del="${escHtml(x.key)}">حذف / Delete</button></div>`).join('')||'<p>لا توجد طلبات / No orders</p>';
 }
 $('#ordSrch').oninput=renderSaved;
 $('#saved').onchange=e=>{const k=e.target.dataset.sel;if(!k)return;e.target.checked?SEL.add(k):SEL.delete(k)};
@@ -797,7 +799,7 @@ $('#imCat').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('#catTxt
 
 /* ---------- الأقسام ---------- */
 function fillDepts(){
- const h=Object.entries(D).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+ const h=Object.entries(D).map(([k,v])=>`<option value="${escHtml(k)}">${escHtml(v)}</option>`).join('');
  const a=$('#dept').value,b=$('#fixDept').value;
  $('#dept').innerHTML=h;$('#fixDept').innerHTML='<option value="">كل الأقسام / Any department</option>'+h;
  if(D[a])$('#dept').value=a;$('#fixDept').value=D[b]?b:'';
@@ -928,8 +930,8 @@ function showResult(){
  const L=r.items.slice().sort((a,b)=>st(a)-st(b)||a.id-b.id).map(x=>({...x,n:nm(x.id),s:st(x)})),c=[0,0,0];L.forEach(x=>c[x.s]++);
  const date='20'+r.ds.slice(0,2)+'-'+r.ds.slice(2,4)+'-'+r.ds.slice(4),title=r.dn||D[r.dept]||r.dept;
  RES={r,L,c,date,title};
- const rows=L.map(x=>{const b=LAB[x.s];return `<tr style="background:${b[3]}"><td>${x.n.n}<br><small dir="ltr">${x.n.u}</small></td><td>${x.req}</td><td>${Math.max(0,x.iss)}</td><td style="color:${b[2]};font-weight:700">${b[0]}<br><small dir="ltr">${b[1]}</small></td></tr>`}).join('');
- $('#resOut').innerHTML=`<div class="st">طلب / Order <b>${r.no}</b> — ${title} — ${date}</div>
+ const rows=L.map(x=>{const b=LAB[x.s];return `<tr style="background:${b[3]}"><td>${escHtml(x.n.n)}<br><small dir="ltr">${escHtml(x.n.u)}</small></td><td>${x.req}</td><td>${Math.max(0,x.iss)}</td><td style="color:${b[2]};font-weight:700">${b[0]}<br><small dir="ltr">${b[1]}</small></td></tr>`}).join('');
+ $('#resOut').innerHTML=`<div class="st">طلب / Order <b>${escHtml(r.no)}</b> — ${escHtml(title)} — ${escHtml(date)}</div>
  <div class="st">✔ ${c[2]} تم / Fulfilled &nbsp;·&nbsp; ◐ ${c[1]} جزئي / Partial &nbsp;·&nbsp; ✖ ${c[0]} غير متوفر / Not available</div>
  <table><tr><th>الصنف<br>Item</th><th>المطلوب<br>Requested</th><th>وصل<br>Delivered</th><th>الحالة<br>Status</th></tr>${rows}</table>`;
  $('#resAct').hidden=false;
@@ -987,14 +989,14 @@ let XID=0;
 const normN=t=>String(t).toLowerCase().replace(/[\s\-–()*×\/.,]+/g,'');
 $('#xName').oninput=()=>{
  const t=normN($('#xName').value);XID=0;$('#xSug').innerHTML='';if(t.length<2)return;
- let n=0;cat.forEach((c,i)=>{if(c&&n<6&&(normN(c.n).includes(t)||normN(c.u).includes(t))){n++;$('#xSug').insertAdjacentHTML('beforeend',`<button class="btn alt" data-pick="${i+1}">${c.n}</button>`)}});
+ let n=0;cat.forEach((c,i)=>{if(c&&n<6&&(normN(c.n).includes(t)||normN(c.u).includes(t))){n++;$('#xSug').insertAdjacentHTML('beforeend',`<button class="btn alt" data-pick="${i+1}">${escHtml(c.n)}</button>`)}});
 };
 $('#xSug').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;XID=+b.dataset.pick;$('#xName').value=cat[XID-1].n;$('#xSug').innerHTML=''};
 $('#xAdd').onclick=async()=>{
  if(!o)return;
  const t=cn($('#xName').value.trim()),rq=+$('#xReq').value||0,is=+$('#xIss').value||0;
  if(!t)return toast('اكتب اسم الصنف / Enter the item name');
- if(rq<=0&&is<=0)return toast('أدخل الكمية / Enter a quantity');
+ if(!Number.isFinite(rq)||!Number.isFinite(is)||rq<=0||is<0||is>rq)return toast('الكمية غير صحيحة: المطلوب أكبر من صفر والمصروف بين صفر والمطلوب / Invalid quantities');
  let id=XID;
  if(!id){const k=normN(t),i=cat.findIndex(c=>c&&(normN(c.n)===k||normN(c.u)===k));if(i>=0)id=i+1}
  if(!id){
