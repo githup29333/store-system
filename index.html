@@ -624,9 +624,10 @@ $('#itemCamStop').onclick=stopItemCam;
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopItemCam()});
 
 
-async function makeSheet(){if(!chk())return;await ensureQRCode();
+async function makeSheet(){if(!chk())return;
  const ids=Object.keys(q).filter(i=>q[i]>0).map(Number).sort((a,b)=>a-b);
  if(!ids.length)return toast('اختر صنفاً واحداً على الأقل / Select at least one item');
+ await ensureQRCode();
  const n=(+LS('cnt')||0)+1;LS('cnt',n);
  const no=(LS('dev')||'X')+'-'+String(n).padStart(4,'0'),d=new Date();
  const ds=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
