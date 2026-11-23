@@ -546,7 +546,7 @@ $('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);$('#t3').onclick=()=>tab
 function renderList(){
  const s=$('#srch').value.trim();
  $('#list').innerHTML=cat.map((c,i)=>({c,id:i+1})).filter(x=>!s||(x.c.n+' '+x.c.u).toLowerCase().includes(s.toLowerCase())).map(x=>
-  `<div class="item"><div class="nm">${escHtml(x.c.n)} <small>${escHtml(x.c.u)}</small> ${x.c.sku?`<small dir="ltr">SKU: ${escHtml(x.c.sku)}</small>`:''}</div>`<div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
+  `<div class="item"><div class="nm">${escHtml(x.c.n)} <small>${escHtml(x.c.u)}</small> ${x.c.sku?`<small dir="ltr">SKU: ${escHtml(x.c.sku)}</small>`:''}</div><div class="q"><button data-i="${x.id}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" step="1" data-qi="${x.id}" value="${q[x.id]||0}"><button data-i="${x.id}" data-d="1">+</button></div></div>`).join('')||'<p>لا يوجد صنف بهذا الاسم / No matching item</p>';
  const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':'';
 }
 function cntOnly(){const n=Object.values(q).filter(v=>v>0).length;$('#cnt').textContent=n?n+' صنف مختار / selected':''}
