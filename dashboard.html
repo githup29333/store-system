@@ -430,8 +430,9 @@ function drawD(){
  <div class="row"><input type="text" id="gtok" placeholder="الصق مفتاح GitHub هنا" style="flex:1;direction:ltr;-webkit-text-security:disc" autocomplete="off"><button class="btn" id="gsave">حفظ المفتاح</button>${GH_CONFIGURED?'<button class="btn bad" id="gdel">حذف</button>':''}<button class="btn alt" id="gtest">اختبار البريد (رسالة واحدة)</button><button class="btn alt" id="gnow">تشغيل الإرسال الآن</button></div>
  <div class="row" style="margin-top:10px"><select id="rh">${HOTELS.map(h=>`<option value="${esc(h.code)}" ${h.code===HSEL?'selected':''}>${esc(h.code)}</option>`).join('')}</select><select id="rk"><option value="to">To</option><option value="cc">CC</option></select><input type="text" id="rn" placeholder="الاسم" style="flex:1"><input type="email" id="re" placeholder="البريد" style="flex:1;direction:ltr"><button class="btn" id="radd">إضافة</button></div>`;
 }
-async function ownerAction(action,mode){
- const r=await fetch(SB+'/functions/v1/sbfenv',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a||''),'Content-Type':'application/json'},body:JSON.stringify({action,mode})});
+async function ownerAction(action,mode,token){
+ const r=await fetch(SB+'/functions/v1/sbfenv',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a||''),'Content-Type':'application/json'},body:JSON.stringify({action,mode,token})});
+ if(r.status===401&&S&&S.r){await auth({refresh_token:S.r},'refresh_token');return ownerAction(action,mode,token)}
  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;
 }
 async function ghRun(mode='send'){
@@ -512,8 +513,8 @@ $('#d').onclick=async e=>{
   if(b.id==='dsAll'){DEL.filter(d=>['pending','failed'].includes(d.status)&&d.dept!=='ALL').forEach(d=>DSEL.add(d.key));return drawD()}
   if(b.id==='dsNone'){DSEL.clear();return drawD()}
   if(b.id==='dsEach')return bulkEach();
-  if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await api('app_secrets',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key:'gh_dispatch',value:v,updated_at:new Date().toISOString()})});GH_CONFIGURED=true;drawD();return alert('تم حفظ المفتاح')}
-  if(b.id==='gdel'){await api('app_secrets?key=eq.gh_dispatch',{method:'DELETE'});GH_CONFIGURED=false;drawD();return}
+  if(b.id==='gsave'){const v=$('#gtok').value.trim();if(!v)return;await ownerAction('set_dispatch_token',null,v);$('#gtok').value='';GH_CONFIGURED=true;drawD();return alert('تم حفظ المفتاح بأمان على الخادم')}
+  if(b.id==='gdel'){await ownerAction('delete_dispatch_token');GH_CONFIGURED=false;drawD();return}
   if(b.id==='gtest'){if(!confirm('سيتم إرسال رسالة اختبار واحدة فقط إلى عنوان الاختبار المحدد في إعدادات GitHub، ولن يتم إرسال الطلبات المنتظرة. متابعة؟'))return;const g=await ghRun('test');return alert(g==='ok'?'تم تشغيل اختبار البريد. تحقق من صندوق الاختبار وسجل GitHub.':g==='no-token'?'أضف مفتاح GitHub أولاً':'تعذّر تشغيل الاختبار ('+g+')')}
   if(b.id==='gnow'){const g=await ghRun('manual');return alert(g==='ok'?'تم تشغيل الإرسال اليدوي للطلبات المنتظرة الآن':g==='no-token'?'أضف المفتاح أولاً':'تعذّر التشغيل ('+g+')')}
   if(b.id==='autoSave'){
