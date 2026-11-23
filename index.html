@@ -535,7 +535,7 @@ let cat=[],q={},o=null,last='',FINAL_SAVING=false;
 const BASE_N=DEF.split('\n').filter(Boolean).length;
 const item=id=>(o&&o.names&&o.names[id])||cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
 const cn=t=>String(t).replace(/[|;~]/g,' ');
-const escHtml=t=>String(t==null?'':t).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));
+const escHtml=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
 const hash=()=>{let h=5381;for(const c of cat.map(x=>x.n).join('~'))h=((h<<5)+h+c.charCodeAt(0))|0;return (h>>>0).toString(36)};
 function loadCat(){const t=LS('cat2')||DEF;$('#catTxt').value=t;cat=t.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [a,b]=l.split('|');return{n:a.trim(),u:(b||'').trim()}});applyShared();$('#hs').textContent=hash()+' · '+cat.length}
