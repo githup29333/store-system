@@ -1,1 +1,1 @@
-delivery-batch=2
+delivery-batch=3
