@@ -527,10 +527,10 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 هايكين|Heineken`;
 const WM=/[?&]m=worker/.test(location.search);
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
-const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',SBH={apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98',Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98'};
+const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
 const HK=(()=>{try{const u=new URL(location.href),v=u.searchParams.get('h');if(v){LS('hk',v);u.searchParams.delete('h');history.replaceState(null,'',u.pathname+u.search+u.hash);return v}}catch(e){}return LS('hk')||''})();
 let HNAME=LS('hname')||'',INVALID=!HK;
-const rpc=(fn,args)=>fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{...SBH,'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'});
+const rpc=(fn,args)=>fetch(SB_URL+'/functions/v1/hotel-portal',{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({action:fn,...args}),cache:'no-store'});
 let cat=[],q={},o=null,last='',FINAL_SAVING=false;
 const BASE_N=DEF.split('\n').filter(Boolean).length;
 const item=id=>(o&&o.names&&o.names[id])||cat[id-1]||{n:'صنف '+id+' (غير موجود في القائمة / not in list)',u:''};
