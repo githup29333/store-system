@@ -286,7 +286,7 @@ async function start(){
 
  lastActive=Date.now();try{sessionStorage.setItem('store_last_active',String(lastActive))}catch(e){}
  $('#login').hidden=true;$('#app').hidden=false;
- const baseLoad=(async()=>{try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}})();
+ const baseLoad=(async()=>{try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}})();
  await Promise.all([baseLoad,load()]);
 }
 const bars=(arr,col)=>{const mx=Math.max(1,...arr.map(a=>a[1]));return arr.map(a=>`<div class="bar"><span>${esc(a[0])}</span><i style="width:${Math.round(a[1]*100/mx)}%;max-width:60%;min-width:3px${col?';background:'+col:''}"></i><em>${a[1]}</em></div>`).join('')||'<p>لا توجد بيانات</p>'};
