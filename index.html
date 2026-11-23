@@ -652,19 +652,42 @@ $('#sheetWrap').onclick=e=>{const b=e.target.closest('[data-copy]');if(!b)return
 
 /* ---------- استلام وصرف ---------- */
 function ingest(txt){if(!chk())return;
- const lines=txt.split(/\s*(?=EBR1F?\|)/).map(x=>x.trim()).filter(l=>/^EBR1F?\|/.test(l));
+ const lines=String(txt||'').split(/\s*(?=EBR1F?\|)/).map(x=>x.trim()).filter(l=>/^EBR1F?\|/.test(l));
  if(!lines.length)return toast('الكود غير صالح / Invalid code');
- let bad=false;
+ let bad=false,orderKey=null,loaded=0;
  for(const l of lines){
-  const f=l.split('|');if(f.length<7)continue;
-  const fin=f[0]==='EBR1F',[,dept,no,ds,pt,h,items,dn,x8,x9]=f,wk=fin?x8:'',nms=(fin?x9:x8)||'',key=dept+no+ds,[pi,pn]=fin?[0,pt]:pt.split('/');if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
-  if(!o||o.key!==key)o=ORD()[key]||{key,dept,no,ds,total:+pn,parts:{},items:{},hash:h};
+  if(l.length>30000)return toast('الكود أطول من المسموح / Code too long');
+  const f=l.split('|'),fin=f[0]==='EBR1F';
+  if(f.length<(fin?9:8))return toast('بيانات الطلب غير مكتملة / Incomplete order data');
+  const [,dept,no,ds,pt,h,items,dn,x8,x9]=f;
+  if(!/^[A-Za-z0-9_-]{1,16}$/.test(dept)||!/^[A-Za-z0-9_-]{1,64}$/.test(no)||!/^[0-9]{6}$/.test(ds)||!/^[a-z0-9]{1,16}$/i.test(h)||!items||items.length>24000||(dn||'').length>120)return toast('بيانات الطلب غير صالحة / Invalid order data');
+  const key=dept+no+ds;if(orderKey&&orderKey!==key)return toast('امسح أكواد طلب واحد فقط في كل مرة / Load codes from one order at a time');orderKey=key;
+  let pi=0,pn=0;
+  if(fin){if(!/^[0-9]{1,3}$/.test(pt))return toast('عدد أجزاء الطلب غير صالح / Invalid part count');pn=+pt;if(pn<1||pn>100)return toast('عدد أجزاء الطلب خارج النطاق / Part count out of range')}
+  else{const z=String(pt||'').split('/');if(z.length!==2||!z.every(x=>/^[0-9]{1,3}$/.test(x)))return toast('ترقيم جزء الطلب غير صالح / Invalid part number');pi=+z[0];pn=+z[1];if(pn<1||pn>100||pi<1||pi>pn)return toast('ترقيم جزء الطلب خارج النطاق / Part number out of range')}
+  const entries=items.split(','),seen=new Set(),parsed={};
+  if(!entries.length||entries.length>(fin?500:30))return toast('عدد الأصناف غير صالح / Invalid item count');
+  for(const entry of entries){
+   if(fin){
+    const m=entry.match(/^([0-9]{1,10}):([0-9]{1,9}(?:\.[0-9]{1,3})?):([0-9]{1,9}(?:\.[0-9]{1,3})?):([^,]*)$/);
+    if(!m)return toast('كمية صنف غير صالحة / Invalid item quantity');
+    const id=+m[1],req=+m[2],iss=+m[3];if(!Number.isSafeInteger(id)||id<=0||req<=0||iss<0||iss>req||seen.has(id))return toast('الكميات يجب أن تكون موجبة والمصروف لا يتجاوز المطلوب / Invalid quantities');seen.add(id);parsed[id]={req,iss,on:iss>0,unit:m[4]||''};
+   }else{
+    const m=entry.match(/^([0-9]{1,10}):([0-9]{1,9}(?:\.[0-9]{1,3})?)$/);if(!m)return toast('كمية طلب غير صالحة / Invalid requested quantity');
+    const id=+m[1],qty=+m[2];if(!Number.isSafeInteger(id)||id<=0||qty<=0||seen.has(id))return toast('كمية الطلب يجب أن تكون أكبر من صفر / Requested quantity must be positive');seen.add(id);parsed[id]={req:qty,iss:qty,on:true,unit:''};
+   }
+  }
+  const nms=(fin?x9:x8)||'',names={};
+  for(const entry of nms.split(';').filter(Boolean)){const z=entry.split('~');if(z.length<2||!/^[0-9]{1,10}$/.test(z[0])||z[1].length>120||(z[2]||'').length>120)return toast('اسم صنف غير صالح / Invalid item name');names[z[0]]={n:z[1],u:z[2]||''}}
+  if(!o||o.key!==key)o=ORD()[key]||{key,dept,no,ds,total:pn,parts:{},items:{},hash:h};
+  if(o.total&&o.total!==pn)return toast('عدد أجزاء الطلب لا يتطابق / Part count mismatch');
   if(h!==hash())bad=true;
-  nms.split(';').filter(Boolean).forEach(t=>{const [id,a,b]=t.split('~');o.names=o.names||{};o.names[id]={n:a,u:b||''}});
-  if(fin){for(let i=1;i<=+pn;i++)o.parts[i]=1;o.total=+pn;o.worker=wk||'';items.split(',').forEach(s=>{const [id,rq,is,unit]=s.split(':');o.items[id]={req:+rq,iss:+is,on:+is>0,unit:unit||''}});continue}
-  o.parts[pi]=1;
-  items.split(',').forEach(s=>{const [id,qt]=s.split(':');if(!o.items[id])o.items[id]={req:+qt,iss:+qt,on:true}});
+  if(dn&&!D[dept]){D[dept]=dn;LS('depts',JSON.stringify(D));fillDepts()}
+  o.names={...(o.names||{}),...names};
+  if(fin){for(let i=1;i<=pn;i++)o.parts[i]=1;o.total=pn;o.worker=(x8||'').slice(0,20);o.items=parsed;loaded++}
+  else{o.parts[pi]=1;Object.assign(o.items,parsed);loaded++}
  }
+ if(!loaded)return toast('لم يتم تحميل أي جزء صالح / No valid parts loaded');
  renderIssue();
  toast(bad?'تنبيه: قائمة الأصناف تختلف عن قائمة القسم / Warning: item list differs from the department\'s':'تم تحميل الطلب / Order loaded');
 }
