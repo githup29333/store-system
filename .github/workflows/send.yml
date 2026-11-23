@@ -1,8 +1,5 @@
 name: send-issue-emails
 on:
-  push:
-    branches:
-      - ops/send-74-now-20261123
   schedule:
     - cron: '2-59/5 * * * *'
   workflow_dispatch:
