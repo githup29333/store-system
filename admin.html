@@ -69,6 +69,7 @@ html[data-theme="dark"] .err{color:#ff9690!important}
   <div class="section"><div class="section-head"><div><h2>مقارنة تكلفة الفنادق شهريًا</h2><p>تعتمد على الطلبات المرسلة والأسعار المرتبطة حاليًا، مع استبعاد الأصناف غير المسعّرة من الإجمالي.</p></div></div>
    <div class="panel"><div class="tablewrap" id="monthly"></div><div class="notice">ملاحظة محاسبية: المقارنة تستخدم الأسعار الحالية المرتبطة بالأصناف، وليست لقطة سعر تاريخية محفوظة وقت الصرف. الأصناف غير المسعّرة لا تدخل في الإجمالي.</div></div>
   </div>
+  <div class="section"><div class="section-head"><div><h2>ضبط حدود المخزون</h2><p>حدد الحد الأدنى وحد إعادة الطلب والحد الأعلى لكل صنف في الفندق المحدد</p></div></div><div class="panel"><div class="tablewrap" id="thresholdTable"></div></div></div>
   <div class="section"><div class="section-head"><div><h2>تفاصيل النواقص</h2><p>الأصناف التي وصلت إلى حد إعادة الطلب أو نفد رصيدها</p></div></div><div class="panel"><div class="tablewrap" id="lowTable"></div></div></div>
   <footer class="footer" id="credit">© 2026 Theo — جميع الحقوق محفوظة / All rights reserved</footer>
  </div>
@@ -113,6 +114,25 @@ $('#loginBtn').onclick=async()=>{const b=$('#loginBtn');b.disabled=true;b.textCo
 $('#password').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
 $('#refresh').onclick=load;
 $('#hotel').onchange=render;
+$('#lowTable').addEventListener('click',()=>{});
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('[data-save-threshold]');if(!b)return;
+ const id=Number(b.dataset.saveThreshold),minEl=document.querySelector('[data-min="'+id+'"]'),maxEl=document.querySelector('[data-max="'+id+'"]');
+ const min=Number(minEl&&minEl.value),max=Number(maxEl&&maxEl.value);
+ if(!Number.isFinite(min)||min<0||!Number.isFinite(max)||max<0)return alert('أدخل حدودًا رقمية صحيحة أكبر من أو تساوي صفرًا.');
+ if(max>0&&max<min)return alert('الحد الأعلى يجب أن يكون أكبر من أو يساوي الحد الأدنى.');
+ if(!confirm('حفظ الحد الأدنى '+min+' والحد الأعلى '+max+'؟'))return;
+ b.disabled=true;
+ try{
+  const res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})});
+  if(res.status===401&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');return document.querySelector('[data-save-threshold="'+id+'"]').click()}
+  if(!res.ok)throw new Error((await res.text()).slice(0,200));
+  const row=DATA.inventory.find(x=>+x.id===id);if(row){row.reorder_level=min;row.max_level=max}
+  b.textContent='تم الحفظ ✓';setTimeout(()=>{if(b.isConnected)b.textContent='حفظ الحدود'},1500);render();
+ }catch(err){alert('تعذّر حفظ الحدود: '+err.message)}
+ finally{if(b.isConnected)b.disabled=false}
+});
+
 function parseOrder(code){
  const f=String(code||'').split('|'),isFinal=f[0]==='EBR1F',items={};
  (f[9]||'').split(';').filter(Boolean).forEach(t=>{const a=t.split('~');items[+a[0]]={name:a[1]||'',en:a[2]||''}});
@@ -167,27 +187,44 @@ function render(){
  barRows($('#orderStates'),states,'');
  const itemTotals={};
  sent.forEach(d=>{const o=parseOrder(d.code);o.lines.forEach(x=>{if(x.iss>0)itemTotals[x.id]=(itemTotals[x.id]||0)+x.iss})});
- const tops=Object.entries(itemTotals).map(([id,v])=>{const it=DATA.items.find(x=>+x.id===+id);return{label:it&&it.ar||'صنف #'+id,value:v,display:String(v)}}).sort((a,b)=>b.value-a.value).slice(0,7);
+ const tops=Object.entries(itemTotals).map(([id,v])=>{const it=DATA.items.find(x=>+x.id===+id);return{label:lang==='en'?(it&&it.en||itemName(id,true)):(it&&it.ar||itemName(id,false)),value:v,display:String(v)}}).sort((a,b)=>b.value-a.value).slice(0,7);
  barRows($('#topItems'),tops,'');
  const alerts=low.map(x=>({x,status:+x.quantity<=0?'نفد':'تحت الحد'}));
- $('#stockAlerts').innerHTML=stockNoRecord?'<div class="empty">لم يتم تسجيل أرصدة افتتاحية لهذا الفندق بعد.<br>ابدأ بتسجيل الرصيد من لوحة المخزون؛ بعدها ستظهر التنبيهات تلقائيًا.</div>':alerts.length?'<div class="tablewrap"><table><tr><th>الصنف</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr>'+alerts.slice(0,8).map(a=>{const it=DATA.items.find(i=>+i.id===+a.x.item_id);return'<tr><td>'+esc(it&&it.ar||'صنف #'+a.x.item_id)+'</td><td>'+esc(a.x.quantity)+' '+esc(a.x.unit)+'</td><td>'+esc(a.x.reorder_level)+'</td><td><span class="status '+(+a.x.quantity<=0?'zero':'low')+'">'+a.status+'</span></td></tr>'}).join('')+'</table></div>':'<div class="empty">لا توجد أصناف تحت حد إعادة الطلب حاليًا</div>';
+ $('#stockAlerts').innerHTML=stockNoRecord?'<div class="empty">لم يتم تسجيل أرصدة افتتاحية لهذا الفندق بعد.<br>ابدأ بتسجيل الرصيد من لوحة المخزون؛ بعدها ستظهر التنبيهات تلقائيًا.</div>':alerts.length?'<div class="tablewrap"><table><tr><th>الصنف</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr>'+alerts.slice(0,8).map(a=>{const it=DATA.items.find(i=>+i.id===+a.x.item_id);return'<tr><td>'+esc(itemName(a.x.item_id,lang==='en'))+'</td><td>'+esc(a.x.quantity)+' '+esc(a.x.unit)+'</td><td>'+esc(a.x.reorder_level)+'</td><td><span class="status '+(+a.x.quantity<=0?'zero':'low')+'">'+a.status+'</span></td></tr>'}).join('')+'</table></div>':'<div class="empty">لا توجد أصناف تحت حد إعادة الطلب حاليًا</div>';
  const months=Object.keys(monthly).sort().reverse().slice(0,12),hotelNames=hotels.map(h=>h.code);
  $('#monthly').innerHTML=months.length?'<table><tr><th>الشهر</th>'+hotels.map(h=>'<th>'+esc(h.name)+'</th>').join('')+'<th>الإجمالي</th></tr>'+months.map(m=>{let sum=0;return'<tr><td><b>'+m+'</b></td>'+hotelNames.map(h=>{const v=monthly[m][h]||0;sum+=v;return'<td>'+money(v)+' د.ل</td>'}).join('')+'<td><b>'+money(sum)+' د.ل</b></td></tr>'}).join('')+'</table>':'<div class="empty">لا توجد طلبات مرسلة تدخل في المقارنة حتى الآن</div>';
- const rows=low.slice().sort((a,b)=>(+a.quantity-(+a.reorder_level))-(+b.quantity-(+b.reorder_level))).map(x=>{const it=DATA.items.find(i=>+i.id===+x.item_id);return'<tr><td>'+esc((DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code)+'</td><td>'+esc(it&&it.ar||'صنف #'+x.item_id)+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td>'+esc(x.reorder_level)+'</td><td><span class="status '+(+x.quantity<=0?'zero':'low')+'">'+(+x.quantity<=0?'نفد':'اطلب الآن')+'</span></td></tr>'}).join('');
+ const rows=low.slice().sort((a,b)=>(+a.quantity-(+a.reorder_level))-(+b.quantity-(+b.reorder_level))).map(x=>{const it=DATA.items.find(i=>+i.id===+x.item_id);return'<tr><td>'+esc((DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code)+'</td><td>'+esc(itemName(x.item_id,lang==='en'))+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td>'+esc(x.reorder_level)+'</td><td><span class="status '+(+x.quantity<=0?'zero':'low')+'">'+(+x.quantity<=0?'نفد':'اطلب الآن')+'</span></td></tr>'}).join('');
  $('#lowTable').innerHTML=rows?'<table><tr><th>الفندق</th><th>الصنف</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr>'+rows+'</table>':'<div class="empty">'+(stockNoRecord?'لا توجد أرصدة مسجلة بعد':'لا توجد نواقص مسجلة')+'</div>';
+ const thresholdRows=inventory.slice().sort((a,b)=>itemName(a.item_id,false).localeCompare(itemName(b.item_id,false),'ar')).map(x=>'<tr><td>'+esc(itemName(x.item_id,lang==='en'))+'</td><td>'+esc((DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code)+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td><input type="number" min="0" step="0.01" value="'+esc(x.reorder_level)+'" data-min="'+x.id+'" style="width:90px"></td><td><input type="number" min="0" step="0.01" value="'+esc(x.max_level||0)+'" data-max="'+x.id+'" style="width:90px"></td><td><button class="btn" data-save-threshold="'+x.id+'">حفظ الحدود</button></td></tr>').join('');
+ $('#thresholdTable').innerHTML=thresholdRows?'<table><tr><th>الصنف</th><th>الفندق</th><th>الرصيد</th><th>الحد الأدنى / إعادة الطلب</th><th>الحد الأعلى</th><th>إجراء</th></tr>'+thresholdRows+'</table>':'<div class="empty">لا توجد سجلات مخزون لتحديد الحدود لها</div>';
+
  $('#updated').textContent='آخر تحديث: '+new Date().toLocaleString('ar-LY')+' · البيانات للعرض فقط';
+}
+async function apiAll(path){
+ let all=[],from=0,size=1000;
+ while(true){
+  const r=await fetch(SB+'/rest/v1/'+path,{headers:{apikey:KEY,Authorization:'Bearer '+(session&&session.access||''),'Content-Type':'application/json',Range:from+'-'+(from+size-1),'Range-Unit':'items'}});
+  if(r.status===401&&session&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');continue}
+  if(!r.ok)throw new Error('تعذّر قراءة البيانات ('+r.status+'): '+(await r.text()).slice(0,180));
+  const rows=await r.json();all=all.concat(rows);if(rows.length<size)break;from+=size;
+ }
+ return all;
+}
+function itemName(id,english=false){
+ const it=DATA.items.find(x=>+x.id===+id);
+ return english?(it&&it.en||it&&it.ar||'Item #'+id):(it&&it.ar||it&&it.en||'صنف #'+id);
 }
 async function load(){
  $('#updated').textContent='جاري تحديث البيانات…';$('#refresh').disabled=true;
  try{
   const out=await Promise.all([
    api('orders?select=*&order=created_at.desc&limit=5000'),
-   api('items?select=id,ar,en,code,sku,hotels&order=id.asc&limit=5000'),
+   apiAll('items?select=id,ar,en,code,sku,hotels&order=id.asc'),
    api('hotels?select=code,name,active&order=name.asc'),
    api('prices?select=id,code,name,unit,cost,category,archived&limit=5000'),
    api('item_price_link?select=item_id,price_id,method&limit=5000'),
    api('deliveries?select=key,hotel,dept,no,ds,dn,code,status,rev,sent_at&order=updated_at.desc&limit=5000'),
-   api('hotel_inventory?select=hotel_code,item_id,quantity,reorder_level,unit&limit=10000')
+   api('hotel_inventory?select=id,hotel_code,item_id,quantity,reorder_level,max_level,unit&limit=10000')
   ]);
   DATA={orders:out[0],items:out[1],hotels:out[2],prices:out[3],links:out[4],deliveries:out[5],inventory:out[6]};
   const sel=$('#hotel'),old=sel.value;sel.innerHTML='<option value="">كل الفنادق</option>'+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+(h.active===false?' (موقوف)':'')+'</option>').join('');sel.value=old;
@@ -196,6 +233,75 @@ async function load(){
  finally{$('#refresh').disabled=false}
 }
 async function start(){if(session&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive))}catch(e){}$('#login').hidden=true;$('#app').hidden=false;await load() }
+
+// Bilingual admin UI and detailed expense reports.
+let lang='ar';
+const ADMIN_WORDS={
+'بوابة الإدارة':'Management Portal','عرض مؤشرات المنظومة والتكاليف والمخزون — صلاحية قراءة فقط':'System performance, costs and inventory overview — read only',
+'البريد الإلكتروني':'Email address','كلمة المرور':'Password','دخول إلى الملخص':'Sign in to dashboard','جاري التحقق…':'Verifying…',
+'لوحة الإدارة':'Management Dashboard','الوضع المظلم':'Dark mode','الوضع الفاتح':'Light mode','تحديث البيانات ↻':'Refresh data ↻','خروج':'Log out',
+'نظرة تنفيذية موحّدة على حركة الطلبات، جاهزية المخزون، وتكلفة الصرف بين الفنادق. هذه الصفحة مخصصة للمشاهدة ولا تحتوي على أدوات تعديل أو صرف.':'Unified overview of orders, stock readiness and issue costs across hotels. This page is view-only except stock threshold settings.',
+'الفندق:':'Hotel:','كل الفنادق':'All hotels','جاري تحميل البيانات…':'Loading data…','المؤشرات الرئيسية':'Key metrics','ملخص الأداء وحركة الطلبات':'Performance and order activity',
+'تكلفة الصرف حسب الفندق — هذا الشهر':'Issue cost by hotel — this month','حالة الطلبات':'Order status','تنبيهات المخزون':'Stock alerts','الأصناف الأكثر صرفًا':'Most issued items',
+'مقارنة تكلفة الفنادق شهريًا':'Monthly hotel cost comparison','تعتمد على الطلبات المرسلة والأسعار المرتبطة حاليًا، مع استبعاد الأصناف غير المسعّرة من الإجمالي.':'Based on sent orders and currently linked prices; unpriced items are excluded from totals.',
+'ملاحظة محاسبية: المقارنة تستخدم الأسعار الحالية المرتبطة بالأصناف، وليست لقطة سعر تاريخية محفوظة وقت الصرف. الأصناف غير المسعّرة لا تدخل في الإجمالي.':'Accounting note: uses currently linked prices, not historical prices saved at issue time. Unpriced items are excluded from totals.',
+'ضبط حدود المخزون':'Set stock thresholds','حدد الحد الأدنى وحد إعادة الطلب والحد الأعلى لكل صنف في الفندق المحدد':'Set the minimum/reorder level and maximum stock level for each item at the selected hotel.',
+'الحد الأدنى / إعادة الطلب':'Minimum / Reorder level','الحد الأعلى':'Maximum level','حفظ الحدود':'Save limits','تفاصيل النواقص':'Shortage details',
+'الأصناف التي وصلت إلى حد إعادة الطلب أو نفد رصيدها':'Items at or below reorder level, including out-of-stock items',
+'طلبات مسجلة':'Registered orders','طلبات مكتملة بالصرف':'Orders issued','بانتظار المعالجة':'Pending processing','تكلفة هذا الشهر':'Cost this month','طلبات مرسلة':'Sent orders','أصناف تحت حد الطلب':'Items below reorder level','أرصدة صفرية':'Zero balances','أصناف بلا سعر':'Unpriced items',
+'الصنف':'Item','الرصيد':'On hand','حد الطلب':'Reorder level','الحالة':'Status','الفندق':'Hotel','اطلب الآن':'Reorder now','نفد':'Out of stock',
+'لا توجد بيانات كافية حتى الآن':'Not enough data yet','لا توجد أصناف تحت حد إعادة الطلب حاليًا':'No items below reorder level','لا توجد نواقص مسجلة':'No shortages recorded','لا توجد أرصدة مسجلة بعد':'No stock balances recorded',
+'في الطلبات المرسلة':'In sent orders','مرسلة':'Sent','مكتملة بانتظار الإرسال':'Completed, awaiting send','فشل':'Failed','قيد الإرسال':'Sending',
+'آخر تحديث:':'Last updated:','جاري تحديث البيانات…':'Refreshing data…','تعذّر تحميل البيانات:':'Could not load data:','من تاريخ':'From date','إلى تاريخ':'To date',
+'التاريخ':'Date','القسم':'Department','رقم الطلب':'Order No.','الكمية المطلوبة':'Requested qty','الكمية المصروفة':'Issued qty','الوحدة':'Unit','تكلفة الوحدة':'Unit cost','إجمالي التكلفة':'Total cost','مسعّر':'Priced','غير مسعّر':'Unpriced',
+'تصفية':'Apply filters','إعادة ضبط':'Reset','الإجمالي':'Total','عدد الأصناف':'Item count','د.ل':'LYD','لا توجد تفاصيل صرف ضمن الفترة المحددة':'No issue details in selected period',
+'تفاصيل المصروفات والتكاليف':'Expense and cost details','تفصيل الصرف حسب القسم والصنف':'Issued items by department and item','ملخص التكلفة حسب القسم':'Cost summary by department','التكلفة اليومية حسب القسم':'Daily cost by department',
+'عدد أسطر الصرف':'Issued lines','كمية الصرف':'Issued qty','أسطر بلا سعر':'Unpriced lines','تفصيل الأصناف المصروفة والتكاليف':'Issued items and cost breakdown',
+'تجهيز استلام المنتجات — المرحلة القادمة':'Goods receiving — next phase','سنضيف دورة استلام لتسجيل الكميات المستلمة وبيانات المورد والفاتورة، ثم تحديث مخزون الفندق مع سجل استلام يمكن مراجعته.':'We will add a receiving workflow for delivered quantities, supplier and invoice details, then update hotel stock with an auditable receipt record.',
+'تم الحفظ ✓':'Saved ✓','أدخل حدودًا رقمية صحيحة أكبر من أو تساوي صفرًا.':'Enter valid numeric limits greater than or equal to zero.','الحد الأعلى يجب أن يكون أكبر من أو يساوي الحد الأدنى.':'Maximum must be greater than or equal to minimum.','تعذّر حفظ الحدود:':'Could not save limits:'
+};
+function translateAdmin(){
+ const reverse=new Map(Object.entries(ADMIN_WORDS).map(([a,b])=>[b,a]));
+ const itemAr=new Map((DATA.items||[]).filter(x=>x.ar&&x.en).map(x=>[String(x.ar),String(x.en)]));
+ const itemEn=new Map((DATA.items||[]).filter(x=>x.ar&&x.en).map(x=>[String(x.en),String(x.ar)]));
+ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+ let n;while((n=walker.nextNode())){
+  const t=n.nodeValue,trim=t.trim();if(!trim)continue;let v=trim;
+  if(lang==='en')v=ADMIN_WORDS[trim]||itemAr.get(trim)||trim;else v=reverse.get(trim)||itemEn.get(trim)||trim;
+  if(v!==trim)n.nodeValue=t.replace(trim,v);
+ }
+ document.documentElement.lang=lang;document.documentElement.dir=lang==='en'?'ltr':'rtl';
+ document.querySelectorAll('input[placeholder]').forEach(el=>{if(lang==='en'&&el.placeholder==='البريد الإلكتروني')el.placeholder='Email address';else if(lang==='ar'&&el.placeholder==='Email address')el.placeholder='البريد الإلكتروني';if(lang==='en'&&el.placeholder==='كلمة المرور')el.placeholder='Password';else if(lang==='ar'&&el.placeholder==='Password')el.placeholder='كلمة المرور'});
+ const b=$('#languageToggle');if(b)b.textContent=lang==='ar'?'English':'العربية';
+}
+function addExpenseDetails(){
+ let host=$('#expenseDetails');if(!host){host=document.createElement('section');host.id='expenseDetails';host.className='section';const shell=document.querySelector('#app .shell');const footer=$('#credit');shell.insertBefore(host,footer)}
+ const selected=$('#hotel').value,rows=[];
+ DATA.deliveries.filter(d=>d.status==='sent'&&d.dept!=='ALL'&&!String(d.code||'').startsWith('BATCH|')&&(!selected||d.hotel===selected)).forEach(d=>{
+  const o=parseOrder(d.code),day=dateText(d.ds),hotel=(DATA.hotels.find(h=>h.code===d.hotel)||{}).name||d.hotel;
+  o.lines.forEach(x=>{if(x.iss<=0)return;const item=DATA.items.find(i=>+i.id===+x.id),snap=o.items[x.id],name=(lang==='en'?(snap&&snap.en||item&&item.en):(snap&&snap.name||item&&item.ar))||itemName(x.id,lang==='en'),p=priceFor(x.id,snap&&snap.name||item&&item.ar||name,x.unit),unitCost=p?+p.cost||0:null;
+   rows.push({day,hotel,dept:o.deptName||d.dn||d.dept||'—',no:o.no||d.no||'—',name,req:x.req,iss:x.iss,unit:x.unit||'',unitCost,total:unitCost===null?null:unitCost*x.iss});
+  });
+ });
+ const from=$('#expenseFrom')?.value||'',to=$('#expenseTo')?.value||'',filtered=rows.filter(r=>(!from||r.day>=from)&&(!to||r.day<=to));
+ const depts={},daily={};filtered.forEach(r=>{depts[r.dept]??={cost:0,qty:0,lines:0,missing:0};depts[r.dept].qty+=r.iss;depts[r.dept].lines++;if(r.total===null)depts[r.dept].missing++;else depts[r.dept].cost+=r.total;const k=r.day+'|'+r.dept;daily[k]??={day:r.day,dept:r.dept,cost:0,missing:0};if(r.total===null)daily[k].missing++;else daily[k].cost+=r.total});
+ const fmt=n=>(+n||0).toLocaleString(lang==='en'?'en-US':'ar-LY',{minimumFractionDigits:2,maximumFractionDigits:2}),cash=n=>fmt(n)+' '+(lang==='en'?'LYD':'د.ل'),deptRows=Object.entries(depts).sort((a,b)=>b[1].cost-a[1].cost),dailyRows=Object.values(daily).sort((a,b)=>b.day.localeCompare(a.day)||a.dept.localeCompare(b.dept));
+ const t=(ar,en)=>lang==='en'?en:ar;
+ host.innerHTML='<div class="section-head"><div><h2>'+t('تفاصيل المصروفات والتكاليف','Expense and cost details')+'</h2><p>'+t('تفصيل الصرف حسب القسم والصنف','Issued items by department and item')+'</p></div></div>'+
+ '<div class="panel" style="margin-bottom:14px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end"><label>'+t('من تاريخ','From date')+'<input id="expenseFrom" type="date" value="'+from+'" style="display:block;padding:9px;border:1px solid var(--line);border-radius:9px"></label><label>'+t('إلى تاريخ','To date')+'<input id="expenseTo" type="date" value="'+to+'" style="display:block;padding:9px;border:1px solid var(--line);border-radius:9px"></label><button class="btn" id="expenseApply">'+t('تصفية','Apply filters')+'</button><button class="btn ghost" id="expenseReset">'+t('إعادة ضبط','Reset')+'</button></div></div>'+
+ '<div class="panel" style="margin-bottom:14px"><h3>'+t('ملخص التكلفة حسب القسم','Cost summary by department')+'</h3><div class="tablewrap"><table><tr><th>'+t('القسم','Department')+'</th><th>'+t('عدد أسطر الصرف','Issued lines')+'</th><th>'+t('كمية الصرف','Issued qty')+'</th><th>'+t('إجمالي التكلفة','Total cost')+'</th><th>'+t('أسطر بلا سعر','Unpriced lines')+'</th></tr>'+deptRows.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+v.lines+'</td><td>'+fmt(v.qty)+'</td><td>'+cash(v.cost)+'</td><td>'+v.missing+'</td></tr>').join('')+'</table></div></div>'+
+ '<div class="panel" style="margin-bottom:14px"><h3>'+t('التكلفة اليومية حسب القسم','Daily cost by department')+'</h3><div class="tablewrap"><table><tr><th>'+t('التاريخ','Date')+'</th><th>'+t('القسم','Department')+'</th><th>'+t('إجمالي التكلفة','Total cost')+'</th><th>'+t('أسطر بلا سعر','Unpriced lines')+'</th></tr>'+dailyRows.map(r=>'<tr><td>'+esc(r.day)+'</td><td>'+esc(r.dept)+'</td><td>'+cash(r.cost)+'</td><td>'+r.missing+'</td></tr>').join('')+'</table></div></div>'+
+ '<div class="panel"><h3>'+t('تفصيل الأصناف المصروفة والتكاليف','Issued items and cost breakdown')+'</h3><div class="tablewrap"><table><tr><th>'+t('التاريخ','Date')+'</th><th>'+t('الفندق','Hotel')+'</th><th>'+t('القسم','Department')+'</th><th>'+t('رقم الطلب','Order No.')+'</th><th>'+t('الصنف','Item')+'</th><th>'+t('الكمية المطلوبة','Requested qty')+'</th><th>'+t('الكمية المصروفة','Issued qty')+'</th><th>'+t('الوحدة','Unit')+'</th><th>'+t('تكلفة الوحدة','Unit cost')+'</th><th>'+t('إجمالي التكلفة','Total cost')+'</th><th>'+t('التسعير','Pricing')+'</th></tr>'+filtered.map(r=>'<tr><td>'+esc(r.day)+'</td><td>'+esc(r.hotel)+'</td><td>'+esc(r.dept)+'</td><td>'+esc(r.no)+'</td><td>'+esc(r.name)+'</td><td>'+fmt(r.req)+'</td><td>'+fmt(r.iss)+'</td><td>'+esc(r.unit)+'</td><td>'+(r.unitCost===null?'—':cash(r.unitCost))+'</td><td>'+(r.total===null?'—':cash(r.total))+'</td><td><span class="status '+(r.total===null?'missing':'ok')+'">'+t('مسعّر','Priced')+'</span></td></tr>').join('')+'</table></div></div>'+
+ '<div class="notice" style="margin-top:12px">'+t('التكاليف تعتمد على الأسعار المرتبطة حاليًا. الأصناف غير المسعّرة تظل ظاهرة ولا تدخل في إجمالي التكلفة المحسوب.','Costs use currently linked prices. Unpriced items remain visible and are excluded from calculated totals.')+'</div>'+
+ '<div class="panel" style="margin-top:14px"><h3>'+t('تجهيز استلام المنتجات — المرحلة القادمة','Goods receiving — next phase')+'</h3><p>'+t('سنضيف دورة استلام لتسجيل الكميات المستلمة وبيانات المورد والفاتورة، ثم تحديث مخزون الفندق مع سجل استلام يمكن مراجعته.','We will add a receiving workflow for delivered quantities, supplier and invoice details, then update hotel stock with an auditable receipt record.')+'</p></div>';
+ $('#expenseApply').onclick=()=>addExpenseDetails();$('#expenseReset').onclick=()=>{ $('#expenseFrom').value='';$('#expenseTo').value='';addExpenseDetails()};
+}
+const _renderAdmin=render;render=function(){_renderAdmin();addExpenseDetails();translateAdmin()};
+function setAdminLanguage(v){lang=v;try{sessionStorage.setItem('store-admin-lang',v)}catch(e){}render();translateAdmin()}
+const langBtn=document.createElement('button');langBtn.id='languageToggle';langBtn.type='button';langBtn.className='btn ghost';langBtn.onclick=()=>setAdminLanguage(lang==='ar'?'en':'ar');$('.actions').insertBefore(langBtn,$('.actions').firstChild);
+try{lang=sessionStorage.getItem('store-admin-lang')==='en'?'en':'ar'}catch(e){}
+setAdminLanguage(lang);
+
 try{const saved=JSON.parse(sessionStorage.getItem('store_admin_session')||'null');if(saved&&saved.access){session=saved;start().catch(()=>logout())}}catch(e){}
 </script>
 </body></html>
