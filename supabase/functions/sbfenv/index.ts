@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
       const password = String(body.password || "");
       if (!/^[a-z0-9_.-]{3,32}$/.test(username)) return respond({ error: "اسم المستخدم يجب أن يكون 3 إلى 32 حرفًا إنجليزيًا أو رقمًا" }, 400);
       if (!display_name || display_name.length > 80) return respond({ error: "اكتب الاسم الظاهر" }, 400);
-      if (!/^[^\\s@]+@[^\\s@]+\.[^\\s@]+$/.test(email)) return respond({ error: "بريد إلكتروني صحيح مطلوب لتسجيل الدخول" }, 400);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return respond({ error: "بريد إلكتروني صحيح مطلوب لتسجيل الدخول" }, 400);
       if (password.length < 8) return respond({ error: "كلمة المرور المؤقتة يجب ألا تقل عن 8 أحرف" }, 400);
 
       const { data: created, error: createError } = await admin.auth.admin.createUser({
