@@ -308,7 +308,7 @@ async function load(){
  INVENTORY_LOADED=false;AUDIT_LOADED=false;DELERR=false;
  try{
   // Independent reads run together to remove serial network round-trips.
-  const [orders,items,hotels,priceData,secretRows,deliveryData,dispatchState,inventoryData]=await Promise.all([
+  const [orders,items,hotels,priceData,secretRows,dispatchState,inventoryData,deliveryData]=await Promise.all([
    api('orders?select=*&order=created_at.desc&limit=3000'),
    api('items?select=*&order=id.asc&limit=2000'),
    api('hotels?select=*&order=created_at.asc').catch(()=>[]),
