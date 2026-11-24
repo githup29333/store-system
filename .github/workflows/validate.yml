@@ -79,6 +79,8 @@ jobs:
             assert.ok(edge.includes(forbidden), 'Expected explicit backup exclusion: ' + forbidden);
           }
           assert.ok(dashboard.includes('data-t="b"') && dashboard.includes('id="b"') && dashboard.includes('backup.js'));
+          assert.ok(dashboard.includes("currentAuthUid()!=='c7562642-7c60-461b-ac8c-dddcee41d22b'"), 'Backup tab must be owner-only in the UI');
+          assert.ok(backup.includes('JSON.stringify(data.includes)!==JSON.stringify(EXPECTED)'));
           assert.ok(backup.includes("crypto.subtle.digest('SHA-256'") && backup.includes('النسخة سليمة'));
           assert.ok(!/\.from\([^)]*\)\.(insert|update|upsert|delete)\(/.test(backup), 'Backup UI must remain read-only');
           console.log('Backup security and validation guards OK');
