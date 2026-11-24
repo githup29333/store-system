@@ -105,6 +105,76 @@ Deno.serve(async (req: Request) => {
     }
 
 
+
+    if (action === "backup_export") {
+      // Explicit allowlist: credentials, hotel access keys, user accounts, app secrets,
+      // licenses, profiles and audit/auth internals are deliberately excluded.
+      const backupTables = [
+        { name: "companies", columns: "id,name,created_at", order: "id" },
+        { name: "warehouses", columns: "id,company_id,name,location,created_at", order: "id" },
+        { name: "suppliers", columns: "id,company_id,name,contact,created_at", order: "id" },
+        { name: "products", columns: "id,company_id,sku,name,category,unit,reorder_level,created_at", order: "id" },
+        { name: "purchase_requests", columns: "id,company_id,warehouse_id,requested_by,status,created_at", order: "id" },
+        { name: "purchase_request_items", columns: "id,purchase_request_id,product_id,quantity,note", order: "id" },
+        { name: "stock_movements", columns: "id,company_id,product_id,warehouse_id,type,quantity,note,created_by,created_at", order: "id" },
+        { name: "orders", columns: "id,kind,code,dept,no,device,created_at,hotel,approved,approved_at,approved_by", order: "id" },
+        { name: "deliveries", columns: "key,dept,no,ds,dn,code,status,rev,file_path,attempts,error,created_at,updated_at,approved_at,sent_at,hotel,cost_path", order: "key" },
+        { name: "items", columns: "id,ar,en,created_at,code,hotels,sku,barcode", order: "id" },
+        { name: "prices", columns: "id,code,name,unit,cost,category,archived,created_at,updated_at,estimated", order: "id" },
+        { name: "item_price_link", columns: "item_id,price_id,method,score,updated_at", order: "item_id,price_id" },
+        { name: "recipients", columns: "id,kind,name,email,active,created_at,hotel", order: "id" },
+        { name: "hotels", columns: "code,name,expires_at,active,created_at", order: "code" },
+        { name: "hotel_inventory", columns: "id,hotel_code,item_id,quantity,reorder_level,unit,updated_at", order: "id" },
+        { name: "hotel_stock_movements", columns: "id,hotel_code,item_id,movement_type,quantity,unit,note,reference,created_by,created_at", order: "id" },
+        { name: "hotel_suppliers", columns: "id,hotel_code,name,contact,phone,email,notes,active,created_at,updated_at", order: "id" },
+        { name: "hotel_purchase_orders", columns: "id,hotel_code,supplier_id,order_no,status,notes,created_by,created_at,updated_at,ordered_at,received_at", order: "id" },
+        { name: "hotel_purchase_order_items", columns: "id,purchase_order_id,item_id,quantity,unit,unit_cost,received_quantity,note,line_total,created_at", order: "id" },
+      ];
+      const exported: Record<string, unknown[]> = {};
+      const counts: Record<string, number> = {};
+      let totalRows = 0;
+      const pageSize = 500, tableLimit = 5000, totalLimit = 12000;
+      for (const table of backupTables) {
+        const rows: unknown[] = [];
+        for (let offset = 0; offset < tableLimit; offset += pageSize) {
+          let query = admin.from(table.name).select(table.columns);
+          for (const column of table.order.split(",")) query = query.order(column, { ascending: true });
+          const { data, error } = await query.range(offset, offset + pageSize - 1);
+          if (error) throw new Error("Backup read failed for " + table.name + ": " + error.message);
+          rows.push(...(data || []));
+          if (!data || data.length < pageSize) break;
+          if (offset + pageSize >= tableLimit) {
+            let extraQuery = admin.from(table.name).select(table.order);
+            for (const column of table.order.split(",")) extraQuery = extraQuery.order(column, { ascending: true });
+            const { data: extra, error: extraError } = await extraQuery.range(tableLimit, tableLimit);
+            if (extraError) throw extraError;
+            if (extra?.length) throw new Error("Backup limit reached for " + table.name + "; no partial backup was created");
+          }
+        }
+        totalRows += rows.length;
+        if (totalRows > totalLimit) return respond({ error: "Backup is too large for one download. No partial backup was created." }, 413);
+        exported[table.name] = rows;
+        counts[table.name] = rows.length;
+      }
+      const backup = {
+        format: "store-system-backup",
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        includes: Object.keys(exported),
+        excluded: ["auth.users", "app_users", "app_user_activity", "app_secrets", "license", "profiles", "admin_audit_log", "hotels.key"],
+        rowCounts: counts,
+        tables: exported,
+      };
+      const canonical = JSON.stringify(backup);
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+      const sha256 = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+      const response = JSON.stringify({ ...backup, sha256 });
+      if (new TextEncoder().encode(response).length > 4_500_000) {
+        return respond({ error: "Backup exceeds the safe download size. No partial backup was created." }, 413);
+      }
+      return new Response(response, { status: 200, headers: { ...cors, "Content-Disposition": 'attachment; filename="store-system-backup.json"' } });
+    }
+
     if (action === "set_dispatch_token") {
       const githubToken = String(body.token || "").trim();
       if (githubToken.length < 20 || githubToken.length > 255 || /\s/.test(githubToken)) {
