@@ -124,8 +124,8 @@ document.addEventListener('click',async e=>{
  if(!confirm('حفظ الحد الأدنى '+min+' والحد الأعلى '+max+'؟'))return;
  b.disabled=true;
  try{
-  const res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})});
-  if(res.status===401&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');return document.querySelector('[data-save-threshold="'+id+'"]').click()}
+  let res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})});
+  if(res.status===401&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})})}
   if(!res.ok)throw new Error((await res.text()).slice(0,200));
   const row=DATA.inventory.find(x=>+x.id===id);if(row){row.reorder_level=min;row.max_level=max}
   b.textContent='تم الحفظ ✓';setTimeout(()=>{if(b.isConnected)b.textContent='حفظ الحدود'},1500);render();
