@@ -35,7 +35,7 @@
     const file=e.target.files?.[0]; if(!file)return;
     status('جارٍ فحص الملف…');details('');
     try {
-      if(file.size>5_000_000) throw new Error('حجم الملف أكبر من الحد المسموح (5MB).');
+      if(file.size>10_000_000) throw new Error('حجم الملف أكبر من الحد المسموح (5MB).');
       const data=JSON.parse(await file.text());
       if(data.format!=='store-system-backup'||data.schemaVersion!==1||!data.tables||!data.rowCounts||!Array.isArray(data.includes)||typeof data.sha256!=='string') throw new Error('صيغة النسخة غير معروفة.');
       if(JSON.stringify(data.includes)!==JSON.stringify(EXPECTED)) throw new Error('قائمة الجداول داخل النسخة غير مطابقة.');
