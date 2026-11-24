@@ -9,7 +9,7 @@ function drawV(){
  var rows=items.map(function(it){var r=byId.get(it.id),link=LINKS.find(function(l){return l.item_id===it.id&&l.price_id}),p=link&&PRICES.find(function(z){return z.id===link.price_id&&!z.archived});return {it:it,r:r,qty:+(r&&r.quantity||0),min:+(r&&r.reorder_level||0),unit:(r&&r.unit)||(p&&p.unit)||'قطعة'}}).filter(function(x){return !q||(x.it.ar+' '+x.it.en+' '+x.it.sku+' '+x.it.code).toLowerCase().includes(q)});
  var low=rows.filter(function(x){return x.r&&x.min>0&&x.qty<=x.min}).length,zero=rows.filter(function(x){return x.r&&x.qty<=0}).length;
  var recent=MOVEMENTS.filter(function(x){return x.hotel_code===h}).slice(0,12);
- var html='<div class="row"><b style="font-size:18px;flex:1">إدارة المخزون</b><button class="btn alt" id="vscan">مسح QR بالكاميرا</button><button class="btn alt" id="vtemplate">تحميل نموذج CSV</button><button class="btn alt" id="vimport">استيراد أرصدة CSV</button><select id="vh">'+HOTELS.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===h?'selected':'')+'>'+esc(x.name)+' ('+esc(x.code)+')</option>'}).join('')+'</select><button class="btn alt" id="vrefresh">تحديث</button></div>';
+ var html='<div class="row"><b style="font-size:18px;flex:1">إدارة المخزون</b><button class="btn alt" id="vscan">مسح QR بالكاميرا</button><button class="btn alt" id="vtemplate">تحميل نموذج CSV</button><button class="btn" id="vreport">تقرير المخزون Excel</button><button class="btn alt" id="vimport">استيراد أرصدة CSV</button><select id="vh">'+HOTELS.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===h?'selected':'')+'>'+esc(x.name)+' ('+esc(x.code)+')</option>'}).join('')+'</select><button class="btn alt" id="vrefresh">تحديث</button></div>';
  html+='<input type="file" id="vfile" accept=".csv,text/csv" hidden>';
  html+='<div class="grid"><div class="kpi"><b>'+rows.length+'</b>أصناف الفندق</div><div class="kpi"><b>'+records.length+'</b>أصناف لها رصيد مسجل</div><div class="kpi"><b style="color:var(--warn)">'+low+'</b>تحت حد إعادة الطلب</div><div class="kpi"><b style="color:var(--bad)">'+zero+'</b>رصيد صفر</div></div>';
  html+='<p style="color:var(--mut)">الرصيد مستقل لكل فندق. نزّل نموذج CSV لتعبئة أرصدة الأصناف وحدود إعادة الطلب دفعة واحدة. الاستيراد يستبدل الرصيد الحالي للصنف ويسجل حركة تسوية؛ </p>';
@@ -28,6 +28,32 @@ function downloadInventoryTemplate(){
  });
  var csv='\uFEFF'+rows.map(function(row){return row.map(csvCell).join(',')}).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='inventory-opening-'+h+'.csv';a.click();setTimeout(function(){URL.revokeObjectURL(url)},1200);
+}
+async function downloadInventoryReport(){
+ var X=await ensureExcelJS(),h=invHotel(),hotel=HOTELS.find(function(x){return x.code===h}),items=ITEMS.filter(function(it){return !it.hotels||!it.hotels.length||it.hotels.includes(h)});
+ var rows=items.map(function(it){
+  var r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===it.id}),link=LINKS.find(function(x){return x.item_id===it.id&&x.price_id}),p=link&&PRICES.find(function(x){return x.id===link.price_id&&!x.archived});
+  var qty=Number(r&&r.quantity||0),min=Number(r&&r.reorder_level||0),unit=(r&&r.unit)||(p&&p.unit)||'قطعة';
+  var status=!r?'غير مسجل':qty<=0?'نفد':min>0&&qty<=min?'تحت الحد الأدنى':min>0&&qty<=min*1.2?'قريب من الحد الأدنى':'متوفر';
+  return {sku:it.sku||it.code||'',name:it.ar||'',en:it.en||'',qty:qty,unit:unit,min:min,status:status,updated:r&&r.updated_at?new Date(r.updated_at).toLocaleString('ar'):'—'};
+ });
+ var wb=new X.Workbook(),ws=wb.addWorksheet('تقرير المخزون');
+ ws.views=[{rightToLeft:true}];
+ ws.columns=[
+  {header:'SKU / الكود',key:'sku',width:20},{header:'الصنف',key:'name',width:38},{header:'English Name',key:'en',width:36},
+  {header:'الرصيد الحالي',key:'qty',width:16},{header:'الوحدة',key:'unit',width:14},{header:'الحد الأدنى',key:'min',width:16},
+  {header:'الحالة',key:'status',width:22},{header:'آخر تحديث',key:'updated',width:24}
+ ];
+ ws.addRows(rows);
+ ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};
+ ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17384A'}};
+ ws.autoFilter={from:'A1',to:'H1'};
+ ws.addRow([]);ws.addRow(['الفندق',hotel?hotel.name:h]);ws.addRow(['تاريخ التقرير',new Date().toLocaleString('ar')]);
+ ws.addRow(['إجمالي الأصناف',rows.length]);ws.addRow(['أصناف ناقصة / رصيد صفر',rows.filter(function(x){return x.status==='نفد'}).length]);
+ ws.addRow(['تحت الحد الأدنى',rows.filter(function(x){return x.status==='تحت الحد الأدنى'}).length]);
+ ws.addRow(['قريبة من الحد الأدنى',rows.filter(function(x){return x.status==='قريب من الحد الأدنى'}).length]);
+ var buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='Inventory-Report-'+h+'-'+new Date().toISOString().slice(0,10)+'.xlsx';a.click();setTimeout(function(){URL.revokeObjectURL(url)},1200);
 }
 function parseInventoryCsv(text){
  text=String(text||'').replace(/^\uFEFF/,'');
@@ -84,6 +110,7 @@ document.querySelector('#v').addEventListener('click',async function(e){
  try{
   if(b.id==='vrefresh'){await refreshInventory();return}
   if(b.id==='vtemplate'){downloadInventoryTemplate();return}
+  if(b.id==='vreport'){await downloadInventoryReport();return}
   if(b.id==='vimport'){document.querySelector('#vfile').click();return}
   if(b.id==='vscan'){await startVScan();return}
   if(b.dataset.vqr){printItemQR(+b.dataset.vqr);return}
