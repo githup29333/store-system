@@ -861,7 +861,7 @@ async function buildCostBook(d){
  }
  return wb;
 }
-function drawC(){
+async function drawC(){
  if(!PRICES.length&&!LINKS.length&&!document.body.dataset.priceErr){} // ok even if empty
  const linked=new Set(LINKS.filter(l=>l.price_id).map(l=>l.item_id)).size;
  const decided=new Set(LINKS.map(l=>l.item_id));
@@ -890,7 +890,10 @@ function drawC(){
    const arrow=diff==null?'':diff>0?'🔺':diff<0?'🔻':'➖';
    return `<tr><td>${dt(ds)}</td><td>${money(cur)}</td><td>${diff==null?'—':arrow+' '+money(Math.abs(diff))+(pct!=null?' ('+Math.abs(pct)+'%)':'')}</td></tr>`}).join('')||'<tr><td colspan="3">لا توجد بيانات</td></tr>';
   body=`<table><tr><th>اليوم</th><th>إجمالي التكلفة</th><th>الفرق عن اليوم السابق الذي فيه بيانات</th></tr>${rows}</table><p style="color:var(--mut)">المقارنة بأسعار اليوم الحالية وليست بأسعار يوم الصرف الفعلي.</p>`;
- }else if(CTAB==='monthly'){body=renderMonthlyCost()}else if(CTAB==='pie'){
+ }else if(CTAB==='monthly'){
+  try{HOTEL_PRICE_OVERRIDES=await api('hotel_price_overrides?select=*&limit=5000');body=renderMonthlyCost()}
+  catch(err){body='<p style="color:#b4231a">تعذّر تحديث أسعار الفنادق الشهرية: '+esc(err.message)+'</p>'}
+ }else if(CTAB==='pie'){
   const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|'));
   const byCat={};L.forEach(d=>{const ord=ordH(d);linesOf(ord).forEach(x=>{const nm=itemOfD(ord,x.id),p=resolvePrice(x.id,nm.n,x.unit,ord.hotelCode)||resolvePrice(x.id,nm.u,x.unit,ord.hotelCode);if(p)byCat[p.category]=(byCat[p.category]||0)+x.iss*p.cost})});
   const tot=Object.values(byCat).reduce((a,b)=>a+b,0)||1;
