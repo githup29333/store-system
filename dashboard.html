@@ -879,7 +879,7 @@ function drawC(){
  }else if(CTAB==='orders'){
   const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|')).slice(0,60);
   const rows=L.map(d=>{const {total,missing}=orderCost(ordH(d));return `<tr><td>${esc(d.hotel)}</td><td>${esc(d.no)}</td><td>${esc(d.dn)}</td><td>${dt(d.ds)}</td><td>${money(total)}</td><td>${missing?'<span style="color:#b4231a">⚠ '+missing+'</span>':'✓'}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد طلبات مُرسلة بعد</td></tr>';
-  const recalcCount=DEL.filter(d=>d.hotel==='EBR'&&d.status==='sent'&&!d.code.startsWith('BATCH|')&&d.cost_path).length;
+  const recalcCount=DEL.filter(d=>d.hotel==='EBR'&&d.status==='sent'&&!d.code.startsWith('BATCH|')).length;
   body=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><button class="btn" data-recalc-eb>إعادة حساب ملفات التكلفة المحفوظة لفندق EBR (${recalcCount})</button><small style="color:var(--mut)">يحدّث ملفات التكلفة المخزّنة دون إعادة إرسال البريد.</small></div><div class="wrap"><table><tr><th>الفندق</th><th>الطلب</th><th>القسم</th><th>التاريخ</th><th>التكلفة</th><th>التسعير</th></tr>${rows}</table></div><p style="color:var(--mut)">آخر 60 طلب مُرسل. التكلفة بالأسعار الحالية.</p>`;
  }else if(CTAB==='cmp'){
   const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|'));
@@ -909,12 +909,12 @@ function drawPList(){
 $('#c').onclick=async e=>{
  const recalc=e.target.closest('[data-recalc-eb]');
  if(recalc){
-  const targets=DEL.filter(d=>d.hotel==='EBR'&&d.status==='sent'&&!d.code.startsWith('BATCH|')&&d.cost_path);
+  const targets=DEL.filter(d=>d.hotel==='EBR'&&d.status==='sent'&&!d.code.startsWith('BATCH|'));
   if(!targets.length)return alert('لا توجد ملفات تكلفة محفوظة لفندق EBR.');
   if(!confirm('إعادة حساب '+targets.length+' ملف تكلفة سابق لفندق EBR بالأسعار الجديدة؟ لن يتم إرسال أي بريد.'))return;
   recalc.disabled=true;let done=0,failed=[];
   for(const d of targets){
-   try{const wb=await buildCostBook(d);await upload(d.cost_path,await wb.xlsx.writeBuffer());done++}
+   try{const wb=await buildCostBook(d),costPath=d.cost_path||d.key.replace(/[^A-Za-z0-9_-]/g,'_')+'_cost_r'+d.rev+'.xlsx';await upload(costPath,await wb.xlsx.writeBuffer());if(!d.cost_path){await api('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({cost_path:costPath,updated_at:new Date().toISOString()})});d.cost_path=costPath;}done++}
    catch(err){failed.push(d.no+': '+String(err.message||err).slice(0,100))}
    recalc.textContent='إعادة الحساب '+(done+failed.length)+' / '+targets.length;
   }
