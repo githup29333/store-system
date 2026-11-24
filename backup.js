@@ -38,6 +38,8 @@
       if(file.size>5_000_000) throw new Error('حجم الملف أكبر من الحد المسموح (5MB).');
       const data=JSON.parse(await file.text());
       if(data.format!=='store-system-backup'||data.schemaVersion!==1||!data.tables||!data.rowCounts||!Array.isArray(data.includes)||typeof data.sha256!=='string') throw new Error('صيغة النسخة غير معروفة.');
+      if(JSON.stringify(data.includes)!==JSON.stringify(EXPECTED)) throw new Error('قائمة الجداول داخل النسخة غير مطابقة.');
+      if(JSON.stringify(Object.keys(data.rowCounts))!==JSON.stringify(EXPECTED)) throw new Error('قائمة أعداد السجلات غير مطابقة.');
       for(const name of EXPECTED) if(!Object.prototype.hasOwnProperty.call(data.tables,name)||!Array.isArray(data.tables[name])) throw new Error('جدول مفقود أو غير صالح: '+name);
       for(const name of Object.keys(data.tables)) if(!EXPECTED.includes(name)) throw new Error('النسخة تحتوي جدولاً غير معتمد: '+name);
       const counts={};for(const name of EXPECTED){counts[name]=data.tables[name].length;if(Number(data.rowCounts[name])!==counts[name])throw new Error('عدد السجلات لا يطابق جدول '+name);}
