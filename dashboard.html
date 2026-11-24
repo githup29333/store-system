@@ -316,7 +316,7 @@ async function load(){
    api('orders?select=*&order=created_at.desc&limit=3000'),
    api('items?select=*&order=id.asc&limit=2000'),
    api('hotels?select=*&order=created_at.asc').catch(()=>[]),
-   Promise.all([api('prices?select=*&order=id.asc&limit=2000'),api('item_price_link?select=*&limit=2000')]).catch(()=>[[],[]]),
+   Promise.all([api('prices?select=*&order=id.asc&limit=5000'),api('item_price_link?select=*&limit=2000')]).catch(()=>[[],[]]),
    api('app_secrets?select=key,value&key=eq.auto_send_config').catch(()=>[]),
     ownerAction('dispatch_status').catch(()=>({configured:false})),
    api('hotel_inventory?select=*&limit=5000').catch(()=>[]),
@@ -875,7 +875,7 @@ function drawC(){
   body=`<div class="row"><button class="btn" id="cAuto">تحديث المطابقة التلقائية</button><span style="color:var(--mut)">مطابقة تلقائية بالكود أو بالاسم المطابق تماماً. الاقتراحات أدناه تحتاج اعتمادك.</span></div>
   <table><tr><th>الصنف</th><th>أقرب اقتراح</th><th></th></tr>${rows}</table>`;
  }else if(CTAB==='list'){
-  body=`<div class="row"><input type="search" id="pq" placeholder="ابحث" style="flex:1"><button class="btn alt" id="pEst">تخمين الأسعار الناقصة (+50%)</button></div><p style="color:var(--mut)">السعر التقديري = أقرب صنف مشابه له سعر × 1.5 (زيادة 5 دينار لكل 10 كهامش أمان). يظهر بعلامة ≈ ولا يُعتبر سعراً حقيقياً.</p><div class="wrap"><table><tr><th>الكود</th><th>الاسم</th><th>الوحدة</th><th>التكلفة</th><th>الفئة</th><th>مؤرشف</th><th></th></tr><tbody id="pb"></tbody></table></div>`;
+  body=`<div class="row"><input type="search" id="pq" placeholder="ابحث" style="flex:1"><button class="btn" id="pSaveAll">حفظ كل الأسعار</button><button class="btn alt" id="pEst">تخمين الأسعار الناقصة (+50%)</button></div><p style="color:var(--mut)">عدّل الأسعار والوحدات والفئات، ثم اضغط «حفظ كل الأسعار» مرة واحدة لحفظ جميع التعديلات الظاهرة.</p><p style="color:var(--mut)">السعر التقديري = أقرب صنف مشابه له سعر × 1.5 (زيادة 5 دينار لكل 10 كهامش أمان). يظهر بعلامة ≈ ولا يُعتبر سعراً حقيقياً.</p><div class="wrap"><table><tr><th>الكود</th><th>الاسم</th><th>الوحدة</th><th>التكلفة</th><th>الفئة</th><th>مؤرشف</th><th></th></tr><tbody id="pb"></tbody></table></div>`;
  }else if(CTAB==='orders'){
   const L=DV().filter(d=>d.status==='sent'&&!d.code.startsWith('BATCH|')).slice(0,60);
   const rows=L.map(d=>{const {total,missing}=orderCost(ordH(d));return `<tr><td>${esc(d.hotel)}</td><td>${esc(d.no)}</td><td>${esc(d.dn)}</td><td>${dt(d.ds)}</td><td>${money(total)}</td><td>${missing?'<span style="color:#b4231a">⚠ '+missing+'</span>':'✓'}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد طلبات مُرسلة بعد</td></tr>';
@@ -904,7 +904,7 @@ function drawC(){
 }
 function drawPList(){
  const q=($('#pq').value||'').trim().toLowerCase();
- $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px">${p.estimated?' <span title="سعر تقديري غير مؤكد / Estimated, unconfirmed" style="color:var(--warn)">≈</span>':''}</td><td><select data-pcat="${p.id}">${CATS.map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><button class="btn" data-psave="${p.id}">حفظ</button></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
+ $('#pb').innerHTML=PRICES.filter(p=>!q||(p.name+' '+(p.code||'')).toLowerCase().includes(q)).map(p=>`<tr${p.archived?' style="opacity:.5"':''}><td dir="ltr">${esc(p.code||'')}</td><td><input type="text" value="${esc(p.name)}" data-pn="${p.id}" style="width:100%"></td><td><input type="text" value="${esc(p.unit)}" data-pu="${p.id}" style="width:70px"></td><td><input type="number" step="0.0001" value="${p.cost}" data-pc="${p.id}" style="width:90px">${p.estimated?' <span title="سعر تقديري غير مؤكد / Estimated, unconfirmed" style="color:var(--warn)">≈</span>':''}</td><td><select data-pcat="${p.id}">${CATS.map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></td><td><input type="checkbox" data-parch="${p.id}" ${p.archived?'checked':''}></td><td><span style="color:var(--mut);font-size:12px">ضمن الحفظ الجماعي</span></td></tr>`).join('')||'<tr><td colspan="7">لا توجد نتائج</td></tr>';
 }
 $('#c').onclick=async e=>{
  const recalc=e.target.closest('[data-recalc-eb]');
@@ -932,10 +932,37 @@ $('#c').onclick=async e=>{
   const choice=m.length===1?m[0]:m[+prompt(m.map((x,i)=>i+': '+x.name+' — '+money(x.cost)+'/'+x.unit).join('\n')+'\n\nاكتب رقم الاختيار:','0')||0];
   if(!choice)return;await saveLink(it.id,choice.id,'manual');LINKS=await api('item_price_link?select=*&limit=2000');return drawC()
  }
- const sv=e.target.closest('[data-psave]');if(sv){const id=+sv.dataset.psave;
-  const newCost=+document.querySelector(`[data-pc="${id}"]`).value||0,old=PRICES.find(x=>x.id===id);
-  const body={name:document.querySelector(`[data-pn="${id}"]`).value.trim(),unit:document.querySelector(`[data-pu="${id}"]`).value.trim(),cost:newCost,category:document.querySelector(`[data-pcat="${id}"]`).value,archived:document.querySelector(`[data-parch="${id}"]`).checked,estimated:old&&old.estimated&&newCost===old.cost};
-  await api('prices?id=eq.'+id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});sv.textContent='تم ✓';PRICES=await api('prices?select=*&order=id.asc&limit=2000');return}
+ if(e.target.id==='pSaveAll'){
+  const btn=e.target,ids=[...new Set([...document.querySelectorAll('[data-pc]')].map(el=>Number(el.dataset.pc)))],writes=[];
+  for(const id of ids){
+   const old=PRICES.find(x=>Number(x.id)===id);if(!old)continue;
+   const name=document.querySelector(`[data-pn="${id}"]`)?.value.trim()||'';
+   const unit=document.querySelector(`[data-pu="${id}"]`)?.value.trim()||'';
+   const costRaw=document.querySelector(`[data-pc="${id}"]`)?.value;
+   const cost=costRaw===''?0:Number(costRaw);
+   const category=document.querySelector(`[data-pcat="${id}"]`)?.value||old.category;
+   const archived=!!document.querySelector(`[data-parch="${id}"]`)?.checked;
+   if(!name||!unit||!Number.isFinite(cost)||cost<0)return alert('راجع الاسم والوحدة والسعر للصنف رقم '+id+'؛ لا يمكن حفظ قيمة غير صحيحة.');
+   const body={name,unit,cost,category,archived,estimated:!!old.estimated&&cost===Number(old.cost)};
+   if(name!==old.name||unit!==old.unit||cost!==Number(old.cost)||category!==old.category||archived!==!!old.archived)writes.push({id,body});
+  }
+  if(!writes.length)return alert('لا توجد تعديلات جديدة للحفظ.');
+  if(!confirm('سيتم حفظ '+writes.length+' صنف دفعة واحدة. متابعة؟'))return;
+  btn.disabled=true;let done=0,failed=[];
+  try{
+   for(let i=0;i<writes.length;i+=20){
+    const batch=writes.slice(i,i+20);
+    const results=await Promise.allSettled(batch.map(w=>api('prices?id=eq.'+w.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(w.body)})));
+    results.forEach((r,j)=>{if(r.status==='fulfilled')done++;else failed.push(batch[j].id+': '+(r.reason?.message||'فشل الحفظ'))});
+    btn.textContent='تم حفظ '+done+' / '+writes.length;
+   }
+   PRICES=await api('prices?select=*&order=id.asc&limit=5000');
+   drawPList();
+   alert('تم حفظ '+done+' صنف.'+(failed.length?'\\nتعذّر حفظ '+failed.length+' صنف: '+failed.join('، '):''));
+  }catch(err){alert('تم حفظ '+done+' صنف، لكن تعذّر إكمال العملية: '+err.message)}
+  finally{btn.disabled=false;btn.textContent='حفظ كل الأسعار'}
+  return;
+ }
  if(e.target.id==='cAuto'){e.target.disabled=true;e.target.textContent='جارٍ المطابقة…';const n=await autoMatch();e.target.disabled=false;drawC();alert('تمت مطابقة '+n+' صنف تلقائياً (بالكود أو بالاسم المطابق تماماً)')}
  if(e.target.id==='pEst'){
   e.target.disabled=true;e.target.textContent='جارٍ التخمين…';
@@ -948,7 +975,7 @@ $('#c').onclick=async e=>{
    if(f)writes.push({id:t.id,cost:Math.round(f.price.cost*1.5*100)/100,source:f.price.name});
   });
   for(const w of writes)await api('prices?id=eq.'+w.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({cost:w.cost,estimated:true})});
-  PRICES=await api('prices?select=*&order=id.asc&limit=2000');e.target.disabled=false;e.target.textContent='تخمين الأسعار الناقصة (+50%)';drawPList();
+  PRICES=await api('prices?select=*&order=id.asc&limit=5000');e.target.disabled=false;e.target.textContent='تخمين الأسعار الناقصة (+50%)';drawPList();
   alert('تم تخمين '+writes.length+' صنف من أصل '+targets.length+' (الباقي ما له صنف مشابه كافٍ بالمطابقة).');
  }
 };
