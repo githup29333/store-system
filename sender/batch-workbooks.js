@@ -54,7 +54,7 @@ async function generateBatchWorkbooks(deliveries, ctx) {
     ['#','الصنف بالعربية','ITEM NAME','رقم الطلب','الفئة','الوحدة','المصروف','سعر الوحدة','الإجمالي','حالة التسعير'].forEach((v,i)=>put(cw.getCell(4,i+1),v,{bold:true,color:'FFFFFF',bg:'C6A15B'}));
     let cr=5,idx=1,total=0,missing=0;
     for(const o of list)for(const line of o.lines){
-      const p=priceFor(line,ctx),unitPrice=p?Number(p.cost):null,amount=unitPrice===null?null:line.issued*unitPrice;
+      const p=priceFor(line,ctx,o.hotelCode),unitPrice=p?Number(p.cost):null,amount=unitPrice===null?null:line.issued*unitPrice;
       if(amount===null)missing++;else total+=amount;
       [idx++,line.ar,line.en,o.no,p?.category||'غير مصنّف',p?.unit||line.unit||'—',line.issued,unitPrice,amount,unitPrice===null?'بانتظار السعر':p.estimated?'تقديري':'مسعّر'].forEach((v,i)=>put(cw.getCell(cr,i+1),v,{bg:unitPrice===null?'FFF1F0':cr%2?'F5F8FA':'FFFFFF',numFmt:i===7||i===8?'#,##0.00':undefined}));
       cr++;
