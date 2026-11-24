@@ -105,8 +105,8 @@ async function loadCatalog(){
    categoriesByItem[link.item_id]={category:p.category,unit:p.unit||'وحدة'};
   }
  }
- catalog=(ir.data||[]).filter(i=>categoriesByItem[i.id]&&!EXCLUDED.test((i.ar||'')+' '+(i.en||'')))
- .map(i=>({...i,...categoriesByItem[i.id]}));
+ catalog=(ir.data||[]).filter(i=>!EXCLUDED.test((i.ar||'')+' '+(i.en||'')))
+ .map(i=>({...i,...(categoriesByItem[i.id]||{category:'غير مصنف',unit:'وحدة'})}));
  render();
 }
 async function loadOpenSession(){
