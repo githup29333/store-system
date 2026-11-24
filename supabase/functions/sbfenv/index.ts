@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
         { name: "deliveries", columns: "key,dept,no,ds,dn,code,status,rev,file_path,attempts,error,created_at,updated_at,approved_at,sent_at,hotel,cost_path", order: "key" },
         { name: "items", columns: "id,ar,en,created_at,code,hotels,sku,barcode", order: "id" },
         { name: "prices", columns: "id,code,name,unit,cost,category,archived,created_at,updated_at,estimated", order: "id" },
-        { name: "item_price_link", columns: "item_id,price_id,method,score,updated_at", order: "item_id" },
+        { name: "item_price_link", columns: "item_id,price_id,method,score,updated_at", order: "item_id,price_id" },
         { name: "recipients", columns: "id,kind,name,email,active,created_at,hotel", order: "id" },
         { name: "hotels", columns: "code,name,expires_at,active,created_at", order: "code" },
         { name: "hotel_inventory", columns: "id,hotel_code,item_id,quantity,reorder_level,unit,updated_at", order: "id" },
@@ -137,14 +137,16 @@ Deno.serve(async (req: Request) => {
       for (const table of backupTables) {
         const rows: unknown[] = [];
         for (let offset = 0; offset < tableLimit; offset += pageSize) {
-          const { data, error } = await admin.from(table.name).select(table.columns)
-            .order(table.order, { ascending: true }).range(offset, offset + pageSize - 1);
+          let query = admin.from(table.name).select(table.columns);
+          for (const column of table.order.split(",")) query = query.order(column, { ascending: true });
+          const { data, error } = await query.range(offset, offset + pageSize - 1);
           if (error) throw new Error("Backup read failed for " + table.name + ": " + error.message);
           rows.push(...(data || []));
           if (!data || data.length < pageSize) break;
           if (offset + pageSize >= tableLimit) {
-            const { data: extra, error: extraError } = await admin.from(table.name).select(table.order)
-              .order(table.order, { ascending: true }).range(tableLimit, tableLimit);
+            let extraQuery = admin.from(table.name).select(table.order);
+            for (const column of table.order.split(",")) extraQuery = extraQuery.order(column, { ascending: true });
+            const { data: extra, error: extraError } = await extraQuery.range(tableLimit, tableLimit);
             if (extraError) throw extraError;
             if (extra?.length) throw new Error("Backup limit reached for " + table.name + "; no partial backup was created");
           }
