@@ -35,13 +35,14 @@ const localParts=(date=new Date(),tz='Africa/Tripoli')=>{
 const atOrAfter=(now,hhmm)=>{const [h,m]=String(hhmm||'15:00').split(':').map(Number);return now.hour>String(h).padStart(2,'0')||(now.hour===String(h).padStart(2,'0')&&now.minute>=String(m).padStart(2,'0'));};
 
 async function loadContext(){
- const [items,prices,links,hotels]=await Promise.all([
+ const [items,prices,links,hotels,hotelPriceOverrides]=await Promise.all([
   rest('items?select=id,ar,en&limit=5000'),
   rest('prices?select=id,name,unit,cost,category,archived,estimated&limit=5000'),
   rest('item_price_link?select=item_id,price_id,method&limit=10000'),
-  rest('hotels?select=code,name&limit=1000')
+  rest('hotels?select=code,name&limit=1000'),
+  rest('hotel_price_overrides?select=hotel_code,item_id,cost,unit,category,source_name&limit=5000')
  ]);
- return {items,prices,links,hotels};
+ return {items,prices,links,hotels,hotelPriceOverrides};
 }
 async function storeWorkbook(path,buffer){
  if(!buffer||buffer.length<100||buffer.subarray(0,2).toString()!=='PK')throw new Error('Generated Excel attachment is invalid: '+path);
