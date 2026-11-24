@@ -72,6 +72,39 @@ Deno.serve(async (req: Request) => {
 
     if (action === "health") return respond({ ok: true, serviceKeyConfigured: true, ownerVerified: true });
 
+    if (action === "monitor") {
+      const [orders, deliveries, users, activity, audit] = await Promise.all([
+        admin.from("orders").select("id,kind,created_at,hotel,approved").order("created_at", { ascending: false }).limit(500),
+        admin.from("deliveries").select("status,updated_at,hotel,error").order("updated_at", { ascending: false }).limit(500),
+        admin.from("app_users").select("id,username,display_name,is_active,is_paralyzed,created_at").order("created_at", { ascending: false }).limit(200),
+        admin.from("app_user_activity").select("created_at,actor_username,action,target_username,details").order("created_at", { ascending: false }).limit(40),
+        admin.from("admin_audit_log").select("created_at,hotel_code,actor_email,operation,table_name,entity_id").order("created_at", { ascending: false }).limit(40),
+      ]);
+      for (const result of [orders, deliveries, users, activity, audit]) {
+        if (result.error) throw result.error;
+      }
+      const statuses: Record<string, number> = {};
+      for (const row of deliveries.data || []) statuses[row.status || "unknown"] = (statuses[row.status || "unknown"] || 0) + 1;
+      const activeUsers = (users.data || []).filter((u: any) => u.is_active && !u.is_paralyzed).length;
+      const failedDeliveries = (deliveries.data || []).filter((d: any) => d.status === "failed").length;
+      const pendingDeliveries = (deliveries.data || []).filter((d: any) => ["pending", "approved", "sending"].includes(d.status)).length;
+      return respond({
+        generatedAt: new Date().toISOString(),
+        totals: {
+          ordersLoaded: (orders.data || []).length,
+          deliveriesLoaded: (deliveries.data || []).length,
+          users: (users.data || []).length,
+          activeUsers,
+          failedDeliveries,
+          pendingDeliveries,
+        },
+        deliveryStatuses: statuses,
+        recentActivity: activity.data || [],
+        recentAudit: audit.data || [],
+      });
+    }
+
+
     if (action === "set_dispatch_token") {
       const githubToken = String(body.token || "").trim();
       if (githubToken.length < 20 || githubToken.length > 255 || /\s/.test(githubToken)) {

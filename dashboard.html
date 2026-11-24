@@ -135,7 +135,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
 </div>
 <div id="app" hidden>
  <header><button class="btn alt" id="menuToggle" type="button" aria-expanded="false">☰ القائمة</button><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
- <nav id="sideNav" hidden aria-label="القائمة الرئيسية"><div class="drawerHead"><b>أقسام لوحة التحكم</b><button class="btn alt" id="closeNav" type="button">إغلاق ✕</button></div><div class="navGroup"><small>الرئيسية</small><button data-t="s" class="on">◈ الملخص</button></div><div class="navGroup"><small>إدارة المخازن والتشغيل</small><button data-t="o">▤ الطلبات</button><button data-t="i">▦ الأصناف</button><button data-t="v">▣ المخزون</button></div><div class="navGroup"><small>التقارير والمتابعة</small><button data-t="c">▤ التكاليف</button><button data-t="a">▥ التحليلات</button><button data-t="g">◷ سجل العمليات</button></div><div class="navGroup"><small>إدارة النظام</small><button data-t="u">♙ المستخدمون والصلاحيات</button></div><div class="navGroup"><small>الإعدادات والربط</small><button data-t="l">↗ الروابط</button><button data-t="d">⇧ الإرسال</button><button data-t="k">⚙ الفنادق والصلاحية</button></div></nav><div id="navShade" hidden></div>
+ <nav id="sideNav" hidden aria-label="القائمة الرئيسية"><div class="drawerHead"><b>أقسام لوحة التحكم</b><button class="btn alt" id="closeNav" type="button">إغلاق ✕</button></div><div class="navGroup"><small>الرئيسية</small><button data-t="s" class="on">◈ الملخص</button></div><div class="navGroup"><small>إدارة المخازن والتشغيل</small><button data-t="o">▤ الطلبات</button><button data-t="i">▦ الأصناف</button><button data-t="v">▣ المخزون</button></div><div class="navGroup"><small>التقارير والمتابعة</small><button data-t="c">▤ التكاليف</button><button data-t="a">▥ التحليلات</button><button data-t="g">◷ سجل العمليات</button><button data-t="m">◉ مركز المراقبة</button></div><div class="navGroup"><small>إدارة النظام</small><button data-t="u">♙ المستخدمون والصلاحيات</button></div><div class="navGroup"><small>الإعدادات والربط</small><button data-t="l">↗ الروابط</button><button data-t="d">⇧ الإرسال</button><button data-t="k">⚙ الفنادق والصلاحية</button></div></nav><div id="navShade" hidden></div>
  <main>
   <section id="s"></section>
   <section id="o" hidden></section>
@@ -146,6 +146,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
   <section id="v" hidden></section>
   <section id="a" hidden></section>
   <section id="g" hidden></section>
+  <section id="m" hidden></section>
   <section id="k" hidden></section>
   <section id="u" hidden></section>
  </main>
@@ -157,6 +158,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
  <script src="monthly-cost.js"></script>
  <script src="analytics.js"></script>
  <script src="audit.js"></script>
+ <script src="monitor.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const lazyLibraries={};
@@ -222,10 +224,10 @@ const navClose=()=>{$('#sideNav').hidden=true;$('#navShade').hidden=true;$('#men
 $('#menuToggle').onclick=navOpen;$('#closeNav').onclick=navClose;$('#navShade').onclick=navClose;
 $('#sideNav').onclick=e=>{const btn=e.target.closest('button[data-t]');if(!btn)return;const t=btn.dataset.t;ACTIVE_TAB=t;
  document.querySelectorAll('#sideNav button[data-t]').forEach(b=>b.className=b.dataset.t===t?'on':'');
- ['s','o','i','l','d','c','v','a','g','k','u'].forEach(i=>{const el=$('#'+i);if(el)el.hidden=i!==t});navClose();
+ ['s','o','i','l','d','c','v','a','g','m','k','u'].forEach(i=>{const el=$('#'+i);if(el)el.hidden=i!==t});navClose();
  try{if(t==='u')loadUsers().catch(e=>$('#u').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');
  else if(t==='v')loadInventoryOnce();else if(t==='g'){if(!AUDIT_LOADED){$('#g').innerHTML='<p>جارٍ تحميل سجل العمليات…</p>';loadAuditData().then(()=>{AUDIT_LOADED=true;drawAudit()})}else drawAudit()}
- else if(t==='a')drawAnalytics();else if(t==='c')drawC();else if(t==='d')drawD();else if(t==='k')drawK();else if(t==='l')drawL();else if(t==='i')drawI();else if(t==='o')drawO();else if(t==='s')drawS();}
+ else if(t==='m')loadMonitor().catch(e=>$('#m').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');else if(t==='a')drawAnalytics();else if(t==='c')drawC();else if(t==='d')drawD();else if(t==='k')drawK();else if(t==='l')drawL();else if(t==='i')drawI();else if(t==='o')drawO();else if(t==='s')drawS();}
  catch(err){const root=$('#'+t);if(root)root.innerHTML='<p class="tag t-bad">'+esc(err.message)+'</p>'}};
 
 function parse(r){
