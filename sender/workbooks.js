@@ -28,7 +28,7 @@ function parseDelivery(d, ctx) {
   }).filter(x => Number.isFinite(x.id) && x.issued > 0);
   const hotel = (ctx.hotels || []).find(x => x.code === d.hotel);
   return {
-    key: d.key, hotel: hotel?.name || d.hotel || 'HOTEL',
+    key: d.key, hotelCode: d.hotel || '', hotel: hotel?.name || d.hotel || 'HOTEL',
     dept: f[7] || f[1], deptCode: f[1], no: f[2], ds: f[3],
     date: '20' + String(f[3]).slice(0, 2) + '-' + String(f[3]).slice(2, 4) + '-' + String(f[3]).slice(4),
     lines
@@ -44,7 +44,9 @@ function pickFromGroup(group,unitHint){
   }
   return group.find(p=>p.unit==='صندوق')||group[0];
 }
-function priceFor(line, ctx) {
+function priceFor(line, ctx, hotelCode) {
+  const override=(ctx.hotelPriceOverrides||[]).find(x=>x.hotel_code===hotelCode&&Number(x.item_id)===Number(line.id));
+  if(override)return {id:null,name:override.source_name||line.ar,unit:override.unit,cost:Number(override.cost),category:override.category||'أخرى',archived:false,estimated:false,hotelOverride:true};
   const prices=(ctx.prices||[]).filter(p=>!p.archived&&Number(p.cost)>0);
   const groups={};
   prices.forEach(p=>{const k=clean(p.name);(groups[k]=groups[k]||[]).push(p);});
@@ -150,7 +152,7 @@ async function makeIssue(order) {
 
 async function makeCost(order, ctx) {
   const lines = order.lines.map(x => {
-    const p = priceFor(x,ctx);
+    const p = priceFor(x,ctx,order.hotelCode);
     return {...x,price:p ? Number(p.cost) : null,category:p?.category || 'غير مصنّف',priceUnit:p?.unit || x.unit || '—',estimated:!!p?.estimated};
   });
   const priced = lines.filter(x=>x.price!==null);
