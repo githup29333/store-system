@@ -229,7 +229,7 @@ $('#sideNav').onclick=e=>{const btn=e.target.closest('button[data-t]');if(!btn)r
  ['s','o','i','l','d','c','v','a','g','m','b','k','u'].forEach(i=>{const el=$('#'+i);if(el)el.hidden=i!==t});navClose();
  try{if(t==='u')loadUsers().catch(e=>$('#u').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');
  else if(t==='v')loadInventoryOnce();else if(t==='g'){if(!AUDIT_LOADED){$('#g').innerHTML='<p>جارٍ تحميل سجل العمليات…</p>';loadAuditData().then(()=>{AUDIT_LOADED=true;drawAudit()})}else drawAudit()}
- else if(t==='m')loadMonitor().catch(e=>$('#m').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');else if(t==='b')$('#b').innerHTML='<h2>النسخ الاحتياطي</h2><p>جارٍ تحميل أدوات النسخ…</p>';else if(t==='a')drawAnalytics();else if(t==='c')drawC();else if(t==='d')drawD();else if(t==='k')drawK();else if(t==='l')drawL();else if(t==='i')drawI();else if(t==='o')drawO();else if(t==='s')drawS();}
+ else if(t==='m')loadMonitor().catch(e=>$('#m').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');else if(t==='a')drawAnalytics();else if(t==='c')drawC();else if(t==='d')drawD();else if(t==='k')drawK();else if(t==='l')drawL();else if(t==='i')drawI();else if(t==='o')drawO();else if(t==='s')drawS();}
  catch(err){const root=$('#'+t);if(root)root.innerHTML='<p class="tag t-bad">'+esc(err.message)+'</p>'}};
 
 function parse(r){
