@@ -26,7 +26,7 @@ function analyticsData(){
       quantity+=x.iss;
       var n=itemOfD(ord,x.id),p=resolvePrice(x.id,n.n,x.unit,ord.hotelCode)||resolvePrice(x.id,n.u,x.unit,ord.hotelCode);
       var k=String(x.id),it=byItem[k]||(byItem[k]={name:n.n,unit:x.unit||n.u||'—',qty:0,cost:0,missing:0});
-      var di=byDeptItems[d.dn][k]||(byDeptItems[d.dn][k]={name:n.n,unit:x.unit||n.u||'—',qty:0,cost:0,missing:0,orders:0});di.qty+=x.iss;di.orders++;
+      var di=byDeptItems[d.dn][k]||(byDeptItems[d.dn][k]={name:n.n,unit:x.unit||n.u||'—',requested:0,issued:0,cost:0,missing:0,orders:0});di.requested+=(+x.req||+x.iss||0);di.issued+=(+x.iss||0);di.orders++;
       it.qty+=x.iss;
       if(p){var lineCost=x.iss*(+p.cost||0);it.cost+=lineCost;di.cost+=lineCost}else{it.missing++;di.missing++;missingItems[k]=missingItems[k]||{name:n.n,qty:0,count:0};missingItems[k].qty+=x.iss;missingItems[k].count++;}
     });
@@ -74,8 +74,8 @@ function drawAnalytics(){
   var dayRows=Object.entries(d.byDay).sort(function(a,b){return a[0].localeCompare(b[0])}).slice(-14).map(function(x){return [x[0],x[1]]});
   var deptItemHtml=Object.keys(d.byDeptItems).sort().map(function(dep){
     var entries=Object.values(d.byDeptItems[dep]).sort(function(x,y){return y.cost-x.cost});
-    return '<h4>'+esc(dep)+'</h4><div class="wrap"><table><tr><th>الصنف</th><th>الكمية المصروفة</th><th>الوحدة</th><th>التكلفة د.ل</th><th>أسطر بلا سعر</th></tr>'+
-      (entries.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+x.qty.toLocaleString('en-US')+'</td><td>'+esc(x.unit)+'</td><td>'+money(x.cost)+'</td><td>'+x.missing+'</td></tr>'}).join('')||'<tr><td colspan="5">لا توجد بيانات</td></tr>')+'</table></div>';
+    return '<h4>'+esc(dep)+'</h4><div class="wrap"><table><tr><th>الصنف</th><th>الكمية المطلوبة</th><th>الكمية المصروفة</th><th>الوحدة</th><th>التكلفة د.ل</th><th>أسطر بلا سعر</th></tr>'+
+      (entries.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+x.requested.toLocaleString('en-US')+'</td><td>'+x.issued.toLocaleString('en-US')+'</td><td>'+esc(x.unit)+'</td><td>'+money(x.cost)+'</td><td>'+x.missing+'</td></tr>'}).join('')||'<tr><td colspan="6">لا توجد بيانات</td></tr>')+'</table></div>';
   }).join('')||'<p>لا توجد بيانات</p>';
   var dailyDeptRows=[];
   Object.keys(d.byDeptDay).forEach(function(dep){Object.keys(d.byDeptDay[dep]).forEach(function(day){dailyDeptRows.push({dep:dep,day:day,cost:d.byDeptDay[dep][day]})})});
