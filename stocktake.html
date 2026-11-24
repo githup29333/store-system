@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><meta name="robots" content="noindex,nofollow">
+<title>جرد المواد الغذائية | Ebreaze Hotel</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#172333;--mut:#718096;--line:#e5eaf0;--navy:#101827;--gold:#c6a15b;--teal:#167c80;--green:#16845b;--red:#c2413b;--shadow:0 12px 35px #1723330d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 90% 0,#e9eff7 0,transparent 35%),var(--bg);font:15px/1.7 Tajawal,Arial,sans-serif;color:var(--ink)}
+button,input,select{font:inherit}.shell{max-width:1180px;margin:auto;padding:20px}
+.hero{background:linear-gradient(120deg,#101827,#1c3447 65%,#245b62);color:#fff;border-radius:22px;padding:22px 26px;box-shadow:var(--shadow)}
+.hero h1{margin:0;font-size:23px}.hero p{margin:5px 0 0;color:#d5dde7}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:15px;box-shadow:var(--shadow)}
+.login{max-width:410px;margin:9vh auto;background:#fff;padding:28px;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+.login h2{margin:0 0 4px}.muted{color:var(--mut)}.field{display:grid;gap:5px;margin:10px 0}.field input,.field select,.search{width:100%;padding:11px 13px;border:1px solid #dce3eb;border-radius:11px;background:#fbfcfe;color:var(--ink)}
+.btn{border:0;border-radius:11px;padding:10px 15px;font-weight:800;cursor:pointer;background:linear-gradient(120deg,#167c80,#216a78);color:white}
+.btn.alt{background:#fff;color:#246a73;border:1px solid #cbdcde}.btn.gold{background:linear-gradient(120deg,#d5b36f,#b88d45);color:#172333}.btn:disabled{opacity:.55;cursor:wait}
+.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.row>*{min-width:0}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.stat{background:#f7f9fb;border:1px solid var(--line);border-radius:14px;padding:12px}.stat b{display:block;font-size:24px;color:var(--teal);line-height:1.2}
+.tools{display:grid;grid-template-columns:1fr auto auto;gap:9px;align-items:center}
+.search{min-height:44px}.tablewrap{overflow:auto;margin-top:12px}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:700px;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}th{background:#f5f8fa;color:#607184;font-size:13px}
+tr:last-child td{border-bottom:0}tbody tr:hover td{background:#fafcfd}
+.qty{width:105px;padding:9px;border:1px solid #dce3eb;border-radius:9px;text-align:center;direction:ltr}
+.unit{min-width:105px;padding:8px;border:1px solid #dce3eb;border-radius:9px;background:white}
+.tag{display:inline-flex;border-radius:30px;padding:3px 9px;background:#e8f3f2;color:#246a73;font-size:12px;font-weight:700}
+.notice{padding:11px 13px;background:#f1f6f7;border:1px solid #e2ecec;border-radius:12px;color:#405466;margin-top:10px}
+.error{color:var(--red);min-height:24px}.hidden{display:none!important}.actions{display:flex;gap:8px;flex-wrap:wrap}
+#toast{position:fixed;bottom:16px;left:16px;right:16px;margin:auto;max-width:420px;background:#172333;color:white;border-radius:12px;padding:12px 16px;text-align:center;display:none;z-index:10}
+@media(max-width:650px){.shell{padding:10px}.hero{padding:18px}.hero h1{font-size:19px}.panel{padding:12px}.tools{grid-template-columns:1fr 1fr}.tools .search{grid-column:1/-1}.stats{gap:7px}.stat{padding:9px}.stat b{font-size:20px}.actions .btn{flex:1}}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+ <h2>دخول منظومة الجرد</h2><p class="muted">Ebreaze Hotel · جرد المواد الغذائية</p>
+ <div class="field"><label>البريد الإلكتروني</label><input id="email" type="email" autocomplete="username"></div>
+ <div class="field"><label>كلمة المرور</label><input id="password" type="password" autocomplete="current-password"></div>
+ <button class="btn" id="loginBtn" style="width:100%">دخول</button><div class="error" id="loginError"></div>
+</div>
+<div id="app" class="shell hidden">
+ <header class="hero"><div class="row" style="justify-content:space-between"><div><h1>جرد المواد الغذائية</h1><p>Ebreaze Hotel · قراءة الأصناف من قاعدة البيانات مباشرة</p></div><button class="btn alt" id="logoutBtn">تسجيل الخروج</button></div></header>
+ <section class="panel">
+  <div class="row" style="justify-content:space-between"><div><b id="sessionTitle">لم يبدأ الجرد بعد</b><div class="muted" id="sessionMeta">ابدأ جلسة جرد جديدة للبدء في تسجيل الكميات.</div></div><div class="actions"><button class="btn gold" id="startBtn">بدء جرد جديد</button><button class="btn alt" id="resumeBtn">استكمال آخر جرد مفتوح</button></div></div>
+  <div class="stats"><div class="stat"><span class="muted">أصناف قابلة للجرد</span><b id="catalogCount">—</b></div><div class="stat"><span class="muted">أصناف تم جردها</span><b id="countedCount">0</b></div><div class="stat"><span class="muted">نسبة الإنجاز</span><b id="progress">0%</b></div></div>
+  <div class="notice">الجرد منفصل عن رصيد المخزون والطلبات. لن يتم تعديل جدول hotel_inventory أو أي حركة صرف. الأصناف المستبعدة: الخضروات والفواكه واللحوم والأسماك.</div>
+ </section>
+ <section class="panel">
+  <div class="tools"><input id="search" class="search" type="search" placeholder="ابحث باسم الصنف بالعربي أو الإنجليزي أو الكود..."><select id="category" class="search"><option value="">كل الفئات الغذائية</option><option>منتجات جافة</option><option>مشروبات</option><option>حليب وأجبان</option></select><button class="btn alt" id="refreshBtn">تحديث الأصناف</button></div>
+  <div class="row" style="justify-content:space-between;margin-top:12px"><span class="muted" id="resultMeta">جاري تحميل الأصناف...</span><div class="actions"><button class="btn" id="saveBtn" disabled>حفظ الكميات</button><button class="btn alt" id="exportBtn" disabled>تصدير Excel</button></div></div>
+  <div class="tablewrap"><table><thead><tr><th>الصنف في المنظومة</th><th>الفئة</th><th>الكود</th><th>الكمية المعدودة</th><th>وحدة الجرد</th><th>الحالة</th></tr></thead><tbody id="itemsBody"><tr><td colspan="6" class="muted">جاري التحميل...</td></tr></tbody></table></div>
+  <div class="error" id="appError"></div>
+ </section>
+ <footer class="muted" style="text-align:center;padding:20px 5px;font-size:12px">الجرد المؤقت · Ebreaze Hotel</footer>
+</div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+const SB_URL='https://xthhojjcblknukwgksxw.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
+const client=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=s=>document.querySelector(s);
+let catalog=[],draft={},saved={},session=null,allLines=[],categoriesByItem={};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(s){const t=$('#toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2400)}
+function fail(el,e){$(el).textContent=e?.message||String(e)}
+const EXCLUDED=/(خضار|خضروات|فواكه|فاكهة|تفاح|موز|برتقال|عنب|مانجو|فراولة|جوافة|توت أزرق|جزر|بطاطس|بطاطا|بصل|طماطم|خيار|كوسة|بامية|خس|بقدونس|كزبرة خضراء|لحم بقري|لحم غنم|لحوم|دجاج كامل|صدور دجاج|أفخاذ دجاج|وراك دجاج|سمك|أسماك|تونة|سلمون|جمبري|روبيان|سردين|أنشوجة|cucumber|apple|banana|orange|grape|mango|strawberr|guava|blueberr|carrot|potato|onion|tomato|lettuce|zucchini|okra|beef|lamb|whole chicken|chicken breast|chicken thigh|fish fillet|seafood|tuna|salmon|shrimp|prawn|sardine|anchov)/i;
+function foodCategory(c){return ['منتجات جافة','مشروبات','حليب وأجبان'].includes(c||'')}
+function render(){
+ const term=$('#search').value.trim().toLocaleLowerCase(),cat=$('#category').value;
+ const rows=catalog.filter(x=>(!cat||x.category===cat)&&(!term||[x.ar,x.en,x.code,x.sku,x.barcode].join(' ').toLocaleLowerCase().includes(term)));
+ $('#resultMeta').textContent='عرض '+rows.length+' من '+catalog.length+' صنف غذائي';
+ $('#itemsBody').innerHTML=rows.map(x=>{
+  const val=draft[x.id]??saved[x.id]?.quantity??'';
+  const unit=draft[x.id+'_unit']??saved[x.id]?.unit??x.unit??'وحدة';
+  const done=saved[x.id]?'تم الحفظ':'غير مسجل';
+  return '<tr><td><b>'+esc(x.ar)+'</b><div class="muted" style="font-size:12px;direction:ltr;text-align:right">'+esc(x.en||'')+'</div></td><td><span class="tag">'+esc(x.category)+'</span></td><td>'+esc(x.code||x.sku||'—')+'</td><td><input class="qty" type="number" min="0" step="0.001" inputmode="decimal" data-id="'+x.id+'" value="'+esc(val)+'" placeholder="0"></td><td><input class="unit" type="text" data-unit="'+x.id+'" value="'+esc(unit)+'"></td><td><span class="muted" id="status-'+x.id+'">'+done+'</span></td></tr>';
+ }).join('')||'<tr><td colspan="6" class="muted">لا توجد نتائج مطابقة.</td></tr>';
+ $('#itemsBody').querySelectorAll('[data-id]').forEach(el=>el.addEventListener('input',()=>{draft[el.dataset.id]=el.value;updateStats()}));
+ $('#itemsBody').querySelectorAll('[data-unit]').forEach(el=>el.addEventListener('input',()=>{draft[el.dataset.unit+'_unit']=el.value}));
+ updateStats();
+}
+function updateStats(){
+ const n=Object.keys(saved).length,total=catalog.length;
+ $('#catalogCount').textContent=total;$('#countedCount').textContent=n;
+ $('#progress').textContent=(total?Math.round(n/total*100):0)+'%';
+ $('#saveBtn').disabled=!session||!Object.keys(draft).some(k=>!k.endsWith('_unit')&&draft[k]!==''&&Number.isFinite(Number(draft[k]))&&Number(draft[k])>=0);
+ $('#exportBtn').disabled=!allLines.length;
+}
+async function loadCatalog(){
+ $('#appError').textContent='';$('#itemsBody').innerHTML='<tr><td colspan="6">جاري تحميل كتالوج الأصناف...</td></tr>';
+ const [ir,lr]=await Promise.all([
+  client.from('items').select('id,ar,en,code,sku,barcode,hotels').order('ar').limit(2000),
+  client.from('item_price_link').select('item_id,prices(category,unit)').limit(3000)
+ ]);
+ if(ir.error)throw ir.error;if(lr.error)throw lr.error;
+ categoriesByItem={};
+ for(const link of (lr.data||[])){
+  const p=link.prices;if(!p||!foodCategory(p.category))continue;
+  const old=categoriesByItem[link.item_id];
+  if(!old||(['حليب وأجبان','مشروبات','منتجات جافة'].indexOf(p.category)<['حليب وأجبان','مشروبات','منتجات جافة'].indexOf(old.category))){
+   categoriesByItem[link.item_id]={category:p.category,unit:p.unit||'وحدة'};
+  }
+ }
+ catalog=(ir.data||[]).filter(i=>categoriesByItem[i.id]&&!EXCLUDED.test((i.ar||'')+' '+(i.en||'')))
+ .map(i=>({...i,...categoriesByItem[i.id]}));
+ render();
+}
+async function loadOpenSession(){
+ const {data,error}=await client.from('stocktake_sessions').select('*').eq('hotel_code','EBR').eq('status','open').eq('created_by',(await client.auth.getUser()).data.user.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+ if(error)throw error;if(!data){toast('لا يوجد جرد مفتوح لهذا المستخدم');return}
+ session=data;await loadLines();showSession();
+}
+function showSession(){
+ $('#sessionTitle').textContent=session.title;$('#sessionMeta').textContent='بدأ في '+new Date(session.created_at).toLocaleString('ar');
+}
+async function loadLines(){
+ const {data,error}=await client.from('stocktake_lines').select('*').eq('session_id',session.id).order('created_at');
+ if(error)throw error;allLines=data||[];saved={};draft={};
+ allLines.forEach(x=>saved[x.item_id]=x);
+ render();updateStats();
+}
+async function startSession(){
+ if(session&&!confirm('سيتم فتح جرد جديد، وسيبقى الجرد السابق محفوظًا. هل تريد المتابعة؟'))return;
+ const user=(await client.auth.getUser()).data.user;
+ const title='جرد المواد الغذائية - '+new Date().toLocaleDateString('en-CA');
+ const {data,error}=await client.from('stocktake_sessions').insert({hotel_code:'EBR',title,created_by:user.id}).select().single();
+ if(error)throw error;session=data;allLines=[];saved={};draft={};showSession();render();toast('بدأت جلسة جرد جديدة');
+}
+async function saveDraft(){
+ if(!session)throw new Error('ابدأ جلسة الجرد أولاً');
+ const rows=Object.keys(draft).filter(k=>!k.endsWith('_unit')&&draft[k]!==''&&Number.isFinite(Number(draft[k]))&&Number(draft[k])>=0).map(k=>{
+  const x=catalog.find(i=>i.id===Number(k));return {session_id:session.id,item_id:x.id,item_name_snapshot:x.ar,quantity:Number(draft[k]),unit:draft[k+'_unit']||saved[x.id]?.unit||x.unit||'وحدة'};
+ });
+ if(!rows.length){toast('اكتب كمية صنف واحد على الأقل');return}
+ const {error}=await client.from('stocktake_lines').upsert(rows,{onConflict:'session_id,item_id'});
+ if(error)throw error;await loadLines();toast('تم حفظ '+rows.length+' صنف');
+}
+async function exportExcel(){
+ if(!allLines.length)return;
+ const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('جرد Ebreaze');
+ ws.views=[{rightToLeft:true}];ws.columns=[{header:'رقم الصنف',key:'id',width:14},{header:'اسم الصنف بالمنظومة',key:'name',width:42},{header:'الاسم الإنجليزي',key:'en',width:38},{header:'الكود',key:'code',width:18},{header:'الكمية',key:'qty',width:16},{header:'الوحدة',key:'unit',width:18},{header:'ملاحظات',key:'note',width:28}];
+ ws.addRows(allLines.map(l=>{const i=catalog.find(x=>x.id===l.item_id)||{};return {id:l.item_id,name:l.item_name_snapshot,en:i.en||'',code:i.code||i.sku||'',qty:Number(l.quantity),unit:l.unit,note:l.note||''}}));
+ ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17384A'}};
+ ws.autoFilter={from:'A1',to:'G1'};ws.addRow([]);ws.addRow(['الفندق','Ebreaze Hotel']);ws.addRow(['تاريخ التصدير',new Date()]);
+ const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Ebreaze_Food_Stocktake_'+new Date().toISOString().slice(0,10)+'.xlsx';a.click();URL.revokeObjectURL(a.href);
+}
+async function enterApp(){
+ $('#login').classList.add('hidden');$('#app').classList.remove('hidden');
+ try{await loadCatalog();await loadOpenSession()}catch(e){fail('#appError',e)}
+}
+$('#loginBtn').onclick=async()=>{const b=$('#loginBtn');b.disabled=true;$('#loginError').textContent='';try{const {error}=await client.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#password').value});if(error)throw error;await enterApp()}catch(e){fail('#loginError',e)}finally{b.disabled=false}};
+$('#password').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
+$('#logoutBtn').onclick=async()=>{await client.auth.signOut();session=null;$('#app').classList.add('hidden');$('#login').classList.remove('hidden')};
+$('#startBtn').onclick=()=>startSession().catch(e=>fail('#appError',e));
+$('#resumeBtn').onclick=()=>loadOpenSession().catch(e=>fail('#appError',e));
+$('#saveBtn').onclick=()=>saveDraft().catch(e=>fail('#appError',e));
+$('#exportBtn').onclick=()=>exportExcel().catch(e=>fail('#appError',e));
+$('#search').oninput=render;$('#category').onchange=render;
+$('#refreshBtn').onclick=()=>loadCatalog().catch(e=>fail('#appError',e));
+client.auth.getSession().then(({data})=>{if(data.session)enterApp()});
+</script>
+</body></html>
