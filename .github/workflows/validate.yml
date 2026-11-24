@@ -1,4 +1,7 @@
 name: validate-order-system
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -111,6 +114,9 @@ jobs:
           assert.ok(migrations.includes("key <> 'gh_dispatch'"));
           assert.ok(migrations.includes('GRANT EXECUTE ON FUNCTION public.hotel_log(text, text, text, text, text, text) TO service_role'));
           assert.ok(!/(service_role|sb_secret_)/i.test(dashboard + worker + admin));
+          assert.ok(edge.includes('authHeader.replace(/^Bearer\\s+/i')));
+          assert.ok(edge.includes('/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/'));
+          assert.ok(edge.includes('/\\s/.test(githubToken)'));
           const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split(/\r?\n/);
           assert.ok(!tracked.some(p => /(^|\/)\.env$/.test(p)), 'A real .env file must never be committed');
           console.log('Security regression guards OK');
