@@ -60,6 +60,18 @@ jobs:
         run: node --check monitor.js
       - name: Check backup module JavaScript syntax
         run: node --check backup.js
+      - name: Check analytics insight regression guards
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const analytics = fs.readFileSync('analytics.js', 'utf8');
+          assert.ok(analytics.includes('الفترة السابقة للمقارنة'));
+          assert.ok(analytics.includes('150% من المتوسط'));
+          assert.ok(analytics.includes('سعر تقديري'));
+          assert.ok(analytics.includes('نفس الفندق والقسم'));
+          console.log('Analytics insight regression guards OK');
+          NODE
       - name: Check backup export security and validation
         run: |
           node <<'NODE'

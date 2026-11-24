@@ -36,12 +36,42 @@ function drawAnalytics(){
   anDefaultRange();
   var d=analyticsData(),depts=[...new Set(DV().filter(function(x){return x.status==='sent'&&x.dept!=='ALL'}).map(function(x){return x.dn}))].sort();
   var opts='<option value="">كل الأقسام</option>'+depts.map(function(x){return '<option value="'+esc(x)+'" '+(AN_RANGE.dept===x?'selected':'')+'>'+esc(x)+'</option>'}).join('');
+
   var itemRows=Object.values(d.byItem).sort(function(a,b){return b.cost-a.cost}).slice(0,15);
   var deptRows=Object.entries(d.byDept).sort(function(a,b){return b[1]-a[1]});
+  var startDate=new Date(AN_RANGE.from+'T12:00:00'),endDate=new Date(AN_RANGE.to+'T12:00:00');
+  var periodDays=Math.max(1,Math.round((endDate-startDate)/86400000)+1);
+  var prevEnd=new Date(startDate);prevEnd.setDate(prevEnd.getDate()-1);
+  var prevStart=new Date(prevEnd);prevStart.setDate(prevStart.getDate()-periodDays+1);
+  var prevFrom=fmtD(prevStart),prevTo=fmtD(prevEnd),prevRows=DV().filter(function(x){
+    if(x.status!=='sent'||x.dept==='ALL'||String(x.code||'').startsWith('BATCH|'))return false;
+    var day=anISO(x.ds);return day&&day>=prevFrom&&day<=prevTo&&(!AN_RANGE.dept||x.dn===AN_RANGE.dept);
+  });
+  var prevTotal=0,prevMissing=0;
+  prevRows.forEach(function(x){var c=orderCostDetail(ordH(x));prevTotal+=c.total;prevMissing+=c.missing});
+  var changeText=prevRows.length?(prevTotal>0?((d.total-prevTotal)>=0?'زيادة ':'انخفاض ')+Math.abs((d.total-prevTotal)/prevTotal*100).toFixed(1)+'% عن الفترة السابقة':'لا يمكن حساب نسبة التغير لأن تكلفة الفترة السابقة صفر'):'لا توجد بيانات في الفترة السابقة للمقارنة';
+  var dailyValues=Object.values(d.byDay),dailyAvg=dailyValues.length?dailyValues.reduce(function(a,b){return a+b},0)/dailyValues.length:0;
+  var highestDay=Object.entries(d.byDay).sort(function(a,b){return b[1]-a[1]})[0];
+  var highDays=dailyValues.filter(function(v){return dailyAvg>0&&v>=dailyAvg*1.5}).length;
+  var estimatedLines=0,totalLines=0;
+  d.rows.forEach(function(x){var c=orderCostDetail(ordH(x));c.lines.forEach(function(line){totalLines++;if(line.estimated)estimatedLines++})});
+  var missingRate=totalLines?d.missing/totalLines*100:0;
+  var topDept=deptRows[0],topItem=itemRows[0];
+  var insightHtml='<div style="border:1px solid var(--ln);border-radius:14px;padding:14px;margin:14px 0"><h3 style="margin-top:0">مؤشرات ذكية للفترة المحددة</h3>'+
+    '<div class="grid"><div class="kpi"><b>'+esc(changeText)+'</b>مقارنة التكلفة بالفترة السابقة ('+prevFrom+' إلى '+prevTo+')</div>'+
+    '<div class="kpi"><b>'+money(dailyAvg)+' د.ل</b>متوسط تكلفة يوم الصرف المسجل</div>'+
+    '<div class="kpi"><b>'+(highestDay?money(highestDay[1])+' د.ل':'—')+'</b>أعلى يوم تكلفة '+(highestDay?esc(highestDay[0]):'')+'</div>'+
+    '<div class="kpi"><b>'+highDays+'</b>أيام تجاوزت 150% من المتوسط</div></div>'+
+    '<p><b>أعلى قسم تكلفة:</b> '+(topDept?esc(topDept[0])+' — '+money(topDept[1])+' د.ل':'لا توجد بيانات')+'</p>'+
+    '<p><b>أعلى صنف تكلفة:</b> '+(topItem?esc(topItem.name)+' — '+money(topItem.cost)+' د.ل':'لا توجد بيانات')+'</p>'+
+    '<p><b>تغطية التسعير:</b> '+d.missing+' سطر بلا سعر من '+totalLines+' ('+missingRate.toFixed(1)+'%).'+
+    (estimatedLines?' يوجد '+estimatedLines+' سطرًا احتُسب بسعر تقديري ويحتاج مراجعة.':'')+'</p>'+
+    '<p style="color:var(--mut);font-size:12px;margin-bottom:0">المقارنة تستخدم عدد أيام مساوياً للفترة المختارة، مع نفس الفندق والقسم. المؤشرات وصفية وليست تنبؤاً، والتكلفة محسوبة بالأسعار الحالية.</p></div>';
+
   var dayRows=Object.entries(d.byDay).sort(function(a,b){return a[0].localeCompare(b[0])}).slice(-14).map(function(x){return [x[0],x[1]]});
   root.innerHTML='<div class="row"><div style="flex:1"><h2 style="margin:0">مركز التحليلات والتقارير</h2><small style="color:var(--mut)">تحليل الطلبات المكتملة والمرسلة فقط — الأسعار الحالية</small></div><button class="btn" id="anExport">تصدير Excel</button></div>'+
     '<div class="row"><label>من <input type="date" id="anFrom" value="'+AN_RANGE.from+'"></label><label>إلى <input type="date" id="anTo" value="'+AN_RANGE.to+'"></label><select id="anDept">'+opts+'</select><button class="btn alt" id="anApply">تطبيق</button><button class="btn alt" id="anReset">آخر 30 يوماً</button></div>'+
-    '<div class="grid"><div class="kpi"><b>'+d.rows.length+'</b>طلبات مرسلة</div><div class="kpi"><b>'+money(d.total)+' د.ل</b>إجمالي التكلفة</div><div class="kpi"><b>'+d.quantity.toLocaleString('en-US')+'</b>كمية الأصناف المصروفة</div><div class="kpi"><b>'+d.missing+'</b>أسطر بلا سعر</div></div>'+
+    insightHtml+'<div class="grid"><div class="kpi"><b>'+d.rows.length+'</b>طلبات مرسلة</div><div class="kpi"><b>'+money(d.total)+' د.ل</b>إجمالي التكلفة</div><div class="kpi"><b>'+d.quantity.toLocaleString('en-US')+'</b>كمية الأصناف المصروفة</div><div class="kpi"><b>'+d.missing+'</b>أسطر بلا سعر</div></div>'+
     '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div><h3>التكلفة حسب القسم</h3>'+bars(deptRows)+'</div><div><h3>التكلفة اليومية — آخر 14 يوماً</h3>'+bars(dayRows)+'</div></div>'+
     '<h3>أعلى 15 صنفاً حسب التكلفة</h3><div class="wrap"><table><tr><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>التكلفة</th><th>أسطر بلا سعر</th></tr>'+
     (itemRows.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+x.qty.toLocaleString('en-US')+'</td><td>'+esc(x.unit)+'</td><td>'+money(x.cost)+' د.ل</td><td>'+(x.missing||0)+'</td></tr>'}).join('')||'<tr><td colspan="5">لا توجد بيانات ضمن الفترة المحددة</td></tr>')+
