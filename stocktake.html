@@ -71,7 +71,8 @@ const EXCLUDED=/(خضار|خضروات|فواكه|فاكهة|تفاح|موز|ب�
 function foodCategory(c){return ['منتجات جافة','مشروبات','حليب وأجبان'].includes(c||'')}
 function render(){
  const term=$('#search').value.trim().toLocaleLowerCase(),cat=$('#category').value;
- const showUnclassified=$('#showUnclassified').checked;\n const rows=catalog.filter(x=>(showUnclassified||x.category!=='غير مصنف')&&(!cat||x.category===cat)&&(!term||[x.ar,x.en,x.code,x.sku,x.barcode].join(' ').toLocaleLowerCase().includes(term)));
+ const showUnclassified=$('#showUnclassified').checked;
+ const rows=catalog.filter(x=>(showUnclassified||x.category!=='غير مصنف')&&(!cat||x.category===cat)&&(!term||[x.ar,x.en,x.code,x.sku,x.barcode].join(' ').toLocaleLowerCase().includes(term)));
  $('#resultMeta').textContent='عرض '+rows.length+' من '+catalog.length+' صنف غذائي';
  $('#itemsBody').innerHTML=rows.map(x=>{
   const val=draft[x.id]??saved[x.id]?.quantity??'';
