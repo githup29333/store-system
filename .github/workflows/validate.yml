@@ -58,6 +58,31 @@ jobs:
           NODE
       - name: Check monitoring module JavaScript syntax
         run: node --check monitor.js
+      - name: Check backup module JavaScript syntax
+        run: node --check backup.js
+      - name: Check backup export security and validation
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const edge = fs.readFileSync('supabase/functions/sbfenv/index.ts', 'utf8');
+          const dashboard = fs.readFileSync('dashboard.html', 'utf8');
+          const backup = fs.readFileSync('backup.js', 'utf8');
+          const gate = edge.indexOf('if (user.id !== OWNER');
+          const action = edge.indexOf('if (action === "backup_export")');
+          assert.ok(gate >= 0 && action > gate, 'Backup export must be behind the owner gate');
+          assert.ok(edge.includes('const backupTables = ['));
+          assert.ok(edge.includes('hotels", columns: "code,name,expires_at,active,created_at"'), 'Hotel access keys must not be exported');
+          assert.ok(edge.includes('totalLimit = 12000') && edge.includes('tableLimit = 5000'));
+          assert.ok(edge.includes('Backup limit reached') && edge.includes('Backup is too large'));
+          for (const forbidden of ['app_secrets','app_users','auth.users','license','hotels.key']) {
+            assert.ok(edge.includes(forbidden), 'Expected explicit backup exclusion: ' + forbidden);
+          }
+          assert.ok(dashboard.includes('data-t="b"') && dashboard.includes('id="b"') && dashboard.includes('backup.js'));
+          assert.ok(backup.includes("crypto.subtle.digest('SHA-256'") && backup.includes('النسخة سليمة'));
+          assert.ok(!/\.from\([^)]*\)\.(insert|update|upsert|delete)\(/.test(backup), 'Backup UI must remain read-only');
+          console.log('Backup security and validation guards OK');
+          NODE
       - name: Check monitoring endpoint security boundary
         run: |
           grep -q 'if (action === "monitor")' supabase/functions/sbfenv/index.ts
