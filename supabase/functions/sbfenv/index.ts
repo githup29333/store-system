@@ -122,6 +122,7 @@ Deno.serve(async (req: Request) => {
         { name: "items", columns: "id,ar,en,created_at,code,hotels,sku,barcode", order: "id" },
         { name: "prices", columns: "id,code,name,unit,cost,category,archived,created_at,updated_at,estimated", order: "id" },
         { name: "item_price_link", columns: "item_id,price_id,method,score,updated_at", order: "item_id,price_id" },
+        { name: "hotel_price_overrides", columns: "hotel_code,item_id,cost,unit,category,source_name,updated_at", order: "hotel_code,item_id" },
         { name: "recipients", columns: "id,kind,name,email,active,created_at,hotel", order: "id" },
         { name: "hotels", columns: "code,name,expires_at,active,created_at", order: "code" },
         { name: "hotel_inventory", columns: "id,hotel_code,item_id,quantity,reorder_level,unit,updated_at", order: "id" },
