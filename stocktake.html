@@ -48,7 +48,7 @@ tr:last-child td{border-bottom:0}tbody tr:hover td{background:#fafcfd}
   <div class="notice">الجرد منفصل عن رصيد المخزون والطلبات. لن يتم تعديل جدول hotel_inventory أو أي حركة صرف. الأصناف المستبعدة: الخضروات والفواكه واللحوم والأسماك.</div>
  </section>
  <section class="panel">
-  <div class="tools"><input id="search" class="search" type="search" placeholder="ابحث باسم الصنف بالعربي أو الإنجليزي أو الكود..."><select id="category" class="search"><option value="">كل الفئات الغذائية</option><option>منتجات جافة</option><option>مشروبات</option><option>حليب وأجبان</option></select><button class="btn alt" id="refreshBtn">تحديث الأصناف</button></div>
+  <div class="tools"><input id="search" class="search" type="search" placeholder="ابحث باسم الصنف بالعربي أو الإنجليزي أو الكود..."><select id="category" class="search"><option value="">كل الفئات الغذائية</option><option>منتجات جافة</option><option>مشروبات</option><option>حليب وأجبان</option><option>غير مصنف</option></select><button class="btn alt" id="refreshBtn">تحديث الأصناف</button></div><label class="muted" style="display:inline-flex;align-items:center;gap:7px;margin-top:10px"><input id="showUnclassified" type="checkbox"> إظهار الأصناف غير المصنفة للمراجعة</label>
   <div class="row" style="justify-content:space-between;margin-top:12px"><span class="muted" id="resultMeta">جاري تحميل الأصناف...</span><div class="actions"><button class="btn" id="saveBtn" disabled>حفظ الكميات</button><button class="btn alt" id="exportBtn" disabled>تصدير Excel</button></div></div>
   <div class="tablewrap"><table><thead><tr><th>الصنف في المنظومة</th><th>الفئة</th><th>الكود</th><th>الكمية المعدودة</th><th>وحدة الجرد</th><th>الحالة</th></tr></thead><tbody id="itemsBody"><tr><td colspan="6" class="muted">جاري التحميل...</td></tr></tbody></table></div>
   <div class="error" id="appError"></div>
@@ -71,7 +71,8 @@ const EXCLUDED=/(خضار|خضروات|فواكه|فاكهة|تفاح|موز|ب�
 function foodCategory(c){return ['منتجات جافة','مشروبات','حليب وأجبان'].includes(c||'')}
 function render(){
  const term=$('#search').value.trim().toLocaleLowerCase(),cat=$('#category').value;
- const rows=catalog.filter(x=>(!cat||x.category===cat)&&(!term||[x.ar,x.en,x.code,x.sku,x.barcode].join(' ').toLocaleLowerCase().includes(term)));
+ const showUnclassified=$('#showUnclassified').checked;
+ const rows=catalog.filter(x=>(showUnclassified||x.category!=='غير مصنف')&&(!cat||x.category===cat)&&(!term||[x.ar,x.en,x.code,x.sku,x.barcode].join(' ').toLocaleLowerCase().includes(term)));
  $('#resultMeta').textContent='عرض '+rows.length+' من '+catalog.length+' صنف غذائي';
  $('#itemsBody').innerHTML=rows.map(x=>{
   const val=draft[x.id]??saved[x.id]?.quantity??'';
@@ -105,8 +106,8 @@ async function loadCatalog(){
    categoriesByItem[link.item_id]={category:p.category,unit:p.unit||'وحدة'};
   }
  }
- catalog=(ir.data||[]).filter(i=>categoriesByItem[i.id]&&!EXCLUDED.test((i.ar||'')+' '+(i.en||'')))
- .map(i=>({...i,...categoriesByItem[i.id]}));
+ catalog=(ir.data||[]).filter(i=>!EXCLUDED.test((i.ar||'')+' '+(i.en||'')))
+ .map(i=>({...i,...(categoriesByItem[i.id]||{category:'غير مصنف',unit:'وحدة'})}));
  render();
 }
 async function loadOpenSession(){
@@ -160,7 +161,7 @@ $('#startBtn').onclick=()=>startSession().catch(e=>fail('#appError',e));
 $('#resumeBtn').onclick=()=>loadOpenSession().catch(e=>fail('#appError',e));
 $('#saveBtn').onclick=()=>saveDraft().catch(e=>fail('#appError',e));
 $('#exportBtn').onclick=()=>exportExcel().catch(e=>fail('#appError',e));
-$('#search').oninput=render;$('#category').onchange=render;
+$('#search').oninput=render;$('#category').onchange=render;$('#showUnclassified').onchange=render;
 $('#refreshBtn').onclick=()=>loadCatalog().catch(e=>fail('#appError',e));
 client.auth.getSession().then(({data})=>{if(data.session)enterApp()});
 </script>
