@@ -342,7 +342,7 @@ $('#lo').onclick=()=>logout();$('#rf').onclick=()=>load();
 const navOpen=()=>{$('#sideNav').hidden=false;$('#navShade').hidden=false;$('#menuToggle').setAttribute('aria-expanded','true')};
 const navClose=()=>{$('#sideNav').hidden=true;$('#navShade').hidden=true;$('#menuToggle').setAttribute('aria-expanded','false')};
 $('#menuToggle').onclick=navOpen;$('#closeNav').onclick=navClose;$('#navShade').onclick=navClose;
-$('#sideNav').onclick=e=>{const btn=e.target.closest('button[data-t]');if(!btn)return;const t=btn.dataset.t;if(t==='l'&&currentAuthUid()!=='c7562642-7c60-461b-ac8c-dddcee41d22b')return;ACTIVE_TAB=t;
+$('#sideNav').onclick=e=>{const btn=e.target.closest('button[data-t]');if(!btn)return;const t=btn.dataset.t;if((t==='l'||t==='u')&&currentAuthUid()!=='c7562642-7c60-461b-ac8c-dddcee41d22b')return;ACTIVE_TAB=t;
  document.querySelectorAll('#sideNav button[data-t]').forEach(b=>b.className=b.dataset.t===t?'on':'');
  ['s','o','i','l','d','c','v','a','g','m','b','k','u'].forEach(i=>{const el=$('#'+i);if(el)el.hidden=i!==t});navClose();
  try{if(t==='u')loadUsers().catch(e=>$('#u').innerHTML='<p class="tag t-bad">'+esc(e.message)+'</p>');
@@ -413,7 +413,8 @@ async function start(){
  const backupTab=document.querySelector('#sideNav button[data-t="b"]');if(backupTab)backupTab.hidden=!S||currentAuthUid()!=='c7562642-7c60-461b-ac8c-dddcee41d22b';
  const isOwner=!!S&&currentAuthUid()==='c7562642-7c60-461b-ac8c-dddcee41d22b';
  const linksTab=document.querySelector('#sideNav button[data-t="l"]');if(linksTab)linksTab.hidden=!isOwner;
- if(!isOwner){const linksSection=$('#l');if(linksSection)linksSection.hidden=true;}
+ const usersTab=document.querySelector('#sideNav button[data-t="u"]');if(usersTab)usersTab.hidden=!isOwner;
+ if(!isOwner){const linksSection=$('#l');if(linksSection)linksSection.hidden=true;const usersSection=$('#u');if(usersSection)usersSection.hidden=true;}
  $('#login').hidden=true;$('#app').hidden=false;
  const baseLoad=(async()=>{try{const t=await (await fetch('index.html')).text();const m=t.match(/const DEF=`([^`]*)`/);if(m)BASE=m[1].split('\n').filter(Boolean).map(l=>l.split('|'))}catch(e){}})();
  await Promise.all([baseLoad,load()]);
