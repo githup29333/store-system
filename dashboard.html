@@ -333,7 +333,13 @@ async function api(path,opt={},retry=true){
  if(!r.ok){const body=await r.text();if(r.status===403||body.toLowerCase().includes('permission denied'))throw new Error('يرجى التواصل مع THEO لإعطاء الصلاحيات اللازمة');throw new Error(body)}
  const tx=await r.text();return tx?JSON.parse(tx):null;
 }
-function logout(m){S=null;try{sessionStorage.removeItem('s');sessionStorage.removeItem('store_last_active')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||''}
+function logout(m){
+ S=null;USER_ROWS=[];USER_ACTIVITY=[];AUDIT_LOG=[];AUDIT_ERR='';
+ O=[];ITEMS=[];LICROW=null;DEL=[];REC=[];HOTELS=[];HSEL='';PRICES=[];LINKS=[];HOTEL_PRICE_OVERRIDES=[];INVENTORY=[];MOVEMENTS=[];NM={};BASE=[];SH={};INVENTORY_LOADED=false;AUDIT_LOADED=false;ACTIVE_TAB='s';
+ ['u','l','g','m','b','d','k'].forEach(function(t){const el=$('#'+t);if(el){el.innerHTML='';el.hidden=true}});
+ try{sessionStorage.removeItem('s');sessionStorage.removeItem('store_last_active')}catch(e){}
+ $('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||'';
+}
 $('#go').onclick=async()=>{
  const b=$('#go');$('#msg').textContent='';b.disabled=true;b.textContent='جاري الدخول…';
  try{await auth({email:$('#em').value.trim(),password:$('#pw').value},'password');$('#pw').value='';await start()}
