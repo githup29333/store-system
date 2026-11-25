@@ -254,7 +254,7 @@ async function checkAdminStatus(){
  const p=APP_USER.permissions||{};
  const required=['orders','items','hotels','prices','deliveries','inventory','reports'];
  if(required.some(k=>!p[k]||p[k].read!==true))throw new Error('الحساب لا يملك صلاحية عرض جميع بيانات لوحة الإدارة.');
- canEditThresholds=!APP_USER.is_paralyzed&&!!(p.inventory&&p.inventory.thresholds===true);
+ canEditThresholds=!APP_USER.is_paralyzed&&!!(p.inventory&&(p.inventory.thresholds===true||p.inventory.update===true));
 }
 async function start(){if(session&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive))}catch(e){}$('#login').hidden=true;$('#app').hidden=false;await load() }
 
