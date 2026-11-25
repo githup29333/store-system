@@ -109,7 +109,7 @@ async function api(path,retry=true){
 function logout(message){session=null;try{sessionStorage.removeItem('store_admin_session');sessionStorage.removeItem('store_admin_last_active')}catch(e){}$('#app').hidden=true;$('#login').hidden=false;if(message)$('#error').textContent=message}
 $('#logout').onclick=logout;
 $('#loginBtn').onclick=async()=>{const b=$('#loginBtn');b.disabled=true;b.textContent='جاري التحقق…';$('#error').textContent='';
- try{await auth({email:$('#email').value.trim(),password:$('#password').value},'password');await checkAdminStatus();await start()}
+ try{await auth({email:$('#email').value.trim(),password:$('#password').value},'password');await start()}
  catch(e){logout();$('#error').textContent=e.message}
  finally{b.disabled=false;b.textContent='دخول إلى الملخص'}};
 $('#password').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
@@ -264,7 +264,7 @@ async function checkAdminStatus(){
  if(required.some(k=>!p[k]||p[k].read!==true))throw new Error('الحساب لا يملك صلاحية عرض جميع بيانات لوحة الإدارة.');
  canEditThresholds=APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'||(!APP_USER.is_paralyzed&&!!(p.inventory&&(p.inventory.thresholds===true||p.inventory.update===true)));
 }
-async function start(){if(session&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive))}catch(e){}$('#login').hidden=true;$('#app').hidden=false;await load() }
+async function start(){if(session&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive))}catch(e){}$('#login').hidden=true;$('#app').hidden=false;await checkAdminStatus();await load() }
 
 // Bilingual admin UI and detailed expense reports.
 let lang='ar';
@@ -281,7 +281,7 @@ const ADMIN_WORDS={
 'الحد الأدنى / إعادة الطلب':'Minimum / Reorder level','الحد الأعلى':'Maximum level','حفظ الحدود':'Save limits','تفاصيل النواقص':'Shortage details',
 'الأصناف التي وصلت إلى حد إعادة الطلب أو نفد رصيدها':'Items at or below reorder level, including out-of-stock items',
 'طلبات مسجلة':'Registered orders','طلبات مكتملة بالصرف':'Orders issued','بانتظار المعالجة':'Pending processing','تكلفة هذا الشهر':'Cost this month','طلبات مرسلة':'Sent orders','أصناف تحت حد الطلب':'Items below reorder level','أرصدة صفرية':'Zero balances','أصناف بلا سعر':'Unpriced items',
-'الصنف':'Item','الرصيد':'On hand','حد الطلب':'Reorder level','الحالة':'Status','الفندق':'Hotel','اطلب الآن':'Reorder now','نفد':'Out of stock',
+'الصنف':'Item','الرصيد':'On hand','حد الطلب':'Reorder level','الحالة':'Status','إجراء':'Action','مشاهدة فقط':'View only','الفندق':'Hotel','اطلب الآن':'Reorder now','نفد':'Out of stock',
 'لا توجد بيانات كافية حتى الآن':'Not enough data yet','لا توجد أصناف تحت حد إعادة الطلب حاليًا':'No items below reorder level','لا توجد نواقص مسجلة':'No shortages recorded','لا توجد أرصدة مسجلة بعد':'No stock balances recorded',
 'في الطلبات المرسلة':'In sent orders','مرسلة':'Sent','مكتملة بانتظار الإرسال':'Completed, awaiting send','فشل':'Failed','قيد الإرسال':'Sending',
 'آخر تحديث:':'Last updated:','جاري تحديث البيانات…':'Refreshing data…','تعذّر تحميل البيانات:':'Could not load data:','من تاريخ':'From date','إلى تاريخ':'To date',
@@ -329,9 +329,9 @@ function addExpenseDetails(){
  $('#expenseApply').onclick=()=>addExpenseDetails();$('#expenseReset').onclick=()=>{ $('#expenseFrom').value='';$('#expenseTo').value='';addExpenseDetails()};
 }
 const _renderAdmin=render;render=function(){_renderAdmin();addExpenseDetails();translateAdmin()};
-function setAdminLanguage(v){lang=v;try{sessionStorage.setItem('store-admin-lang',v)}catch(e){}render();translateAdmin()}
+function setAdminLanguage(v){lang=v;try{sessionStorage.setItem('store-admin-lang',v);localStorage.setItem('store-admin-lang',v)}catch(e){}render();translateAdmin()}
 const langBtn=document.createElement('button');langBtn.id='languageToggle';langBtn.type='button';langBtn.className='btn ghost';langBtn.onclick=()=>setAdminLanguage(lang==='ar'?'en':'ar');$('.actions').insertBefore(langBtn,$('.actions').firstChild);
-try{lang=sessionStorage.getItem('store-admin-lang')==='en'?'en':'ar'}catch(e){}
+try{lang=(sessionStorage.getItem('store-admin-lang')||localStorage.getItem('store-admin-lang'))==='en'?'en':'ar'}catch(e){}
 setAdminLanguage(lang);
 
 try{const saved=JSON.parse(sessionStorage.getItem('store_admin_session')||'null');if(saved&&saved.access){session=saved;start().catch(()=>logout())}}catch(e){}
