@@ -59,7 +59,11 @@ details{margin-top:16px}
 
 /* Store System premium visual system — worker & department portal */
 :root{--bg:#f3f5f8;--card:#fff;--ink:#172333;--mut:#718096;--ac:#167c80;--ok:#16845b;--warn:#b7791f;--ln:#e5eaf0;--navy:#101827;--gold:#c6a15b;--shadow:0 12px 35px #1723330d}
-body{background:radial-gradient(circle at 92% 0,#e9eff7 0,transparent 32%),var(--bg);color:var(--ink);font-family:Tajawal,Arial,sans-serif;line-height:1.7}
+body{background:var(--bg);color:var(--ink);font-family:Tajawal,Arial,sans-serif;line-height:1.7}
+body>header,body>nav,body>main,body>footer{position:relative;z-index:1}
+#cursorGlow{position:fixed;left:0;top:0;width:440px;height:440px;pointer-events:none;z-index:0;opacity:0;transform:translate3d(-50%,-50%,0);background:radial-gradient(circle,rgba(35,151,160,.16) 0,rgba(35,151,160,.09) 28%,rgba(35,151,160,.035) 48%,transparent 70%);transition:opacity .28s ease;will-change:transform}
+#cursorGlow.visible{opacity:1}
+@media(hover:none),(pointer:coarse){#cursorGlow{display:none}}
 header{background:linear-gradient(120deg,var(--navy),#1c3447 65%,#245b62)!important;padding:20px clamp(16px,4vw,34px)!important;box-shadow:0 8px 28px #10182718;position:relative;overflow:hidden}
 header:after{content:"";position:absolute;width:230px;height:230px;border:1px solid #ffffff20;border-radius:50%;left:-55px;top:-150px;box-shadow:0 0 0 30px #ffffff08,0 0 0 60px #ffffff05;pointer-events:none}
 header h1{font-size:clamp(19px,3vw,25px)!important;font-weight:800;letter-spacing:.1px;position:relative;z-index:1}
@@ -187,6 +191,7 @@ code{border:1px solid var(--ln);border-radius:9px!important;background:#f5f7fa!i
   <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="rnBtn">إعادة المحاولة / Retry</button><button class="btn alt" id="clkBtn" hidden>تم ضبط الساعة / Clock fixed</button></div>
  </div>
 </div>
+<div id="cursorGlow" aria-hidden="true"></div>
 <div id="toast"></div>
 
 <script>
@@ -1061,6 +1066,23 @@ $('#cam').onclick=startCam;$('#stopCam').onclick=stopCam;
 loadCat();fillDepts();initDev();renderList();renderSaved();licInit();syncShared();flushLog();
 if(/[?&]m=order/.test(location.search))$('#t2').hidden=true;
 if(WM){document.querySelector('nav').hidden=true;tab(2)}
+</script>
+<script>
+(()=>{
+ const glow=document.getElementById('cursorGlow');
+ if(!glow||!window.matchMedia('(hover:hover) and (pointer:fine)').matches)return;
+ let raf=0,x=0,y=0;
+ document.addEventListener('pointermove',e=>{
+  if(e.pointerType!=='mouse')return;
+  x=e.clientX;y=e.clientY;
+  if(!raf)raf=requestAnimationFrame(()=>{
+   glow.style.transform='translate3d('+x+'px,'+y+'px,0) translate(-50%,-50%)';
+   glow.classList.add('visible');raf=0;
+  });
+ },{passive:true});
+ document.documentElement.addEventListener('pointerleave',()=>glow.classList.remove('visible'));
+ document.documentElement.addEventListener('pointerenter',()=>glow.classList.add('visible'));
+})();
 </script>
 </body>
 </html>
