@@ -105,7 +105,7 @@ async function printItemQR(id){var it=ITEMS.find(function(x){return x.id===id});
 async function refreshInventory(){var data=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVENTORY=data[0];MOVEMENTS=data[1];INVERR='';drawV();}
 
 function openReceivingModal(){
- var h=invHotel(),available=ITEMS.filter(function(it){return !it.hotels||!it.hotels.length||it.hotels.includes(h)});
+ var h=invHotel(),receiptRef='REC-'+Date.now(),available=ITEMS.filter(function(it){return !it.hotels||!it.hotels.length||it.hotels.includes(h)});
  if(!available.length)return alert('لا توجد أصناف مخصصة لهذا الفندق');
  var modal=document.createElement('div');modal.id='vReceivingModal';modal.style='position:fixed;inset:0;z-index:9998;background:#0009;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto';
  modal.innerHTML='<div style="background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(760px,100%);max-height:92vh;overflow:auto"><div class="row"><h3 style="flex:1;margin:0">استلام منتجات</h3><button class="btn alt" id="vrClose">إغلاق</button></div><p style="color:var(--mut)">اختر الأصناف واكتب الكميات المستلمة. سيتم تحديث رصيد الفندق مباشرة عند الحفظ.</p><div id="vrRows"></div><div class="row" style="margin-top:12px"><button class="btn alt" id="vrAdd">+ إضافة صنف</button><span style="flex:1"></span><button class="btn" id="vrSave">حفظ الاستلام</button></div><p id="vrMsg" style="color:var(--mut)"></p></div>';
@@ -118,7 +118,7 @@ function openReceivingModal(){
   var lines=Array.from(rows.children),seen=new Set(),payload=[];
   for(var line of lines){var id=+(line.querySelector('[data-item]').value||0),q=Number(line.querySelector('[data-qty]').value),unit=line.dataset.unit||'قطعة';
    if(!id||!Number.isFinite(q)||q<=0)return alert('اختر صنفًا وأدخل كمية صحيحة لكل سطر');
-   if(seen.has(id))return alert('الصنف مكرر. اجمع كميته في سطر واحد.');seen.add(id);payload.push({hotel_code:h,item_id:id,movement_type:'in',quantity:q,unit:unit,note:'استلام منتجات',reference:'REC-'+Date.now()});
+   if(seen.has(id))return alert('الصنف مكرر. اجمع كميته في سطر واحد.');seen.add(id);payload.push({hotel_code:h,item_id:id,movement_type:'in',quantity:q,unit:unit,note:'استلام منتجات',reference:receiptRef});
   }
   var save=modal.querySelector('#vrSave'),msg=modal.querySelector('#vrMsg');save.disabled=true;save.textContent='جارٍ الحفظ…';
   try{await api('hotel_stock_movements',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(payload)});await refreshInventory();modal.remove();alert('تم حفظ الاستلام وتحديث رصيد '+payload.length+' صنف.')}
