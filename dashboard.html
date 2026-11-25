@@ -334,8 +334,8 @@ async function api(path,opt={},retry=true){
  const tx=await r.text();return tx?JSON.parse(tx):null;
 }
 function logout(m){
- S=null;USER_ROWS=[];USER_ACTIVITY=[];AUDIT_LOG=[];AUDIT_ERR='';
- O=[];ITEMS=[];LICROW=null;DEL=[];REC=[];HOTELS=[];HSEL='';PRICES=[];LINKS=[];HOTEL_PRICE_OVERRIDES=[];INVENTORY=[];MOVEMENTS=[];NM={};BASE=[];SH={};INVENTORY_LOADED=false;AUDIT_LOADED=false;ACTIVE_TAB='s';
+ S=null;USER_ROWS=[];USER_ACTIVITY=[];if(typeof AUDIT_LOG!=='undefined')AUDIT_LOG=[];if(typeof AUDIT_ERR!=='undefined')AUDIT_ERR='';
+ O=[];ITEMS=[];LICROW=null;DEL=[];REC=[];HOTELS=[];HSEL='';PRICES=[];LINKS=[];HOTEL_PRICE_OVERRIDES=[];INVENTORY=[];MOVEMENTS=[];NM={};BASE=[];SH={};AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null};GH_CONFIGURED=false;INVENTORY_LOADED=false;AUDIT_LOADED=false;ACTIVE_TAB='s';
  ['u','l','g','m','b','d','k'].forEach(function(t){const el=$('#'+t);if(el){el.innerHTML='';el.hidden=true}});
  try{sessionStorage.removeItem('s');sessionStorage.removeItem('store_last_active')}catch(e){}
  $('#app').hidden=true;$('#login').hidden=false;$('#msg').textContent=m||'';
