@@ -14,11 +14,39 @@ function drawV(){
  html+='<div class="grid"><div class="kpi"><b>'+rows.length+'</b>أصناف الفندق</div><div class="kpi"><b>'+records.length+'</b>أصناف لها رصيد مسجل</div><div class="kpi"><b style="color:var(--warn)">'+low+'</b>تحت حد إعادة الطلب</div><div class="kpi"><b style="color:var(--bad)">'+zero+'</b>رصيد صفر</div></div>';
  html+='<p style="color:var(--mut)">الرصيد مستقل لكل فندق. نزّل نموذج CSV لتعبئة أرصدة الأصناف وحدود إعادة الطلب دفعة واحدة. الاستيراد يستبدل الرصيد الحالي للصنف ويسجل حركة تسوية؛ </p>';
  html+='<div class="row"><input type="search" id="vq" placeholder="ابحث بالاسم أو SKU أو الباركود" value="'+esc(q)+'" style="flex:1"><button class="btn alt" id="vlow">'+(VLOW?'عرض كل الأصناف':'عرض النواقص فقط')+'</button></div>';
- html+='<div class="wrap"><table><tr><th>الصنف</th><th>الرصيد</th><th>الوحدة</th><th>حد الطلب</th><th>الحالة</th><th>QR</th><th>الحركة</th></tr><tbody id="vrows">'+rows.map(function(x){var state=!x.r?'<span class="tag">لم يُسجل</span>':x.min>0&&x.qty<=x.min?'<span class="tag t-w">تحت الحد</span>':x.qty<=0?'<span class="tag t-bad">نفد</span>':'<span class="tag t-ok">متوفر</span>';return '<tr data-search="'+esc((x.it.ar+' '+x.it.en+' '+x.it.sku+' '+x.it.code).toLowerCase())+'" data-low="'+(x.min>0&&x.qty<=x.min?'1':'0')+'" '+(VLOW&&!(x.min>0&&x.qty<=x.min)?'hidden':'')+'><td>'+esc(x.it.ar)+'<br><small dir="ltr">'+esc(x.it.en)+'</small></td><td><b>'+x.qty+'</b></td><td>'+esc(x.unit)+'</td><td>'+x.min+'</td><td>'+state+'</td><td><button class="btn alt" data-vqr="'+x.it.id+'">طباعة QR</button></td><td><button class="btn" data-vin="'+x.it.id+'">إضافة رصيد</button> <button class="btn alt" data-vout="'+x.it.id+'">صرف</button> <button class="btn alt" data-vadj="'+x.it.id+'">تسوية</button> <button class="btn alt" data-vmin="'+x.it.id+'">حد الطلب</button></td></tr>'}).join('')+' </tbody></table></div>';
+ html+='<div class="wrap"><table><tr><th>الصنف</th><th>الرصيد</th><th>الوحدة</th><th>حد الطلب</th><th>الحالة</th><th>QR</th><th>الحركة</th></tr><tbody id="vrows">'+rows.map(function(x){var state=!x.r?'<span class="tag">لم يُسجل</span>':x.min>0&&x.qty<=x.min?'<span class="tag t-w">تحت الحد</span>':x.qty<=0?'<span class="tag t-bad">نفد</span>':'<span class="tag t-ok">متوفر</span>';return '<tr data-search="'+esc((x.it.ar+' '+x.it.en+' '+x.it.sku+' '+x.it.code).toLowerCase())+'" data-low="'+(x.min>0&&x.qty<=x.min?'1':'0')+'" '+(VLOW&&!(x.min>0&&x.qty<=x.min)?'hidden':'')+'><td>'+esc(x.it.ar)+'<br><small dir="ltr">'+esc(x.it.en)+'</small></td><td><b>'+x.qty+'</b></td><td>'+esc(x.unit)+'</td><td>'+x.min+'</td><td>'+state+'</td><td><button class="btn alt" data-vqr="'+x.it.id+'">طباعة QR</button></td><td><button class="btn alt" data-vhist="'+x.it.id+'">سجل الحركة</button> <button class="btn" data-vin="'+x.it.id+'">إضافة رصيد</button> <button class="btn alt" data-vout="'+x.it.id+'">صرف</button> <button class="btn alt" data-vadj="'+x.it.id+'">تسوية</button> <button class="btn alt" data-vmin="'+x.it.id+'">حد الطلب</button></td></tr>'}).join('')+' </tbody></table></div>';
  html+='<h3>آخر حركات المخزون</h3><div class="wrap"><table><tr><th>التاريخ</th><th>الصنف</th><th>الحركة</th><th>الكمية</th><th>ملاحظة</th></tr>'+recent.map(function(m){var it=ITEMS.find(function(x){return x.id===m.item_id});return '<tr><td>'+new Date(m.created_at).toLocaleString('ar')+'</td><td>'+esc(it&&it.ar||'صنف غير معروف')+'</td><td>'+(m.movement_type==='in'?'إضافة رصيد':m.movement_type==='out'?'صرف':'تسوية')+'</td><td>'+m.quantity+' '+esc(m.unit)+'</td><td>'+esc(m.note||'—')+'</td></tr>'}).join('')+'<tr '+(recent.length?'hidden':'')+'><td colspan="5">لا توجد حركات بعد</td></tr></table></div>';
  root.innerHTML=html;
 }
 
+async function openItemMovementHistory(id){
+ var h=invHotel(),it=ITEMS.find(function(x){return x.id===id});
+ if(!it)return alert('الصنف غير موجود');
+ var modal=document.createElement('div');
+ modal.id='vItemHistoryModal';
+ modal.style='position:fixed;inset:0;z-index:9999;background:#000b;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto';
+ modal.innerHTML='<div style="background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(900px,100%);max-height:92vh;overflow:auto"><div class="row"><div style="flex:1"><h3 style="margin:0">سجل حركة الصنف</h3><div style="color:var(--mut)">'+esc(it.ar)+' — '+esc(h)+'</div></div><button class="btn alt" id="vhClose">إغلاق</button></div><div class="row" style="margin:12px 0"><input id="vhSearch" type="search" placeholder="ابحث في نوع الحركة أو الملاحظة أو المرجع" style="flex:1"><button class="btn alt" id="vhCsv">تحميل CSV</button></div><div id="vhRows" class="wrap">جاري تحميل السجل…</div><p id="vhCount" style="color:var(--mut)"></p></div>';
+ document.body.appendChild(modal);
+ modal.querySelector('#vhClose').onclick=function(){modal.remove()};
+ try{
+  var rows=await api('hotel_stock_movements?select=id,movement_type,quantity,unit,note,reference,created_at&hotel_code=eq.'+enc(h)+'&item_id=eq.'+id+'&order=created_at.desc&limit=1000');
+  var typeName=function(v){return v==='in'?'استلام / إضافة':v==='out'?'صرف':v==='adjust'?'تسوية':v};
+  function render(){
+   var q=modal.querySelector('#vhSearch').value.trim().toLowerCase();
+   var shown=rows.filter(function(x){return (typeName(x.movement_type)+' '+(x.note||'')+' '+(x.reference||'')).toLowerCase().includes(q)});
+   modal.querySelector('#vhRows').innerHTML=shown.length?'<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:650px"><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>الوحدة</th><th>الملاحظة</th><th>المرجع</th></tr>'+shown.map(function(x){return '<tr><td>'+new Date(x.created_at).toLocaleString('ar-LY')+'</td><td>'+esc(typeName(x.movement_type))+'</td><td><b>'+esc(x.quantity)+'</b></td><td>'+esc(x.unit)+'</td><td>'+esc(x.note||'—')+'</td><td dir="ltr">'+esc(x.reference||'—')+'</td></tr>'}).join('')+'</table></div>':'<div class="empty">لا توجد حركات مطابقة</div>';
+   modal.querySelector('#vhCount').textContent='عدد الحركات المعروضة: '+shown.length+' من '+rows.length+' (حد العرض 1000 حركة)';
+  }
+  modal.querySelector('#vhSearch').oninput=render;
+  modal.querySelector('#vhCsv').onclick=function(){
+   var data=[['التاريخ والوقت','الحركة','الكمية','الوحدة','الملاحظة','المرجع']].concat(rows.map(function(x){return [new Date(x.created_at).toLocaleString('ar-LY'),typeName(x.movement_type),x.quantity,x.unit,x.note||'',x.reference||'']}));
+   var csv='\uFEFF'+data.map(function(row){return row.map(csvCell).join(',')}).join('\r\n');
+   var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='item-movements-'+h+'-'+id+'.csv';a.click();setTimeout(function(){URL.revokeObjectURL(url)},1200);
+  };
+  render();
+ }catch(e){modal.querySelector('#vhRows').textContent='تعذّر تحميل السجل: '+e.message}
+}
 function csvCell(v){var s=String(v==null?'':v);return '"'+s.replace(/"/g,'""')+'"'}
 function downloadInventoryTemplate(){
  var h=invHotel(),items=ITEMS.filter(function(it){return !it.hotels||!it.hotels.length||it.hotels.includes(h)}),rows=[['sku','item_name','quantity','unit','reorder_level']];
@@ -137,6 +165,7 @@ document.querySelector('#v').addEventListener('click',async function(e){
   if(b.id==='vscan'){await startVScan();return}
   if(b.id==='vreceive'){openReceivingModal();return}
   if(b.dataset.vqr){printItemQR(+b.dataset.vqr);return}
+  if(b.dataset.vhist){await openItemMovementHistory(+b.dataset.vhist);return}
   if(b.id==='vlow'){VLOW=!VLOW;document.querySelectorAll('#vrows tr[data-search]').forEach(function(r){r.hidden=VLOW&&r.dataset.low!=='1'});b.textContent=VLOW?'عرض كل الأصناف':'عرض النواقص فقط';return}
   var id=+(b.dataset.vin||b.dataset.vout||b.dataset.vadj||b.dataset.vmin||0);if(!id)return;
   var h=invHotel(),it=ITEMS.find(function(x){return x.id===id}),r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===id}),link=LINKS.find(function(l){return l.item_id===id&&l.price_id}),p=link&&PRICES.find(function(z){return z.id===link.price_id&&!z.archived}),unit=(r&&r.unit)||(p&&p.unit)||'قطعة';
