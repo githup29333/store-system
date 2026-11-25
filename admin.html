@@ -27,7 +27,7 @@ button,input,select{font:inherit}.shell{max-width:1440px;margin:auto;padding:24p
 
 /* Dark appearance */
 html[data-theme="dark"]{color-scheme:dark;--bg:#0b1220;--card:#121d2b;--ink:#e7edf5;--mut:#9aabbd;--line:#2a394c;--navy:#101827;--gold:#d4b36d;--teal:#63c7bd;--green:#45bd8c;--amber:#e5b45e;--red:#f07872;--shadow:0 14px 36px #0004}
-html[data-theme="dark"] body{background:radial-gradient(circle at 90% 0,#17283a 0,transparent 35%),var(--bg)!important;color:var(--ink)!important}
+html[data-theme="dark"] body{background:var(--bg)!important;color:var(--ink)!important}
 html[data-theme="dark"] .card,html[data-theme="dark"] .panel,html[data-theme="dark"] .login{background:var(--card)!important;color:var(--ink)!important;border-color:var(--line)!important}
 html[data-theme="dark"] .kpi:after{background:#26364a!important}
 html[data-theme="dark"] .toolbar select,html[data-theme="dark"] .login input{background:#0e1826!important;color:var(--ink)!important;border-color:#34465b!important}
@@ -38,6 +38,8 @@ html[data-theme="dark"] .notice{background:#382f1d!important;color:#f0d59b!impor
 html[data-theme="dark"] .status.low{background:#49391e!important;color:#f0cb83!important}html[data-theme="dark"] .status.zero{background:#482527!important;color:#ffaaa5!important}html[data-theme="dark"] .status.ok{background:#153b32!important;color:#8ce0bd!important}html[data-theme="dark"] .status.missing{background:#26364a!important;color:#bdcad8!important}
 html[data-theme="dark"] .login p,html[data-theme="dark"] .section-head p,html[data-theme="dark"] .stamp,html[data-theme="dark"] .amount,html[data-theme="dark"] .footer{color:var(--mut)!important}
 html[data-theme="dark"] .err{color:#ff9690!important}
+
+#cursorGlow{position:fixed;left:0;top:0;width:440px;height:440px;pointer-events:none;z-index:0;opacity:0;transform:translate3d(-50%,-50%,0);background:radial-gradient(circle,rgba(35,151,160,.16) 0,rgba(35,151,160,.09) 28%,rgba(35,151,160,.035) 48%,transparent 70%);transition:opacity .28s ease;will-change:transform}#cursorGlow.visible{opacity:1}@media(hover:none),(pointer:coarse){#cursorGlow{display:none}}
 </style>
 <script>try{if(localStorage.getItem("store-system-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 </head>
@@ -337,4 +339,4 @@ setAdminLanguage(lang);
 
 try{const saved=JSON.parse(sessionStorage.getItem('store_admin_session')||'null');if(saved&&saved.access){session=saved;start().catch(()=>logout())}}catch(e){}
 </script>
-</body></html>
+<div id="cursorGlow" aria-hidden="true"></div><script>(()=>{const g=document.getElementById("cursorGlow");if(!g||!matchMedia("(hover:hover) and (pointer:fine)").matches)return;let r=0,x=0,y=0;document.addEventListener("pointermove",e=>{if(e.pointerType!=="mouse")return;x=e.clientX;y=e.clientY;if(!r)r=requestAnimationFrame(()=>{g.style.transform="translate3d("+x+"px,"+y+"px,0) translate(-50%,-50%)";g.classList.add("visible");r=0})},{passive:true});document.documentElement.addEventListener("pointerleave",()=>g.classList.remove("visible"))})();</script></body></html>
