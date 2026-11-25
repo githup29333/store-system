@@ -512,7 +512,7 @@ $('#i').onclick=async e=>{
 };
 function drawL(){
  const base=location.href.replace(/[?#].*$/,'').replace(/[^/]*$/,'');
- const L=[['رابط المشرف (أنت)',base],['رابط الأقسام (طلب فقط)',base+'?m=order'],['رابط العامل',base+'?m=worker'],['لوحة الإدارة — عرض فقط',base+'admin.html'],['لوحة التحكم الكاملة',base+'dashboard.html'],['مشروع Supabase','https://supabase.com/dashboard/project/xthhojjcblknukwgksxw'],['مستودع GitHub','https://github.com/githup29333/store-system']];
+ const L=[['رابط المشرف (أنت)',base],['رابط الأقسام (طلب فقط)',base+'?m=order'],['رابط العامل',base+'?m=worker'],['لوحة الإدارة — عرض فقط',base+'admin.html'],['لوحة التحكم الكاملة',base+'dashboard.html'],['مشروع Supabase','https://supabase.com/dashboard/project/xthhojjcblknukwgksxw'],['مستودع GitHub','https://github.com/theoisdevss/store-system']];
  $('#l').innerHTML=L.map(([t,u])=>`<div class="row"><b style="min-width:160px">${t}</b><input type="text" readonly value="${esc(u)}" style="flex:1;direction:ltr"><button class="btn alt" data-c="${esc(u)}">نسخ</button><a class="btn" href="${esc(u)}" target="_blank" rel="noopener" style="text-decoration:none">فتح</a></div>`).join('');
 }
 $('#l').onclick=e=>{const b=e.target.closest('[data-c]');if(b)navigator.clipboard.writeText(b.dataset.c).then(()=>{b.textContent='تم ✓';setTimeout(()=>b.textContent='نسخ',1200)})};
