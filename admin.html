@@ -70,6 +70,7 @@ html[data-theme="dark"] .err{color:#ff9690!important}
    <div class="panel"><div class="tablewrap" id="monthly"></div><div class="notice">ملاحظة محاسبية: المقارنة تستخدم الأسعار الحالية المرتبطة بالأصناف، وليست لقطة سعر تاريخية محفوظة وقت الصرف. الأصناف غير المسعّرة لا تدخل في الإجمالي.</div></div>
   </div>
   <div class="section"><div class="section-head"><div><h2>ضبط حدود المخزون</h2><p>حدد الحد الأدنى وحد إعادة الطلب والحد الأعلى لكل صنف في الفندق المحدد</p></div></div><div class="panel"><div class="tablewrap" id="thresholdTable"></div></div></div>
+  <div class="section" id="thresholdAuditSection" hidden><div class="section-head"><div><h2>سجل تعديلات الحدود — خاص بالمالك</h2><p>يسجل كل تغيير فعلي في الحد الأدنى أو الأعلى مع اسم المنفذ والقيم قبل وبعد التعديل</p></div></div><div class="panel"><div class="tablewrap" id="thresholdAuditTable"></div></div></div>
   <div class="section"><div class="section-head"><div><h2>تفاصيل النواقص</h2><p>الأصناف التي وصلت إلى حد إعادة الطلب أو نفد رصيدها</p></div></div><div class="panel"><div class="tablewrap" id="lowTable"></div></div></div>
   <footer class="footer" id="credit">© 2026 Theo — جميع الحقوق محفوظة / All rights reserved</footer>
  </div>
@@ -82,7 +83,7 @@ const THEME_KEY='store-system-theme';
 function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
 $('#themeToggle').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
-let session=null,APP_USER=null,canEditThresholds=false,DATA={orders:[],items:[],hotels:[],prices:[],links:[],deliveries:[],inventory:[]};
+let session=null,APP_USER=null,canEditThresholds=false,DATA={orders:[],items:[],hotels:[],prices:[],links:[],deliveries:[],inventory:[],thresholdAudit:[]};
 const IDLE_LIMIT=30*60*1000;let lastActive=Number(sessionStorage.getItem('store_admin_last_active')||Date.now());
 function markActive(){if(!session)return;const n=Date.now();if(n-lastActive>30000){lastActive=n;try{sessionStorage.setItem('store_admin_last_active',String(n))}catch(e){}}}
 ['pointerdown','keydown','touchstart','mousemove'].forEach(ev=>document.addEventListener(ev,markActive,{passive:true}));
@@ -134,10 +135,12 @@ document.addEventListener('click',async e=>{
  if(!confirm('حفظ الحد الأدنى '+min+' والحد الأعلى '+max+'؟'))return;
  b.disabled=true;
  try{
-  let res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})});
-  if(res.status===401&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})})}
+  let res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})});
+  if(res.status===401&&session.refresh){await auth({refresh_token:session.refresh},'refresh_token');res=await fetch(SB+'/rest/v1/hotel_inventory?id=eq.'+id,{method:'PATCH',headers:{apikey:KEY,Authorization:'Bearer '+session.access,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({reorder_level:min,max_level:max,updated_at:new Date().toISOString()})})}
   if(!res.ok)throw new Error((await res.text()).slice(0,200));
+  const updatedRows=await res.json().catch(()=>[]);if(!Array.isArray(updatedRows)||!updatedRows.length)throw new Error('لم يتم تحديث السجل. تأكد من صلاحية الحساب وحدّث الصفحة.');
   const row=DATA.inventory.find(x=>+x.id===id);if(row){row.reorder_level=min;row.max_level=max}
+  if(APP_USER&&APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b')DATA.thresholdAudit=await api('admin_audit_log?select=id,hotel_code,actor_email,operation,entity_id,old_data,new_data,created_at&table_name=eq.hotel_inventory&operation=eq.UPDATE&order=created_at.desc&limit=1000').catch(()=>DATA.thresholdAudit||[]);
   b.textContent='تم الحفظ ✓';setTimeout(()=>{if(b.isConnected)b.textContent='حفظ الحدود'},1500);render();
  }catch(err){alert('تعذّر حفظ الحدود: '+err.message)}
  finally{if(b.isConnected)b.disabled=false}
@@ -210,6 +213,8 @@ function render(){
  $('#thresholdTable').innerHTML=thresholdRows?'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><input id="thresholdSearch" type="search" placeholder="'+(lang==='en'?'Search item or hotel…':'ابحث باسم الصنف أو الفندق…')+'" style="flex:1;min-width:220px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink)"><span id="thresholdCount" class="stamp" style="margin:0"></span></div><table><tr><th>الصنف</th><th>الفندق</th><th>الرصيد</th><th>الحد الأدنى / إعادة الطلب</th><th>الحد الأعلى</th><th>إجراء</th></tr>'+thresholdRows+'</table>':'<div class="empty">لا توجد سجلات مخزون لتحديد الحدود لها</div>';
  const thresholdSearch=$('#thresholdSearch'),thresholdCount=$('#thresholdCount');
  if(thresholdSearch){const thresholdTr=[...document.querySelectorAll('[data-threshold-row]')];const filterThreshold=()=>{const q=norm(thresholdSearch.value);let shown=0,matches=0;thresholdTr.forEach(tr=>{const match=!q||norm(tr.dataset.search).includes(q);if(match)matches++;const visible=match&&(!!q||shown<5);tr.hidden=!visible;if(visible)shown++});thresholdCount.textContent=q?(lang==='en'?matches+' results':'عدد النتائج: '+matches):(lang==='en'?'Showing '+shown+' of '+thresholdTr.length:'عرض '+shown+' من '+thresholdTr.length)};thresholdSearch.addEventListener('input',filterThreshold);filterThreshold()}
+ const auditSection=$('#thresholdAuditSection');
+ if(auditSection){const isOwner=APP_USER&&APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b';auditSection.hidden=!isOwner;if(isOwner){const entries=(DATA.thresholdAudit||[]).filter(x=>{const o=x.old_data||{},n=x.new_data||{};return Number(o.reorder_level||0)!==Number(n.reorder_level||0)||Number(o.max_level||0)!==Number(n.max_level||0)});const rows=entries.map(x=>{const o=x.old_data||{},n=x.new_data||{},hotel=(DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code||'—';return '<tr><td>'+new Date(x.created_at).toLocaleString('ar-LY')+'</td><td>'+esc(x.actor_email||'غير معروف')+'</td><td>'+esc(hotel)+'</td><td>'+esc(itemName(x.entity_id,false))+'</td><td>'+esc(o.reorder_level??'—')+' ← '+esc(n.reorder_level??'—')+'</td><td>'+esc(o.max_level??'—')+' ← '+esc(n.max_level??'—')+'</td></tr>'}).join('');$('#thresholdAuditTable').innerHTML=rows?'<table><tr><th>التاريخ والوقت</th><th>المنفذ</th><th>الفندق</th><th>الصنف</th><th>الحد الأدنى (قديم ← جديد)</th><th>الحد الأعلى (قديم ← جديد)</th></tr>'+rows+'</table>':'<div class="empty">لا توجد تعديلات على الحدود حتى الآن</div>'}}
 
  $('#updated').textContent='آخر تحديث: '+new Date().toLocaleString('ar-LY')+' · البيانات للعرض فقط';
 }
@@ -239,7 +244,10 @@ async function load(){
    api('deliveries?select=key,hotel,dept,no,ds,dn,code,status,rev,sent_at&order=updated_at.desc&limit=5000'),
    api('hotel_inventory?select=id,hotel_code,item_id,quantity,reorder_level,max_level,unit&limit=10000')
   ]);
-  DATA={orders:out[0],items:out[1],hotels:out[2],prices:out[3],links:out[4],deliveries:out[5],inventory:out[6]};
+  DATA={orders:out[0],items:out[1],hotels:out[2],prices:out[3],links:out[4],deliveries:out[5],inventory:out[6],thresholdAudit:[]};
+  if(APP_USER&&APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'){
+   DATA.thresholdAudit=await api('admin_audit_log?select=id,hotel_code,actor_email,operation,entity_id,old_data,new_data,created_at&table_name=eq.hotel_inventory&operation=eq.UPDATE&order=created_at.desc&limit=1000').catch(()=>[]);
+  }
   const sel=$('#hotel'),old=sel.value;sel.innerHTML='<option value="">كل الفنادق</option>'+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+(h.active===false?' (موقوف)':'')+'</option>').join('');sel.value=old;
   render();
  }catch(e){$('#updated').textContent='تعذّر تحميل البيانات: '+e.message}
@@ -254,7 +262,7 @@ async function checkAdminStatus(){
  const p=APP_USER.permissions||{};
  const required=['orders','items','hotels','prices','deliveries','inventory','reports'];
  if(required.some(k=>!p[k]||p[k].read!==true))throw new Error('الحساب لا يملك صلاحية عرض جميع بيانات لوحة الإدارة.');
- canEditThresholds=!APP_USER.is_paralyzed&&!!(p.inventory&&(p.inventory.thresholds===true||p.inventory.update===true));
+ canEditThresholds=APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'||(!APP_USER.is_paralyzed&&!!(p.inventory&&(p.inventory.thresholds===true||p.inventory.update===true)));
 }
 async function start(){if(session&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}lastActive=Date.now();try{sessionStorage.setItem('store_admin_last_active',String(lastActive))}catch(e){}$('#login').hidden=true;$('#app').hidden=false;await load() }
 
