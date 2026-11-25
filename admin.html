@@ -250,7 +250,7 @@ async function load(){
   if(APP_USER&&APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'){
    DATA.thresholdAudit=await api('admin_audit_log?select=id,hotel_code,actor_email,operation,entity_id,old_data,new_data,created_at&table_name=eq.hotel_inventory&operation=eq.UPDATE&order=created_at.desc&limit=1000').catch(()=>[]);
   }
-  const sel=$('#hotel'),old=sel.value;sel.innerHTML='<option value="">كل الفنادق</option>'+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+(h.active===false?' (موقوف)':'')+'</option>').join('');sel.value=old;
+  const sel=$('#hotel'),old=sel.value,isOwner=APP_USER&&APP_USER.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b';sel.innerHTML=(isOwner?'<option value="">كل الفنادق</option>':'')+DATA.hotels.map(h=>'<option value="'+esc(h.code)+'">'+esc(h.name)+(h.active===false?' (موقوف)':'')+'</option>').join('');sel.value=isOwner?old:(DATA.hotels[0]&&DATA.hotels[0].code||'');
   render();
  }catch(e){$('#updated').textContent='تعذّر تحميل البيانات: '+e.message}
  finally{$('#refresh').disabled=false}
