@@ -246,7 +246,7 @@ const LANG_PAIRS=[
   ['سلّم كلمة المرور المؤقتة للمستخدم بأمان.','Share the temporary password securely with the user.'],
   ['تم تعيين كلمة المرور المؤقتة الجديدة.','The new temporary password has been set.'],
   ['تعديل الحدود','Edit limits'],['المخزون — تعديل الحدود','Inventory — Edit limits'],['يسمح بتغيير الحد الأدنى والأعلى فقط','Allows changing minimum and maximum levels only'],
-  ['استلام منتجات','Receive items'],
+  ['استلام منتجات','Receive items'],['استلام المنتجات','Receive-only permission'],['إضافة كميات فقط دون صرف أو تسوية','Add quantities only; no issuing or adjustments'],
  ['سجل الحركة','Movement history'],['تصدير Excel','Export Excel'],['سجل حركة الصنف','Item Movement History'],['ابحث في نوع الحركة أو الملاحظة أو المرجع','Search movement type, note or reference'],['تحميل CSV','Download CSV'],['استلام / إضافة','Receipt / Add'],['تسوية','Adjustment'],['عدد الحركات المعروضة:','Movements shown:'],['حد العرض 1000 حركة','Maximum display: 1,000 movements'],['اختر الأصناف واكتب الكميات المستلمة. سيتم تحديث رصيد الفندق مباشرة عند الحفظ.','Choose items and enter received quantities. Hotel stock will update immediately when saved.'],['إغلاق','Close'],['اختر الصنف','Select item'],['الكمية','Quantity'],['حذف','Remove'],['+ إضافة صنف','+ Add item'],['حفظ الاستلام','Save receipt'],['جارٍ الحفظ…','Saving…'],['اختر صنفًا وأدخل كمية صحيحة لكل سطر','Choose an item and enter a valid quantity for each row'],['الصنف مكرر. اجمع كميته في سطر واحد.','Duplicate item. Combine its quantity into one row.'],['تم حفظ الاستلام وتحديث رصيد ','Receipt saved and stock updated for '],[' صنف.',' items.'],['تعذّر الحفظ:','Could not save:'],['لا توجد أصناف مخصصة لهذا الفندق','No items are assigned to this hotel']
 
 ];
@@ -308,7 +308,7 @@ setInterval(()=>{if(S&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت ال�
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&Date.now()-lastActive>IDLE_LIMIT)logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى')});
 
 const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-let S=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GH_CONFIGURED=false,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],HOTEL_PRICE_OVERRIDES=[],CTAB='match',INVENTORY=[],MOVEMENTS=[],INVERR='',INVENTORY_LOADED=false,AUDIT_LOADED=false,ACTIVE_TAB='s';
+let S=null,CURRENT_APP_USER=null,NM={},BASE=[],SH={},O=[],ITEMS=[],LICROW=null,DEL=[],REC=[],DELERR=false,GH_CONFIGURED=false,AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null},HOTELS=[],HSEL='',PRICES=[],LINKS=[],HOTEL_PRICE_OVERRIDES=[],CTAB='match',INVENTORY=[],MOVEMENTS=[],INVERR='',INVENTORY_LOADED=false,AUDIT_LOADED=false,ACTIVE_TAB='s';
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 let excelLoader=null;
 function ensureExcelJS(){if(window.ExcelJS)return Promise.resolve(window.ExcelJS);if(!excelLoader)excelLoader=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=()=>resolve(window.ExcelJS);s.onerror=()=>{excelLoader=null;reject(new Error('تعذّر تحميل مكتبة Excel. تحقق من الاتصال ثم حاول مجددًا.'))};document.head.appendChild(s)});return excelLoader;}
@@ -334,7 +334,7 @@ async function api(path,opt={},retry=true){
  const tx=await r.text();return tx?JSON.parse(tx):null;
 }
 function logout(m){
- S=null;USER_ROWS=[];USER_ACTIVITY=[];if(typeof AUDIT_LOG!=='undefined')AUDIT_LOG=[];if(typeof AUDIT_ERR!=='undefined')AUDIT_ERR='';
+ S=null;CURRENT_APP_USER=null;USER_ROWS=[];USER_ACTIVITY=[];if(typeof AUDIT_LOG!=='undefined')AUDIT_LOG=[];if(typeof AUDIT_ERR!=='undefined')AUDIT_ERR='';
  O=[];ITEMS=[];LICROW=null;DEL=[];REC=[];HOTELS=[];HSEL='';PRICES=[];LINKS=[];HOTEL_PRICE_OVERRIDES=[];INVENTORY=[];MOVEMENTS=[];NM={};BASE=[];SH={};AUTOCFG={enabled:false,time:'15:00',timezone:'Africa/Tripoli',enabled_at:null};GH_CONFIGURED=false;INVENTORY_LOADED=false;AUDIT_LOADED=false;ACTIVE_TAB='s';
  ['u','l','g','m','b','d','k'].forEach(function(t){const el=$('#'+t);if(el){el.innerHTML='';el.hidden=true}});
  try{sessionStorage.removeItem('s');sessionStorage.removeItem('store_last_active')}catch(e){}
@@ -407,6 +407,7 @@ async function start(){
  if(S&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}
  if(S){try{
   const state=await userAdmin('my_status');
+  CURRENT_APP_USER=state.user||null;
   if(!state.user||!state.user.is_active){logout('هذا الحساب موقوف. تواصل مع THEO.');return}
   if(state.user.must_change_password){
    const p=prompt('هذه كلمة مرور مؤقتة. أنشئ كلمة مرور جديدة (8 أحرف على الأقل):');
@@ -1065,9 +1066,9 @@ const UACTIONS={read:'عرض',create:'إضافة',update:'تعديل',delete:'ح
 function userActionLabel(module,action){return module==='inventory'&&action==='update'?'تعديل الكمية':UACTIONS[action]}
 let USER_ROWS=[],USER_ACTIVITY=[];
 async function userAdmin(action,payload={}){const r=await fetch(SB+'/functions/v1/sbfenv',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json'},body:JSON.stringify({action,...payload})});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(r.status===403?'يرجى التواصل مع THEO لإعطاء الصلاحيات اللازمة':(j.error||('HTTP '+r.status)));return j}
-function defaultPermissions(){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={read:true,create:false,update:false,delete:false}});p.inventory.thresholds=false;return p}
-function permissionEditor(p,ownerMode=false){p=p||{};const locked=['inventory.read','settings.read','audit.read'];return '<div class="wrap"><table><tr><th>القسم</th>'+Object.values(UACTIONS).map(x=>'<th>'+x+'</th>').join('')+'</tr>'+Object.entries(UMODULES).map(([m,n])=>'<tr><td>'+(m==='inventory'?'المخزون — تعديل الكمية':n)+'</td>'+Object.keys(UACTIONS).map(a=>{const key=m+'.'+a,isLocked=ownerMode&&locked.includes(key);return '<td style="text-align:center"><input type="checkbox" data-perm="'+key+'" '+(p[m]&&p[m][a]?'checked':'')+(isLocked?' disabled title="صلاحية أساسية لا يمكن إيقافها"':'')+'></td>'}).join('')+'</tr>').join('')+'<tr><td><b>تعديل الحدود</b><br><small>المخزون — يسمح بتغيير الحد الأدنى والأعلى فقط</small></td><td colspan="4" style="text-align:center"><input type="checkbox" data-perm="inventory.thresholds" '+(p.inventory&&p.inventory.thresholds?'checked':'')+'></td></tr></table></div>'}
-function readPermissions(root){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={};Object.keys(UACTIONS).forEach(a=>{const el=root.querySelector('[data-perm="'+m+'.'+a+'"]');p[m][a]=!!(el&&el.checked)})});const t=root.querySelector('[data-perm="inventory.thresholds"]');p.inventory.thresholds=!!(t&&t.checked);return p}
+function defaultPermissions(){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={read:true,create:false,update:false,delete:false}});p.inventory.thresholds=false;p.inventory.receive=false;return p}
+function permissionEditor(p,ownerMode=false){p=p||{};const locked=['inventory.read','settings.read','audit.read'];return '<div class="wrap"><table><tr><th>القسم</th>'+Object.values(UACTIONS).map(x=>'<th>'+x+'</th>').join('')+'</tr>'+Object.entries(UMODULES).map(([m,n])=>'<tr><td>'+(m==='inventory'?'المخزون — تعديل الكمية':n)+'</td>'+Object.keys(UACTIONS).map(a=>{const key=m+'.'+a,isLocked=ownerMode&&locked.includes(key);return '<td style="text-align:center"><input type="checkbox" data-perm="'+key+'" '+(p[m]&&p[m][a]?'checked':'')+(isLocked?' disabled title="صلاحية أساسية لا يمكن إيقافها"':'')+'></td>'}).join('')+'</tr>').join('')+'<tr><td><b>استلام المنتجات</b><br><small>إضافة كميات فقط دون صرف أو تسوية</small></td><td colspan="4" style="text-align:center"><input type="checkbox" data-perm="inventory.receive" '+(p.inventory&&p.inventory.receive?'checked':'')+'></td></tr><tr><td><b>تعديل الحدود</b><br><small>المخزون — يسمح بتغيير الحد الأدنى والأعلى فقط</small></td><td colspan="4" style="text-align:center"><input type="checkbox" data-perm="inventory.thresholds" '+(p.inventory&&p.inventory.thresholds?'checked':'')+'></td></tr></table></div>'}
+function readPermissions(root){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={};Object.keys(UACTIONS).forEach(a=>{const el=root.querySelector('[data-perm="'+m+'.'+a+'"]');p[m][a]=!!(el&&el.checked)})});const t=root.querySelector('[data-perm="inventory.thresholds"]');p.inventory.thresholds=!!(t&&t.checked);const r=root.querySelector('[data-perm="inventory.receive"]');p.inventory.receive=!!(r&&r.checked);return p}
 async function loadUsers(){const result=await userAdmin('list');USER_ROWS=result.users||[];USER_ACTIVITY=result.activity||[];drawUsers()}
 function drawUsers(){
  const root=$('#u');if(!root)return;
