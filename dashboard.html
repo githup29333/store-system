@@ -122,6 +122,15 @@ html[data-theme="dark"] #sideNav{background:var(--card);border-color:var(--ln)}
 html[data-theme="dark"] #sideNav button[data-t]{background:#172638!important;color:var(--ink)!important;border-color:var(--ln)!important}
 html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;color:#a4e0d9!important}
 @media(max-width:700px){#menuToggle{order:3}header h1{order:1}header select{order:2}}
+
+/* In-app notices follow the selected interface language. */
+#systemNotice{position:fixed;z-index:3000;top:18px;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 28px));padding:13px 17px;border:1px solid #ffffff22;border-inline-start:4px solid var(--gold);border-radius:14px;background:#142335;color:#fff;box-shadow:0 16px 44px #10182738;font:600 14px/1.7 Tajawal,Arial,sans-serif;text-align:start;white-space:pre-line;animation:noticeIn .2s ease both}
+#systemNotice[data-kind="success"]{border-inline-start-color:#55c58d}
+#systemNotice[data-kind="error"]{border-inline-start-color:#f07872}
+#systemNotice[hidden]{display:none!important}
+@keyframes noticeIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(prefers-reduced-motion:reduce){#systemNotice{animation:none}}
+
 </style>
 <script>try{if(localStorage.getItem("store-system-theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 </head>
@@ -154,6 +163,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
  <footer style="text-align:center;color:#5d6b78;font-size:12px;padding:12px" id="credit"></footer>
 </div>
 <div id="modal" hidden><div id="mb"></div></div>
+<div id="systemNotice" hidden role="status" aria-live="polite" aria-atomic="true"></div>
 
  <script src="inventory.js"></script>
  <script src="monthly-cost.js"></script>
@@ -200,6 +210,41 @@ const LANG_PAIRS=[
  ['لا توجد بيانات مرسلة','No sent data'],['القيم بالأسعار الحالية؛ الأصناف غير المسعّرة مستبعدة.','Values use current prices; unpriced items are excluded.'],
  ['كل الأقسام','All Departments'],['زيادة ','Increase '],['انخفاض ','Decrease '],['% عن الفترة السابقة','% vs previous period'],['لا يمكن حساب نسبة التغير لأن تكلفة الفترة السابقة صفر','Cannot calculate percentage change because the previous period cost is zero'],['لا توجد بيانات في الفترة السابقة للمقارنة','No previous-period data for comparison'],['مؤشرات ذكية للفترة المحددة','Smart indicators for the selected period'],['مقارنة التكلفة بالفترة السابقة (','Cost comparison with previous period ('],['متوسط تكلفة يوم الصرف المسجل','Average cost per recorded issue day'],['أعلى صنف تكلفة:','Highest-cost item:'],['تغطية التسعير:','Pricing coverage:'],['سطر بلا سعر من ','unpriced lines out of '],[' يوجد ',' includes '],[' سطرًا احتُسب بسعر تقديري ويحتاج مراجعة.',' lines were calculated using estimated prices and need review.'],['مركز التحليلات والتقارير','Analytics & Reports Center'],['تحليل الطلبات المكتملة والمرسلة فقط — الأسعار الحالية','Analysis of completed and sent requests only — current prices'],['تصدير Excel','Export Excel'],['لا توجد بيانات ضمن الفترة المحددة','No data in the selected period'],['تفاصيل الطلبات الداخلة في التقرير','Details of requests included in the report'],['التكلفة د.ل','Cost (LYD)'],['أسطر بلا سعر','Unpriced Lines'],['لا توجد عمليات مسجلة بعد','No operations recorded yet'],['تعذّر تحميل السجل: ','Could not load activity log: '],['سجل العمليات والتغييرات','Activity & Change Log'],['آخر نشاط للمستخدمين','Recent User Activity'],['المنفذ','Performed By'],['العملية','Action'],['المستهدف','Target'],['لا توجد أنشطة','No activity'],['آخر تغييرات البيانات','Recent Data Changes'],['لا توجد تغييرات مسجلة','No changes recorded'],['جارٍ جلب مؤشرات التشغيل وسجل النشاط من الخادم…','Loading operational metrics and activity from server…'],['النسخ الاحتياطي','Backup'],['إنشاء نسخة JSON من بيانات التشغيل المسموح بها، أو فحص نسخة موجودة دون تعديل قاعدة البيانات.','Create a JSON backup of permitted operational data, or inspect an existing backup without changing the database.'],['إنشاء وتنزيل نسخة الآن','Create and Download Backup Now'],['فحص ملف نسخة احتياطية','Inspect Backup File'],['لا توجد عملية جارية.','No operation in progress.'],['تم تجهيز النسخة وتنزيلها. راجع مكان التنزيل في جهازك.','The backup is ready and downloaded. Check your device downloads.'],['ملخص النسخة','Backup Summary'],['عدد السجلات:','Record Count:'],['الجداول:','Tables:'],['التاريخ:','Date:'],['فشل إنشاء النسخة: ','Backup creation failed: '],['جارٍ فحص الملف…','Inspecting file…'],['صيغة النسخة غير معروفة.','Unknown backup format.'],['قائمة الجداول داخل النسخة غير مطابقة.','The table list in the backup does not match.'],['قائمة أعداد السجلات غير مطابقة.','The record counts do not match.'],['جدول مفقود أو غير صالح: ','Missing or invalid table: '],['النسخة تحتوي جدولاً غير معتمد: ','The backup contains an unsupported table: '],['عدد السجلات لا يطابق جدول ','Record count does not match table ']
 
+
+  ['تم تغيير كلمة المرور بنجاح.','Password changed successfully.'],
+  ['تعذّر تصديق الكل: ','Could not approve all: '],['تعذّر الحذف: ','Could not delete: '],
+  ['حذف الصنف نهائياً؟ الأجهزة تختفي منها بعد التحديث.','Delete this item permanently? It will disappear from devices after refresh.'],
+  ['تعذّر التنفيذ: ','Action failed: '],['أضف مستلماً من نوع To لفندق ','Add a To recipient for hotel '],
+  ['تمت الموافقة. ','Approved. '],['تعذّرت الموافقة: ','Approval failed: '],
+  ['حدّد طلباً واحداً على الأقل','Select at least one request'],['أضف مستلماً من نوع To للفندق: ','Add a To recipient for hotel: '],
+  ['تمت الموافقة على ','Approved '],[' طلب (كل طلب بإيميل). ',' requests (one email per request). '],
+  ['حدّد طلبين على الأقل للدمج','Select at least two requests to merge'],
+  ['الدمج لفندق واحد فقط. حدّد طلبات فندق واحد.','Merging is limited to one hotel. Select requests from a single hotel.'],
+  ['تم دمج ','Merged '],[' طلب في ملف واحد (',' requests into one file ('],['تعذّر الدمج: ','Merge failed: '],
+  ['تم حفظ المفتاح بأمان على الخادم','The key was saved securely on the server'],
+  ['سيتم إرسال رسالة اختبار واحدة فقط إلى عنوان الاختبار المحدد في إعدادات GitHub، ولن يتم إرسال الطلبات المنتظرة. متابعة؟','Only one test email will be sent to the test address configured in GitHub settings. Pending requests will not be sent. Continue?'],
+  ['تم تشغيل اختبار البريد. تحقق من صندوق الاختبار وسجل GitHub.','The email test was started. Check the test inbox and GitHub log.'],
+  ['أضف مفتاح GitHub أولاً','Add the GitHub token first'],['تعذّر تشغيل الاختبار (','Could not start the test ('],
+  ['تم تشغيل الإرسال اليدوي للطلبات المنتظرة الآن','Manual dispatch for pending requests has started'],
+  ['أضف المفتاح أولاً','Add the token first'],['تعذّر التشغيل (','Could not start ('],
+  ['لا يمكن تفعيل الإرسال التلقائي قبل نجاح اختبار البريد. اضغط «اختبار البريد» أولاً ثم حدّث اللوحة.','Automatic dispatch cannot be enabled until the email test succeeds. Click “Test Email” first, then refresh the dashboard.'],
+  ['وقت غير صالح','Invalid time'],['تم حفظ إعداد الإرسال التلقائي. سيعمل بعد الوقت المحدد للطلبات الجديدة فقط.','Automatic dispatch settings saved. It will run at the selected time for new requests only.'],
+  ['تم إيقاف الإرسال التلقائي','Automatic dispatch disabled'],['حذف هذا المستلم؟','Delete this recipient?'],
+  ['البريد غير صحيح','Invalid email address'],['لا توجد ملفات تكلفة محفوظة لفندق EBR.','No saved cost files found for hotel EBR.'],
+  ['إعادة حساب ','Recalculate '],[' ملف تكلفة سابق لفندق EBR بالأسعار الجديدة؟ لن يتم إرسال أي بريد.',' previous EBR cost files using the new prices? No email will be sent.'],
+  ['اكتمل تحديث ','Updated '],[' ملف تكلفة من ',' cost files out of '],['تعذّر تحديث: ','Failed to update: '],
+  ['لا توجد نتائج','No results'],['راجع الاسم والوحدة والسعر للصنف رقم ','Check the name, unit and price for item number '],
+  ['؛ لا يمكن حفظ قيمة غير صحيحة.','; an invalid value cannot be saved.'],['لا توجد تعديلات جديدة للحفظ.','There are no new changes to save.'],
+  ['سيتم حفظ ','Will save '],[' صنف دفعة واحدة. متابعة؟',' items in one batch. Continue?'],
+  ['تم حفظ ','Saved '],[' صنف.',' items.'],['تعذّر حفظ ','Could not save '],[' صنف: ',' items: '],
+  ['تمت مطابقة ','Matched '],[' صنف تلقائياً (بالكود أو بالاسم المطابق تماماً)',' items automatically (by code or exact name)'],
+  ['تم تخمين ','Estimated '],[' صنف من أصل ',' items out of '],[' (الباقي ما له صنف مشابه كافٍ بالمطابقة).',' (the remaining items had no sufficiently similar match).'],
+  ['تم حفظ الصلاحيات','Permissions saved'],['أكمل بيانات المستخدم الأربعة','Complete all four user fields'],
+  ['تم إنشاء الحساب.','Account created.'],['اسم المستخدم للتعريف: ','Username: '],['تسجيل الدخول بالبريد: ','Sign-in email: '],
+  ['سلّم كلمة المرور المؤقتة للمستخدم بأمان.','Share the temporary password securely with the user.'],
+  ['تم تعيين كلمة المرور المؤقتة الجديدة.','The new temporary password has been set.'],
+  ['المخزون — تعديل الحدود','Inventory — Edit limits'],['يسمح بتغيير الحد الأدنى والأعلى فقط','Allows changing minimum and maximum levels only']
+
 ];
 function translateValue(value){
  const pairs=APP_LANG==='en'?LANG_PAIRS:LANG_PAIRS.map(function(p){return [p[1],p[0]]});
@@ -208,6 +253,20 @@ function translateValue(value){
  pairs.forEach(function(p){if(out.includes(p[0]))out=out.split(p[0]).join(p[1])});
  return out;
 }
+
+function showSystemNotice(message){
+ const host=$('#systemNotice');if(!host)return;
+ const value=String(message==null?'':message);
+ host.textContent=translateValue(value);
+ const s=host.textContent;
+ host.dataset.kind=/تعذّر|فشل|غير صحيح|غير صالح|Could not|failed|Invalid|error/i.test(s)?'error':/تم |اكتمل|نجاح|Saved|Approved|success|Updated|Merged/i.test(s)?'success':'info';
+ host.hidden=false;
+ clearTimeout(showSystemNotice.timer);
+ showSystemNotice.timer=setTimeout(()=>{host.hidden=true},6500);
+}
+$('#systemNotice').addEventListener('click',()=>{$('#systemNotice').hidden=true;clearTimeout(showSystemNotice.timer)});
+window.alert=function(message){showSystemNotice(message)};
+
 function translatePage(root){
  if(!root)return;
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
@@ -991,15 +1050,15 @@ const UMODULES={orders:'الطلبات',items:'الأصناف',inventory:'الم
 const UACTIONS={read:'عرض',create:'إضافة',update:'تعديل',delete:'حذف'};
 let USER_ROWS=[],USER_ACTIVITY=[];
 async function userAdmin(action,payload={}){const r=await fetch(SB+'/functions/v1/sbfenv',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+(S&&S.a),'Content-Type':'application/json'},body:JSON.stringify({action,...payload})});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(r.status===403?'يرجى التواصل مع THEO لإعطاء الصلاحيات اللازمة':(j.error||('HTTP '+r.status)));return j}
-function fullPermissions(){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={};Object.keys(UACTIONS).forEach(a=>p[m][a]=true)});p.inventory.thresholds=true;return p}
-function permissionEditor(p){p=p||{};return '<div class="wrap"><table><tr><th>القسم</th>'+Object.values(UACTIONS).map(x=>'<th>'+x+'</th>').join('')+'</tr>'+Object.entries(UMODULES).map(([m,n])=>'<tr><td>'+n+'</td>'+Object.keys(UACTIONS).map(a=>'<td style="text-align:center"><input type="checkbox" data-perm="'+m+'.'+a+'" '+(p[m]&&p[m][a]?'checked':'')+'></td>').join('')+'</tr>').join('')+'<tr><td><b>المخزون — تعديل الحدود</b><br><small>يسمح بتغيير الحد الأدنى والأعلى فقط</small></td><td colspan="4" style="text-align:center"><input type="checkbox" data-perm="inventory.thresholds" '+(p.inventory&&p.inventory.thresholds?'checked':'')+'></td></tr></table></div>'}
+function defaultPermissions(){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={read:true,create:false,update:false,delete:false}});p.inventory.thresholds=false;return p}
+function permissionEditor(p){p=p||{};return '<div class="wrap"><table><tr><th>القسم</th>'+Object.values(UACTIONS).map(x=>'<th>'+x+'</th>').join('')+'</tr>'+Object.entries(UMODULES).map(([m,n])=>'<tr><td>'+n+'</td>'+Object.keys(UACTIONS).map(a=>'<td style="text-align:center"><input type="checkbox" data-perm="'+m+'.'+a+'" '+(p[m]&&p[m][a]?'checked':'')+'></td>').join('')+'</tr>').join('')+'<tr><td><b>تعديل الحدود</b><br><small>المخزون — يسمح بتغيير الحد الأدنى والأعلى فقط</small></td><td colspan="4" style="text-align:center"><input type="checkbox" data-perm="inventory.thresholds" '+(p.inventory&&p.inventory.thresholds?'checked':'')+'></td></tr></table></div>'}
 function readPermissions(root){const p={};Object.keys(UMODULES).forEach(m=>{p[m]={};Object.keys(UACTIONS).forEach(a=>{const el=root.querySelector('[data-perm="'+m+'.'+a+'"]');p[m][a]=!!(el&&el.checked)})});const t=root.querySelector('[data-perm="inventory.thresholds"]');p.inventory.thresholds=!!(t&&t.checked);return p}
 async function loadUsers(){const result=await userAdmin('list');USER_ROWS=result.users||[];USER_ACTIVITY=result.activity||[];drawUsers()}
 function drawUsers(){
  const root=$('#u');if(!root)return;
  const rows=USER_ROWS.map(x=>'<tr><td><b>'+esc(x.display_name)+'</b><br><small dir="ltr">'+esc(x.username)+'</small></td><td dir="ltr">'+esc(x.email||'—')+'</td><td>'+(x.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'?'<span class="tag t-ok">المالك الأعلى</span>':x.is_paralyzed?'<span class="tag t-w">مشلول — مشاهدة فقط</span>':x.is_active?'<span class="tag t-ok">فعّال</span>':'<span class="tag t-bad">موقوف</span>')+'</td><td>'+(x.must_change_password?'<span class="tag t-w">كلمة مرور مؤقتة</span>':'—')+'</td><td>'+(x.auth_user_id==='c7562642-7c60-461b-ac8c-dddcee41d22b'?'—':'<button class="btn alt" data-uedit="'+x.id+'">تعديل الصلاحيات</button> <button class="btn '+(x.is_paralyzed?'':'bad')+'" data-uparalyze="'+x.id+'" data-val="'+(!x.is_paralyzed)+'">'+(x.is_paralyzed?'إلغاء الشلل':'شلل')+'</button> <button class="btn alt" data-ureset="'+x.id+'">تعيين كلمة مرور</button>')+'</td></tr>').join('');
  const logs=USER_ACTIVITY.map(x=>'<tr><td>'+new Date(x.created_at).toLocaleString('ar-LY')+'</td><td>'+esc(x.actor_username)+'</td><td>'+esc(x.action)+'</td><td>'+esc(x.target_username||'—')+'</td><td><code>'+esc(JSON.stringify(x.details||{}))+'</code></td></tr>').join('');
- root.innerHTML='<h2 style="margin-top:0">إدارة المستخدمين والصلاحيات</h2><p class="st">هذه الصفحة للمالك THEO فقط. زر الشلل يسحب صلاحيات التشغيل من قاعدة البيانات ويترك الحساب في وضع المشاهدة فقط. لا يمكن تعديل حساب المالك الأعلى.</p><h3>إضافة مستخدم جديد</h3><div class="grid"><label>اسم المستخدم (للتعريف)<input id="un" type="text" placeholder="مثال: malak" style="display:block;width:100%"></label><label>الاسم الظاهر<input id="ud" type="text" placeholder="الاسم" style="display:block;width:100%"></label><label>البريد الإلكتروني لتسجيل الدخول<input id="ue" type="email" placeholder="user@example.com" dir="ltr" style="display:block;width:100%"></label><label>كلمة المرور المؤقتة<input id="up" type="password" minlength="8" placeholder="8 أحرف على الأقل" dir="ltr" style="display:block;width:100%"></label></div><p style="color:var(--mut)">حدد الصلاحيات الأولية:</p><div id="newPerm">'+permissionEditor(fullPermissions())+'</div><div class="row"><button class="btn" id="ucreate">إنشاء المستخدم</button></div><h3>المستخدمون الحاليون</h3><div class="wrap"><table><tr><th>المستخدم</th><th>البريد</th><th>الحالة</th><th>الأمان</th><th>الإجراءات</th></tr>'+rows+'</table></div><h3>سجل نشاط المستخدمين — خاص بالمالك</h3><div class="wrap"><table><tr><th>التاريخ</th><th>المنفذ</th><th>العملية</th><th>المستهدف</th><th>التفاصيل</th></tr>'+logs+'</table></div>';
+ root.innerHTML='<h2 style="margin-top:0">إدارة المستخدمين والصلاحيات</h2><p class="st">هذه الصفحة للمالك THEO فقط. زر الشلل يسحب صلاحيات التشغيل من قاعدة البيانات ويترك الحساب في وضع المشاهدة فقط. لا يمكن تعديل حساب المالك الأعلى.</p><h3>إضافة مستخدم جديد</h3><div class="grid"><label>اسم المستخدم (للتعريف)<input id="un" type="text" placeholder="مثال: malak" style="display:block;width:100%"></label><label>الاسم الظاهر<input id="ud" type="text" placeholder="الاسم" style="display:block;width:100%"></label><label>البريد الإلكتروني لتسجيل الدخول<input id="ue" type="email" placeholder="user@example.com" dir="ltr" style="display:block;width:100%"></label><label>كلمة المرور المؤقتة<input id="up" type="password" minlength="8" placeholder="8 أحرف على الأقل" dir="ltr" style="display:block;width:100%"></label></div><p style="color:var(--mut)">حدد الصلاحيات الأولية:</p><div id="newPerm">'+permissionEditor(defaultPermissions())+'</div><div class="row"><button class="btn" id="ucreate">إنشاء المستخدم</button></div><h3>المستخدمون الحاليون</h3><div class="wrap"><table><tr><th>المستخدم</th><th>البريد</th><th>الحالة</th><th>الأمان</th><th>الإجراءات</th></tr>'+rows+'</table></div><h3>سجل نشاط المستخدمين — خاص بالمالك</h3><div class="wrap"><table><tr><th>التاريخ</th><th>المنفذ</th><th>العملية</th><th>المستهدف</th><th>التفاصيل</th></tr>'+logs+'</table></div>';
 }
 async function editUserPermissions(id){const u=USER_ROWS.find(x=>x.id===id);if(!u)return;const holder=document.createElement('div');holder.innerHTML=permissionEditor(u.permissions);const modal=$('#mb');modal.innerHTML='<h3>صلاحيات '+esc(u.username)+'</h3><label>الاسم الظاهر<input id="editDisplay" value="'+esc(u.display_name)+'" style="width:100%"></label>'+holder.innerHTML+'<div class="row" style="margin-top:12px"><button class="btn" id="saveUserPerm">حفظ</button><button class="btn alt" id="cancelUserPerm">إلغاء</button></div>';$('#modal').hidden=false;$('#cancelUserPerm').onclick=()=>$('#modal').hidden=true;$('#saveUserPerm').onclick=async()=>{try{await userAdmin('update',{id,display_name:$('#editDisplay').value.trim(),permissions:readPermissions(modal)});$('#modal').hidden=true;await loadUsers();alert('تم حفظ الصلاحيات')}catch(e){alert('تعذّر الحفظ: '+e.message)}}}
 $('#u').onclick=async e=>{const b=e.target.closest('button');if(!b)return;try{
