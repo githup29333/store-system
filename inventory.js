@@ -9,7 +9,7 @@ function drawV(){
  var rows=items.map(function(it){var r=byId.get(it.id),link=LINKS.find(function(l){return l.item_id===it.id&&l.price_id}),p=link&&PRICES.find(function(z){return z.id===link.price_id&&!z.archived});return {it:it,r:r,qty:+(r&&r.quantity||0),min:+(r&&r.reorder_level||0),unit:(r&&r.unit)||(p&&p.unit)||'قطعة'}}).filter(function(x){return !q||(x.it.ar+' '+x.it.en+' '+x.it.sku+' '+x.it.code).toLowerCase().includes(q)});
  var low=rows.filter(function(x){return x.r&&x.min>0&&x.qty<=x.min}).length,zero=rows.filter(function(x){return x.r&&x.qty<=0}).length;
  var recent=MOVEMENTS.filter(function(x){return x.hotel_code===h}).slice(0,12);
- var html='<div class="row"><b style="font-size:18px;flex:1">إدارة المخزون</b><button class="btn alt" id="vscan">مسح QR بالكاميرا</button><button class="btn alt" id="vtemplate">تحميل نموذج CSV</button><button class="btn" id="vreport">تقرير المخزون Excel</button><button class="btn alt" id="vimport">استيراد أرصدة CSV</button><select id="vh">'+HOTELS.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===h?'selected':'')+'>'+esc(x.name)+' ('+esc(x.code)+')</option>'}).join('')+'</select><button class="btn alt" id="vrefresh">تحديث</button></div>';
+ var html='<div class="row"><b style="font-size:18px;flex:1">إدارة المخزون</b><button class="btn" id="vreceive">استلام منتجات</button><button class="btn alt" id="vscan">مسح QR بالكاميرا</button><button class="btn alt" id="vtemplate">تحميل نموذج CSV</button><button class="btn" id="vreport">تقرير المخزون Excel</button><button class="btn alt" id="vimport">استيراد أرصدة CSV</button><select id="vh">'+HOTELS.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===h?'selected':'')+'>'+esc(x.name)+' ('+esc(x.code)+')</option>'}).join('')+'</select><button class="btn alt" id="vrefresh">تحديث</button></div>';
  html+='<input type="file" id="vfile" accept=".csv,text/csv" hidden>';
  html+='<div class="grid"><div class="kpi"><b>'+rows.length+'</b>أصناف الفندق</div><div class="kpi"><b>'+records.length+'</b>أصناف لها رصيد مسجل</div><div class="kpi"><b style="color:var(--warn)">'+low+'</b>تحت حد إعادة الطلب</div><div class="kpi"><b style="color:var(--bad)">'+zero+'</b>رصيد صفر</div></div>';
  html+='<p style="color:var(--mut)">الرصيد مستقل لكل فندق. نزّل نموذج CSV لتعبئة أرصدة الأصناف وحدود إعادة الطلب دفعة واحدة. الاستيراد يستبدل الرصيد الحالي للصنف ويسجل حركة تسوية؛ </p>';
@@ -103,6 +103,28 @@ async function startVScan(){
 }
 async function printItemQR(id){var it=ITEMS.find(function(x){return x.id===id});if(!it||!it.sku)return alert('لا يوجد كود داخلي لهذا الصنف');try{await ensureQRCode()}catch(e){return alert(e.message)}var qr=qrcode(0,'M');qr.addData(it.sku);qr.make();var w=window.open('','_blank','width=420,height=520');if(!w)return alert('اسمح بالنوافذ المنبثقة لطباعة الملصق');w.document.write('<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>ملصق صنف</title><body style="font-family:Tahoma,Arial;text-align:center;padding:18px"><h3>'+esc(it.ar)+'</h3><p dir="ltr">'+esc(it.en)+'</p>'+qr.createSvgTag(5,0)+'<h3 dir="ltr">'+esc(it.sku)+'</h3><script>window.onload=function(){window.print()}</script></body></html>');w.document.close()}
 async function refreshInventory(){var data=await Promise.all([api('hotel_inventory?select=*&limit=5000'),api('hotel_stock_movements?select=*&order=created_at.desc&limit=200')]);INVENTORY=data[0];MOVEMENTS=data[1];INVERR='';drawV();}
+
+function openReceivingModal(){
+ var h=invHotel(),available=ITEMS.filter(function(it){return !it.hotels||!it.hotels.length||it.hotels.includes(h)});
+ if(!available.length)return alert('لا توجد أصناف مخصصة لهذا الفندق');
+ var modal=document.createElement('div');modal.id='vReceivingModal';modal.style='position:fixed;inset:0;z-index:9998;background:#0009;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto';
+ modal.innerHTML='<div style="background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(760px,100%);max-height:92vh;overflow:auto"><div class="row"><h3 style="flex:1;margin:0">استلام منتجات</h3><button class="btn alt" id="vrClose">إغلاق</button></div><p style="color:var(--mut)">اختر الأصناف واكتب الكميات المستلمة. سيتم تحديث رصيد الفندق مباشرة عند الحفظ.</p><div id="vrRows"></div><div class="row" style="margin-top:12px"><button class="btn alt" id="vrAdd">+ إضافة صنف</button><span style="flex:1"></span><button class="btn" id="vrSave">حفظ الاستلام</button></div><p id="vrMsg" style="color:var(--mut)"></p></div>';
+ document.body.appendChild(modal);
+ var rows=modal.querySelector('#vrRows'),opt='<option value="">اختر الصنف</option>'+available.map(function(it){return '<option value="'+it.id+'">'+esc(it.ar)+(it.en?' — '+esc(it.en):'')+'</option>'}).join('');
+ function addRow(){var line=document.createElement('div');line.className='row';line.style='gap:8px;margin-top:9px';line.innerHTML='<select data-item style="flex:2;min-width:220px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)">'+opt+'</select><input data-qty type="number" min="0.001" step="0.001" placeholder="الكمية" style="width:125px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)"><button class="btn alt" data-remove>حذف</button>';rows.appendChild(line);line.querySelector('[data-remove]').onclick=function(){line.remove()}}
+ addRow();modal.querySelector('#vrAdd').onclick=addRow;modal.querySelector('#vrClose').onclick=function(){modal.remove()};
+ rows.addEventListener('change',function(e){if(!e.target.matches('[data-item]'))return;var id=+e.target.value,it=available.find(function(x){return x.id===id}),r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===id}),link=LINKS.find(function(x){return x.item_id===id&&x.price_id}),p=link&&PRICES.find(function(x){return x.id===link.price_id&&!x.archived});e.target.closest('.row').dataset.unit=(r&&r.unit)||(p&&p.unit)||'قطعة'});
+ modal.querySelector('#vrSave').onclick=async function(){
+  var lines=Array.from(rows.children),seen=new Set(),payload=[];
+  for(var line of lines){var id=+(line.querySelector('[data-item]').value||0),q=Number(line.querySelector('[data-qty]').value),unit=line.dataset.unit||'قطعة';
+   if(!id||!Number.isFinite(q)||q<=0)return alert('اختر صنفًا وأدخل كمية صحيحة لكل سطر');
+   if(seen.has(id))return alert('الصنف مكرر. اجمع كميته في سطر واحد.');seen.add(id);payload.push({hotel_code:h,item_id:id,movement_type:'in',quantity:q,unit:unit,note:'استلام منتجات',reference:'REC-'+Date.now()});
+  }
+  var save=modal.querySelector('#vrSave'),msg=modal.querySelector('#vrMsg');save.disabled=true;save.textContent='جارٍ الحفظ…';
+  try{await api('hotel_stock_movements',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(payload)});await refreshInventory();modal.remove();alert('تم حفظ الاستلام وتحديث رصيد '+payload.length+' صنف.')}
+  catch(err){msg.textContent='تعذّر الحفظ: '+err.message;save.disabled=false;save.textContent='حفظ الاستلام'}
+ };
+}
 document.querySelector('#v').addEventListener('change',function(e){if(e.target.id==='vh'){VLOW=false;drawV()}if(e.target.id==='vfile'&&e.target.files&&e.target.files[0])importInventoryCsv(e.target.files[0])});
 document.querySelector('#v').addEventListener('input',function(e){if(e.target.id==='vq'){var q=e.target.value.trim().toLowerCase();document.querySelectorAll('#vrows tr[data-search]').forEach(function(r){r.hidden=(VLOW&&r.dataset.low!=='1')||!r.dataset.search.includes(q)})}});
 document.querySelector('#v').addEventListener('click',async function(e){
@@ -113,6 +135,7 @@ document.querySelector('#v').addEventListener('click',async function(e){
   if(b.id==='vreport'){await downloadInventoryReport();return}
   if(b.id==='vimport'){document.querySelector('#vfile').click();return}
   if(b.id==='vscan'){await startVScan();return}
+  if(b.id==='vreceive'){openReceivingModal();return}
   if(b.dataset.vqr){printItemQR(+b.dataset.vqr);return}
   if(b.id==='vlow'){VLOW=!VLOW;document.querySelectorAll('#vrows tr[data-search]').forEach(function(r){r.hidden=VLOW&&r.dataset.low!=='1'});b.textContent=VLOW?'عرض كل الأصناف':'عرض النواقص فقط';return}
   var id=+(b.dataset.vin||b.dataset.vout||b.dataset.vadj||b.dataset.vmin||0);if(!id)return;
