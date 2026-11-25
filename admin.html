@@ -115,6 +115,15 @@ $('#password').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
 $('#refresh').onclick=load;
 $('#hotel').onchange=render;
 $('#lowTable').addEventListener('click',()=>{});
+document.addEventListener('keydown',e=>{
+ if(e.key!=='Enter')return;
+ const input=e.target.closest('input[data-min],input[data-max]');
+ if(!input)return;
+ e.preventDefault();
+ const row=input.closest('tr');
+ const save=row&&row.querySelector('[data-save-threshold]');
+ if(save)save.click();
+});
 document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-save-threshold]');if(!b)return;
  const id=Number(b.dataset.saveThreshold),minEl=document.querySelector('[data-min="'+id+'"]'),maxEl=document.querySelector('[data-max="'+id+'"]');
@@ -196,7 +205,7 @@ function render(){
  const rows=low.slice().sort((a,b)=>(+a.quantity-(+a.reorder_level))-(+b.quantity-(+b.reorder_level))).map(x=>{const it=DATA.items.find(i=>+i.id===+x.item_id);return'<tr><td>'+esc((DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code)+'</td><td>'+esc(itemName(x.item_id,lang==='en'))+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td>'+esc(x.reorder_level)+'</td><td><span class="status '+(+x.quantity<=0?'zero':'low')+'">'+(+x.quantity<=0?'نفد':'اطلب الآن')+'</span></td></tr>'}).join('');
  $('#lowTable').innerHTML=rows?'<table><tr><th>الفندق</th><th>الصنف</th><th>الرصيد</th><th>حد الطلب</th><th>الحالة</th></tr>'+rows+'</table>':'<div class="empty">'+(stockNoRecord?'لا توجد أرصدة مسجلة بعد':'لا توجد نواقص مسجلة')+'</div>';
  const thresholdSorted=inventory.slice().sort((a,b)=>itemName(a.item_id,false).localeCompare(itemName(b.item_id,false),'ar'));
- const thresholdRows=thresholdSorted.map((x,i)=>{const item=itemName(x.item_id,lang==='en'),hotel=(DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code;return '<tr data-threshold-row data-search="'+esc(item+' '+hotel+' '+x.hotel_code)+'" data-index="'+i+'"><td>'+esc(item)+'</td><td>'+esc(hotel)+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td><input type="number" min="0" step="0.01" value="'+esc(x.reorder_level)+'" data-min="'+x.id+'" style="width:90px"></td><td><input type="number" min="0" step="0.01" value="'+esc(x.max_level||0)+'" data-max="'+x.id+'" style="width:90px"></td><td><button class="btn" data-save-threshold="'+x.id+'">'+(lang==='en'?'Save limits':'حفظ الحدود')+'</button></td></tr>'}).join('');
+ const thresholdRows=thresholdSorted.map((x,i)=>{const item=itemName(x.item_id,lang==='en'),hotel=(DATA.hotels.find(h=>h.code===x.hotel_code)||{}).name||x.hotel_code;return '<tr data-threshold-row data-search="'+esc(item+' '+hotel+' '+x.hotel_code)+'" data-index="'+i+'"><td>'+esc(item)+'</td><td>'+esc(hotel)+'</td><td>'+esc(x.quantity)+' '+esc(x.unit)+'</td><td><input type="number" min="0" step="0.5" value="'+esc(x.reorder_level)+'" data-min="'+x.id+'" style="width:90px"></td><td><input type="number" min="0" step="0.5" value="'+esc(x.max_level||0)+'" data-max="'+x.id+'" style="width:90px"></td><td><button class="btn" data-save-threshold="'+x.id+'">'+(lang==='en'?'Save limits':'حفظ الحدود')+'</button></td></tr>'}).join('');
  $('#thresholdTable').innerHTML=thresholdRows?'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><input id="thresholdSearch" type="search" placeholder="'+(lang==='en'?'Search item or hotel…':'ابحث باسم الصنف أو الفندق…')+'" style="flex:1;min-width:220px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink)"><span id="thresholdCount" class="stamp" style="margin:0"></span></div><table><tr><th>الصنف</th><th>الفندق</th><th>الرصيد</th><th>الحد الأدنى / إعادة الطلب</th><th>الحد الأعلى</th><th>إجراء</th></tr>'+thresholdRows+'</table>':'<div class="empty">لا توجد سجلات مخزون لتحديد الحدود لها</div>';
  const thresholdSearch=$('#thresholdSearch'),thresholdCount=$('#thresholdCount');
  if(thresholdSearch){const thresholdTr=[...document.querySelectorAll('[data-threshold-row]')];const filterThreshold=()=>{const q=norm(thresholdSearch.value);let shown=0,matches=0;thresholdTr.forEach(tr=>{const match=!q||norm(tr.dataset.search).includes(q);if(match)matches++;const visible=match&&(!!q||shown<5);tr.hidden=!visible;if(visible)shown++});thresholdCount.textContent=q?(lang==='en'?matches+' results':'عدد النتائج: '+matches):(lang==='en'?'Showing '+shown+' of '+thresholdTr.length:'عرض '+shown+' من '+thresholdTr.length)};thresholdSearch.addEventListener('input',filterThreshold);filterThreshold()}
