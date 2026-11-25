@@ -24,6 +24,7 @@ function cleanPermissions(value: unknown) {
     const v = input[key] && typeof input[key] === "object" ? input[key] as Record<string, unknown> : {};
     out[key] = {};
     for (const action of ["read", "create", "update", "delete"]) out[key][action] = v[action] === true;
+    if (key === "inventory") out[key].thresholds = v.thresholds === true;
   }
   return out;
 }
@@ -46,7 +47,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === "my_status" || action === "change_password") {
       const { data: me, error: meError } = await admin.from("app_users")
-        .select("id,username,is_active,is_paralyzed,must_change_password")
+        .select("id,username,is_active,is_paralyzed,must_change_password,permissions")
         .eq("auth_user_id", user.id).maybeSingle();
       if (meError) throw meError;
       if (!me) return respond({ error: "هذا الحساب غير مسجل ضمن مستخدمي المنظومة" }, 403);
