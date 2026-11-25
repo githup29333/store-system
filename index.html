@@ -528,7 +528,7 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 const WM=/[?&]m=worker/.test(location.search);
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
-const HK=(()=>{try{const u=new URL(location.href);const slug=u.pathname.split('/').filter(Boolean)[0]||'';if(/^[a-z0-9-]{2,24}$/i.test(slug))return slug.toUpperCase();const v=u.searchParams.get('h');if(v)return v}catch(e){}return LS('hk')||''})();
+const HK=(()=>{try{const u=new URL(location.href);const parts=u.pathname.split('/').filter(Boolean);const slug=(parts[0]||'').toLowerCase()==='store-system'?parts[1]||'':parts[0]||'';if(/^[a-z0-9-]{2,24}$/i.test(slug))return slug.toUpperCase();const v=u.searchParams.get('h');if(v)return v}catch(e){}return LS('hk')||'EBR'})();
 let HNAME=LS('hname')||'',INVALID=!HK;
 const rpc=(fn,args)=>fetch(SB_URL+'/functions/v1/hotel-portal',{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({action:fn,...args}),cache:'no-store'});
 let cat=[],q={},o=null,last='',FINAL_SAVING=false;
