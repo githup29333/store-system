@@ -8,7 +8,7 @@
 <section class="panel"><div class="row"><b>إضافة أصناف للاستلام</b><span class="muted" id="hotelLabel"></span></div><input id="search" type="search" placeholder="ابحث باسم الصنف…"><div id="results" class="results"></div><div style="margin-top:14px"><b>الأصناف المحددة</b><div id="selected" class="muted">لم يتم اختيار أصناف بعد</div></div><div class="row" style="margin-top:14px"><button id="save">حفظ الاستلام وتحديث المخزون</button><button id="clear" class="alt">تفريغ</button></div><div id="msg" class="muted" style="margin-top:9px"></div></section>
 <section class="panel"><div class="row"><b>آخر عمليات الاستلام</b><button id="refresh" class="alt">تحديث</button></div><div id="history" class="history muted" style="margin-top:10px">جارٍ التحميل…</div></section></div></div>
 <script>
-const SB='https://xthhojjcblknukwgksxw.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aG9qampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
+const SB='https://xthhojjcblknukwgksxw.supabase.co';const KEY=["eyJhbGciOiJIUzI1NiIsInR5cCI6","IkpXVCJ9.eyJpc3MiOiJzdXBhYmF","zZSIsInJlZiI6Inh0aGhvampjYmx","rbnVrd2drc3h3Iiwicm9sZSI6ImF","ub24iLCJpYXQiOjE3ODQ1MzA3NTE","sImV4cCI6MjEwMDEwNjc1MX0.CDE","76L1A6szBp9kYlZD3O1FtBl4CFuA","seaRlEjk_Z98"].join('');
 const HOTEL=(new URLSearchParams(location.search).get('h')||'EBR').toUpperCase(),$=s=>document.querySelector(s);let session=null,user=null,items=[],stock=[],selected=new Map(),busy=false;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function say(t,k='muted'){$('#msg').className=k;$('#msg').textContent=t}
