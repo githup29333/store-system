@@ -109,7 +109,7 @@ jobs:
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
           const html = fs.readFileSync('admin.html', 'utf8');
-          const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].map(m => m[1]);
+          const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
           const script = scripts.find(s => s.includes('async function api('));
           assert.ok(script, 'Management dashboard application script not found');
           new Function(script);
