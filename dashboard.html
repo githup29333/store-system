@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script src="hotel-theme.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
@@ -693,9 +694,9 @@ $('#d').onclick=async e=>{
 };
 function fillHF(){
  const v=HSEL;$('#hf').innerHTML='<option value="">كل الفنادق</option>'+HOTELS.map(h=>`<option value="${esc(h.code)}">${esc(h.name)} (${esc(h.code)})</option>`).join('');
- $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');
+ $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');if(window.applyHotelTheme)window.applyHotelTheme(HSEL||CURRENT_APP_USER?.hotel_code||'EBR');
 }
-$('#hf').onchange=()=>{HSEL=$('#hf').value;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');const redraw={s:drawS,o:drawO,i:drawI,l:drawL,d:drawD,c:drawC,v:drawV,a:drawAnalytics,g:drawAudit,k:drawK};if(ACTIVE_TAB==='v'&&!INVENTORY_LOADED)loadInventoryOnce();else if(redraw[ACTIVE_TAB])redraw[ACTIVE_TAB]()};
+$('#hf').onchange=()=>{HSEL=$('#hf').value;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');if(window.applyHotelTheme)window.applyHotelTheme(HSEL||CURRENT_APP_USER?.hotel_code||'EBR');const redraw={s:drawS,o:drawO,i:drawI,l:drawL,d:drawD,c:drawC,v:drawV,a:drawAnalytics,g:drawAudit,k:drawK};if(ACTIVE_TAB==='v'&&!INVENTORY_LOADED)loadInventoryOnce();else if(redraw[ACTIVE_TAB])redraw[ACTIVE_TAB]()};
 const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
 
 /* ---------- التكاليف ---------- */
