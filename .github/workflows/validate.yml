@@ -103,26 +103,23 @@ jobs:
           grep -q 'user.id !== OWNER' supabase/functions/sbfenv/index.ts
           grep -q 'button data-t="m"' dashboard.html
           grep -Fq "ownerAction('monitor')" monitor.js
-      - name: Check read-only management dashboard JavaScript syntax
+      - name: Check management dashboard syntax and permission-gated threshold edits
         run: |
           node <<'NODE'
           const fs = require('node:fs');
+          const assert = require('node:assert/strict');
           const html = fs.readFileSync('admin.html', 'utf8');
-          const start = html.lastIndexOf('<script>');
-          const end = html.indexOf('</script>', start);
-          if (start < 0 || end < 0) throw new Error('Inline admin script not found');
-          new Function(html.slice(start + 8, end));
-          const script = html.slice(start + 8, end);
-          if (/\.insert\(|\.update\(|\.delete\(/i.test(script)) {
-            throw new Error('Management page must remain read-only');
-          }
+          const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].map(m => m[1]);
+          const script = scripts.find(s => s.includes('async function api('));
+          assert.ok(script, 'Management dashboard application script not found');
+          new Function(script);
           const apiStart = script.indexOf('async function api(');
-          const apiEnd = script.indexOf('\n}', apiStart);
+          const apiEnd = script.indexOf('\\n}', apiStart);
           const restApi = apiStart >= 0 && apiEnd > apiStart ? script.slice(apiStart, apiEnd) : '';
-          if (!restApi || /method\s*:/.test(restApi)) {
-            throw new Error('Supabase REST access must remain GET-only');
-          }
-          console.log('Read-only management dashboard JavaScript syntax OK');
+          assert.ok(restApi && !/method\\s*:/.test(restApi), 'General Supabase API helper must remain GET-only');
+          assert.ok(script.includes('if(!canEditThresholds)return alert('), 'Threshold edits must be permission-gated');
+          assert.ok(script.includes('method:\\'PATCH\\''), 'Threshold update path must remain explicit');
+          console.log('Management dashboard syntax and threshold permission guards OK');
           NODE
       - name: Check security hardening regressions
         run: |
