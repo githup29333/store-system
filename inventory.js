@@ -1,4 +1,5 @@
 var VLOW = false, VSCAN_STREAM=null, VSCAN_FRAME=0;
+function isHalfQuantity(value){return Math.abs(value*2-Math.round(value*2))<1e-8;}
 function invHotel(){var sel=document.querySelector('#vh');return (sel&&sel.value)||(HSEL&&HOTELS.some(function(x){return x.code===HSEL})?HSEL:(HOTELS[0]&&HOTELS[0].code)||'');}
 function drawV(){
  var root=document.querySelector('#v');if(!root)return;
@@ -103,7 +104,7 @@ function parseInventoryCsv(text){
   var sku=String(r[si]||'').trim(),qty=String(r[qi]||'').trim().replace(',','.'),min=String(r[mi]||'').trim().replace(',','.'),unit=ui>=0?String(r[ui]||'').trim():'';if(sku.length>64||unit.length>40)throw new Error('SKU أو الوحدة أطول من الحد المسموح');
   if(!sku)return null;
   if(qty===''||min==='')throw new Error('أكمل الكمية وحد الطلب لكل SKU: '+sku);
-  var q=Number(qty),m=Number(min);if(!Number.isFinite(q)||q<0||q>999999999||!Number.isFinite(m)||m<0||m>999999999||!/^\d+(\.\d{1,3})?$/.test(qty)||!/^\d+(\.\d{1,3})?$/.test(min))throw new Error('قيمة غير صحيحة في SKU: '+sku);
+  var q=Number(qty),m=Number(min);if(!Number.isFinite(q)||q<0||q>999999999||!isHalfQuantity(q)||!Number.isFinite(m)||m<0||m>999999999||!/^\d+(\.\d{1,3})?$/.test(qty)||!/^\d+(\.\d{1,3})?$/.test(min))throw new Error('قيمة غير صحيحة في SKU: '+sku);
   if(!unit){var it=ITEMS.find(function(x){return x.sku===sku}),r0=it&&INVENTORY.find(function(x){return x.hotel_code===invHotel()&&x.item_id===it.id}),l=it&&LINKS.find(function(x){return x.item_id===it.id&&x.price_id}),p=l&&PRICES.find(function(x){return x.id===l.price_id&&!x.archived});unit=r0&&r0.unit||p&&p.unit||'قطعة'}
   return {sku:sku,quantity:q,unit:unit,reorder_level:m};
  }).filter(Boolean);
@@ -140,13 +141,13 @@ function openReceivingModal(){
  modal.innerHTML='<div style="background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(760px,100%);max-height:92vh;overflow:auto"><div class="row"><h3 style="flex:1;margin:0">استلام منتجات</h3><button class="btn alt" id="vrClose">إغلاق</button></div><p style="color:var(--mut)">اختر الأصناف واكتب الكميات المستلمة. سيتم تحديث رصيد الفندق مباشرة عند الحفظ.</p><div id="vrRows"></div><div class="row" style="margin-top:12px"><button class="btn alt" id="vrAdd">+ إضافة صنف</button><span style="flex:1"></span><button class="btn" id="vrSave">حفظ الاستلام</button></div><p id="vrMsg" style="color:var(--mut)"></p></div>';
  document.body.appendChild(modal);
  var rows=modal.querySelector('#vrRows'),opt='<option value="">اختر الصنف</option>'+available.map(function(it){return '<option value="'+it.id+'">'+esc(it.ar)+(it.en?' — '+esc(it.en):'')+'</option>'}).join('');
- function addRow(){var line=document.createElement('div');line.className='row';line.style='gap:8px;margin-top:9px';line.innerHTML='<select data-item style="flex:2;min-width:220px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)">'+opt+'</select><input data-qty type="number" min="0.001" step="0.001" placeholder="الكمية" style="width:125px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)"><button class="btn alt" data-remove>حذف</button>';rows.appendChild(line);line.querySelector('[data-remove]').onclick=function(){line.remove()}}
+ function addRow(){var line=document.createElement('div');line.className='row';line.style='gap:8px;margin-top:9px';line.innerHTML='<select data-item style="flex:2;min-width:220px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)">'+opt+'</select><input data-qty type="number" min="0.5" step="0.5" placeholder="الكمية (0.5، 1، 1.5...)" style="width:125px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)"><button class="btn alt" data-remove>حذف</button>';rows.appendChild(line);line.querySelector('[data-remove]').onclick=function(){line.remove()}}
  addRow();modal.querySelector('#vrAdd').onclick=addRow;modal.querySelector('#vrClose').onclick=function(){modal.remove()};
  rows.addEventListener('change',function(e){if(!e.target.matches('[data-item]'))return;var id=+e.target.value,it=available.find(function(x){return x.id===id}),r=INVENTORY.find(function(x){return x.hotel_code===h&&x.item_id===id}),link=LINKS.find(function(x){return x.item_id===id&&x.price_id}),p=link&&PRICES.find(function(x){return x.id===link.price_id&&!x.archived});e.target.closest('.row').dataset.unit=(r&&r.unit)||(p&&p.unit)||'قطعة'});
  modal.querySelector('#vrSave').onclick=async function(){
   var lines=Array.from(rows.children),seen=new Set(),payload=[];
   for(var line of lines){var id=+(line.querySelector('[data-item]').value||0),q=Number(line.querySelector('[data-qty]').value),unit=line.dataset.unit||'قطعة';
-   if(!id||!Number.isFinite(q)||q<=0)return alert('اختر صنفًا وأدخل كمية صحيحة لكل سطر');
+   if(!id||!Number.isFinite(q)||q<=0||!isHalfQuantity(q))return alert('اختر صنفًا وأدخل كمية بمضاعفات 0.5 (مثل 0.5 أو 1 أو 1.5) لكل سطر');
    if(seen.has(id))return alert('الصنف مكرر. اجمع كميته في سطر واحد.');seen.add(id);payload.push({hotel_code:h,item_id:id,movement_type:'in',quantity:q,unit:unit,note:'استلام منتجات',reference:receiptRef});
   }
   var save=modal.querySelector('#vrSave'),msg=modal.querySelector('#vrMsg');save.disabled=true;save.textContent='جارٍ الحفظ…';
@@ -176,7 +177,7 @@ document.querySelector('#v').addEventListener('click',async function(e){
    else await api('hotel_inventory',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({hotel_code:h,item_id:id,quantity:0,reorder_level:n,unit:unit})});
   }else{
    var type=b.dataset.vin?'in':b.dataset.vout?'out':'adjust',label=type==='in'?'الكمية المراد إضافتها':type==='out'?'كمية الصرف':'الرصيد الفعلي الجديد';
-   var v=prompt(label+' — '+it.ar+' ('+unit+'):',type==='adjust'?String(r&&r.quantity||0):'1');if(v===null)return;var n=Number(v);if(!Number.isFinite(n)||n<0||(type!=='adjust'&&n===0))return alert('أدخل كمية صحيحة');
+   var v=prompt(label+' — '+it.ar+' ('+unit+'):',type==='adjust'?String(r&&r.quantity||0):'1');if(v===null)return;var n=Number(v);if(!Number.isFinite(n)||n<0||(type!=='adjust'&&n===0)||!isHalfQuantity(n))return alert('أدخل كمية بمضاعفات 0.5 فقط (مثل 0.5 أو 1 أو 1.5)');
    var note=prompt('ملاحظة (اختياري):','')||'';await api('hotel_stock_movements',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({hotel_code:h,item_id:id,movement_type:type,quantity:n,unit:unit,note:note})});
   }
   await refreshInventory();
