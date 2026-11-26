@@ -102,7 +102,7 @@ jobs:
           grep -q 'if (action === "monitor")' supabase/functions/sbfenv/index.ts
           grep -q 'user.id !== OWNER' supabase/functions/sbfenv/index.ts
           grep -q 'button data-t="m"' dashboard.html
-          grep -q 'ownerAction(\x27monitor\x27)' monitor.js
+          grep -Fq "ownerAction('monitor')" monitor.js
       - name: Check read-only management dashboard JavaScript syntax
         run: |
           node <<'NODE'
