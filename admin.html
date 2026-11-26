@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
+<script src="hotel-theme.js"></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#101827">
@@ -175,6 +176,7 @@ function barRows(el,rows,suffix){
  el.innerHTML=rows.map(x=>'<div class="barrow"><span>'+esc(x.label)+'</span><div class="track"><div class="fill" style="width:'+Math.max(1,x.value/max*100)+'%"></div></div><span class="amount">'+esc(x.display||x.value)+esc(suffix||'')+'</span></div>').join('');
 }
 function render(){
+ if(window.applyHotelTheme)window.applyHotelTheme($('#hotel').value||APP_USER?.hotel_code||'EBR');
  const selected=$('#hotel').value,hotels=DATA.hotels.filter(h=>!selected||h.code===selected);
  const orders=DATA.orders.filter(x=>!selected||x.hotel===selected),deliveries=DATA.deliveries.filter(x=>!selected||x.hotel===selected);
  const sent=deliveries.filter(d=>d.status==='sent'&&d.dept!=='ALL'&&!String(d.code||'').startsWith('BATCH|'));
