@@ -193,7 +193,7 @@ const ensureQRCode=()=>ensureLibrary('QR','https://cdnjs.cloudflare.com/ajax/lib
 const ensureJsQR=()=>ensureLibrary('قارئ QR','https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js','jsQR');
 let CURRENT_APP_USER=null;
 const THEME_KEY='store-system-theme';
-function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}const logo=$('#ebreazeBrandLogo');if(logo){const isEbreaze=String(CURRENT_APP_USER?.hotel_code||'').toUpperCase()==='EBR';logo.hidden=!isEbreaze;if(isEbreaze)logo.src=mode==='dark'?'assets/ebreaze-logo-dark.webp':'assets/ebreaze-logo-light.webp'}}
+function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}const logo=$('#ebreazeBrandLogo');if(logo){const isEbreaze=String(CURRENT_APP_USER?.hotel_code||HSEL||'').toUpperCase()==='EBR';logo.hidden=!isEbreaze;if(isEbreaze){logo.src=mode==='dark'?'assets/ebreaze-logo-dark.webp':'assets/ebreaze-logo-light.webp';logo.alt='Ebreaze Hotel'}}}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
 
 const LANG_KEY='store-system-lang';
@@ -693,9 +693,9 @@ $('#d').onclick=async e=>{
 };
 function fillHF(){
  const v=HSEL;$('#hf').innerHTML='<option value="">كل الفنادق</option>'+HOTELS.map(h=>`<option value="${esc(h.code)}">${esc(h.name)} (${esc(h.code)})</option>`).join('');
- $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;
+ $('#hf').value=HOTELS.some(h=>h.code===v)?v:'';HSEL=$('#hf').value;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');
 }
-$('#hf').onchange=()=>{HSEL=$('#hf').value;const redraw={s:drawS,o:drawO,i:drawI,l:drawL,d:drawD,c:drawC,v:drawV,a:drawAnalytics,g:drawAudit,k:drawK};if(ACTIVE_TAB==='v'&&!INVENTORY_LOADED)loadInventoryOnce();else if(redraw[ACTIVE_TAB])redraw[ACTIVE_TAB]()};
+$('#hf').onchange=()=>{HSEL=$('#hf').value;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');const redraw={s:drawS,o:drawO,i:drawI,l:drawL,d:drawD,c:drawC,v:drawV,a:drawAnalytics,g:drawAudit,k:drawK};if(ACTIVE_TAB==='v'&&!INVENTORY_LOADED)loadInventoryOnce();else if(redraw[ACTIVE_TAB])redraw[ACTIVE_TAB]()};
 const rk=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
 
 /* ---------- التكاليف ---------- */
