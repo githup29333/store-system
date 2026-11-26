@@ -114,11 +114,11 @@ jobs:
           assert.ok(script, 'Management dashboard application script not found');
           new Function(script);
           const apiStart = script.indexOf('async function api(');
-          const apiEnd = script.indexOf('\\n}', apiStart);
+          const apiEnd = script.indexOf('\n}', apiStart);
           const restApi = apiStart >= 0 && apiEnd > apiStart ? script.slice(apiStart, apiEnd) : '';
-          assert.ok(restApi && !/method\\s*:/.test(restApi), 'General Supabase API helper must remain GET-only');
+          assert.ok(restApi && !/method\s*:/.test(restApi), 'General Supabase API helper must remain GET-only');
           assert.ok(script.includes('if(!canEditThresholds)return alert('), 'Threshold edits must be permission-gated');
-          assert.ok(script.includes('method:\\'PATCH\\''), 'Threshold update path must remain explicit');
+          assert.ok(script.includes("method:'PATCH'"), 'Threshold update path must remain explicit');
           console.log('Management dashboard syntax and threshold permission guards OK');
           NODE
       - name: Check security hardening regressions
