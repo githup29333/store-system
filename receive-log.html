@@ -10,6 +10,7 @@ html[data-theme=dark]{color-scheme:dark;--bg:#0b1220;--card:#121d2b;--ink:#e7edf
 <section class="panel"><div class="row"><b id="hotelLabel">الفندق</b><span class="count" id="count">0 عملية</span><button class="alt" id="refresh">تحديث</button><button id="export">تصدير CSV</button></div>
 <div class="row" style="margin-top:10px"><input id="search" type="search" placeholder="ابحث باسم الصنف أو المرجع أو الملاحظة"><input id="from" type="date" aria-label="من تاريخ"><input id="to" type="date" aria-label="إلى تاريخ"></div><div id="status" class="muted" style="margin-top:8px">جارٍ التحميل…</div><div class="tableWrap" id="rows"></div></section></div></div>
 <script>
+if(window.applyHotelTheme)window.applyHotelTheme('EBR');
 const SB='https://xthhojjcblknukwgksxw.supabase.co';const KEY=["eyJhbGciOiJIUzI1NiIsInR5cCI6","IkpXVCJ9.eyJpc3MiOiJzdXBhYmF","zZSIsInJlZiI6Inh0aGhvampjYmx","rbnVrd2drc3h3Iiwicm9sZSI6ImF","ub24iLCJpYXQiOjE3ODQ1MzA3NTE","sImV4cCI6MjEwMDEwNjc1MX0.CDE","76L1A6szBp9kYlZD3O1FtBl4CFuA","seaRlEjk_Z98"].join('');
 let session=null,user=null,HOTEL='',allRows=[],items=[];
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
