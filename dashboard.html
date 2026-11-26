@@ -196,6 +196,7 @@ let CURRENT_APP_USER=null;
 const THEME_KEY='store-system-theme';
 function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}const logo=$('#ebreazeBrandLogo');if(logo){const isEbreaze=String(CURRENT_APP_USER?.hotel_code||HSEL||'').toUpperCase()==='EBR';logo.hidden=!isEbreaze;if(isEbreaze){logo.src=mode==='dark'?'assets/ebreaze-logo-dark.webp':'assets/ebreaze-logo-light.webp';logo.alt='Ebreaze Hotel'}}}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
+if(window.applyHotelTheme)window.applyHotelTheme('EBR');
 
 const LANG_KEY='store-system-lang';
 let APP_LANG='ar';
