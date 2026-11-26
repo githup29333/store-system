@@ -85,6 +85,7 @@ const $=s=>document.querySelector(s), enc=encodeURIComponent;
 const THEME_KEY='store-system-theme';
 function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
+if(window.applyHotelTheme)window.applyHotelTheme('EBR');
 $('#themeToggle').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 let session=null,APP_USER=null,canEditThresholds=false,DATA={orders:[],items:[],hotels:[],prices:[],links:[],deliveries:[],inventory:[],thresholdAudit:[]};
 const IDLE_LIMIT=30*60*1000;let lastActive=Number(sessionStorage.getItem('store_admin_last_active')||Date.now());
