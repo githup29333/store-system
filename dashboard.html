@@ -145,7 +145,7 @@ html[data-theme="dark"] #sideNav button[data-t].on{background:#1d4545!important;
  <p id="msg"></p>
 </div>
 <div id="app" hidden>
- <header><button class="btn alt" id="menuToggle" type="button" aria-expanded="false">☰ القائمة</button><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="openInventoryTop" type="button">▣ المخزون</button><button class="btn alt" id="langToggle" type="button">English</button><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
+ <header><button class="btn alt" id="menuToggle" type="button" aria-expanded="false">☰ القائمة</button><img id="ebreazeBrandLogo" alt="Ebreaze Hotel" hidden style="height:42px;width:42px;object-fit:contain;border-radius:8px"><h1>لوحة التحكم — منظومة الصرف</h1><select id="hf" style="padding:5px;border-radius:8px"></select><button class="btn alt" id="openInventoryTop" type="button">▣ المخزون</button><button class="btn alt" id="langToggle" type="button">English</button><button class="btn alt" id="themeToggle" type="button" aria-pressed="false">🌙 الوضع المظلم</button><button class="btn alt" id="rf">تحديث</button><button class="btn alt" id="lo">خروج</button></header>
  <nav id="sideNav" hidden aria-label="القائمة الرئيسية"><div class="drawerHead"><b>أقسام لوحة التحكم</b><button class="btn alt" id="closeNav" type="button">إغلاق ✕</button></div><div class="navGroup"><small>الرئيسية</small><button data-t="s" class="on">◈ الملخص</button></div><div class="navGroup"><small>إدارة المخازن والتشغيل</small><button data-t="o">▤ الطلبات</button><button data-t="i">▦ الأصناف</button><button data-t="v">▣ المخزون</button></div><div class="navGroup"><small>التقارير والمتابعة</small><button data-t="c">▤ التكاليف</button><button data-t="a">▥ التحليلات</button><button data-t="g">◷ سجل العمليات</button><button data-t="m">◉ مركز المراقبة</button><button data-t="b">▣ النسخ الاحتياطي</button></div><div class="navGroup"><small>إدارة النظام</small><button data-t="u">♙ المستخدمون والصلاحيات</button></div><div class="navGroup"><small>الإعدادات والربط</small><button data-t="l">↗ الروابط</button><button data-t="d">⇧ الإرسال</button><button data-t="k">⚙ الفنادق والصلاحية</button></div></nav><div id="navShade" hidden></div>
  <main>
   <section id="s"></section>
@@ -189,7 +189,7 @@ function ensureLibrary(key,src,globalName){
 const ensureQRCode=()=>ensureLibrary('QR','https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js','qrcode');
 const ensureJsQR=()=>ensureLibrary('قارئ QR','https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js','jsQR');
 const THEME_KEY='store-system-theme';
-function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}}
+function applyTheme(mode){document.documentElement.dataset.theme=mode;try{localStorage.setItem(THEME_KEY,mode)}catch(e){}const b=$('#themeToggle');if(b){b.textContent=mode==='dark'?'☀️ الوضع الفاتح':'🌙 الوضع المظلم';b.setAttribute('aria-pressed',String(mode==='dark'))}const logo=$('#ebreazeBrandLogo');if(logo){const isEbreaze=String(CURRENT_APP_USER?.hotel_code||'').toUpperCase()==='EBR';logo.hidden=!isEbreaze;if(isEbreaze)logo.src=mode==='dark'?'assets/ebreaze-logo-dark.webp':'assets/ebreaze-logo-light.webp'}}
 applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)==='dark'?'dark':'light'}catch(e){return 'light'}})());
 
 const LANG_KEY='store-system-lang';
@@ -407,7 +407,7 @@ async function start(){
  if(S&&Date.now()-lastActive>IDLE_LIMIT){logout('انتهت الجلسة بسبب عدم النشاط — سجّل الدخول مرة أخرى');return}
  if(S){try{
   const state=await userAdmin('my_status');
-  CURRENT_APP_USER=state.user||null;
+  CURRENT_APP_USER=state.user||null;applyTheme(document.documentElement.dataset.theme==='dark'?'dark':'light');
   if(!state.user||!state.user.is_active){logout('هذا الحساب موقوف. تواصل مع THEO.');return}
   if(state.user.must_change_password){
    const p=prompt('هذه كلمة مرور مؤقتة. أنشئ كلمة مرور جديدة (8 أحرف على الأقل):');
