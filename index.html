@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<header style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 style="flex:1">منظومة الصرف / Issuance System</h1><button class="btn alt" id="langToggle" type="button">English</button><small id="lic"></small></header>
 <head>
 <script src="hotel-theme.js"></script>
 <meta charset="utf-8">
@@ -114,7 +114,7 @@ code{border:1px solid var(--ln);border-radius:9px!important;background:#f5f7fa!i
 #lock>div{border-radius:20px!important;box-shadow:0 24px 80px #0004!important}
 @keyframes portalIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:650px){nav{padding:12px 10px 0!important;gap:5px!important}nav button{flex:1 1 42%;border-radius:10px!important;padding:9px 8px!important;font-size:13px}main{padding:10px!important}main>section:not([hidden]){border-radius:16px;padding:13px}.row>*{max-width:100%}.row input[type=search]{min-width:100%}.btn{padding:9px 12px!important;font-size:14px}.qrs{gap:10px}.qrs figure{max-width:calc(50% - 5px)}.qrs svg{width:100%;height:auto}}
-.worker-order-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:16px;border:1px solid var(--ln);border-radius:14px;background:#f7fafb;margin-bottom:12px}.worker-order-number{font-size:21px;font-weight:800;color:var(--navy)}.worker-order-number b{color:var(--ac)}.worker-order-status{font-weight:700;color:var(--ok)}.worker-order-table td{vertical-align:middle}.worker-order-table td:first-child{width:52%}.worker-unit{display:block;color:var(--mut);font-size:12px}.worker-qty{width:104px!important;min-height:46px!important;text-align:center;font-size:19px!important;font-weight:800!important}.worker-shortage td{background:#fff8ec!important}.worker-shortage .worker-qty{border-color:#d69a42!important}@media(max-width:650px){.worker-order-head{align-items:flex-start;flex-direction:column}.worker-order-table td:first-child{width:45%}.worker-qty{width:82px!important}}
+.worker-order-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:16px;border:1px solid #69532e;border-radius:14px;background:linear-gradient(135deg,#211e18,#151515);margin-bottom:12px;box-shadow:0 10px 28px #0005,0 0 0 1px #c9a45c12}.worker-order-number{font-size:21px;font-weight:800;color:#f4f0e7}.worker-order-number b{color:#efd18b}.worker-order-status{font-weight:700;color:#d7bd82}.worker-order-table td{vertical-align:middle}.worker-order-table td:first-child{width:52%}.worker-unit{display:block;color:#c4b89f;font-size:12px}.worker-qty{width:104px!important;min-height:46px!important;text-align:center;font-size:19px!important;font-weight:800!important}.worker-shortage td{background:#332817!important}.worker-shortage .worker-qty{border-color:#c9a45c!important}@media(max-width:650px){.worker-order-head{align-items:flex-start;flex-direction:column}.worker-order-table td:first-child{width:45%}.worker-qty{width:82px!important}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
 
 </style>
@@ -532,6 +532,12 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 مناديل رول|Tissue Rolls
 هايكين|Heineken`;
 const WM=/[?&]m=worker/.test(location.search);
+ let LANG=LS('worker-lang')||'ar';
+ const L=(ar,en)=>LANG==='en'?en:ar;
+ const unitLabel=u=>({'قطعة':'Piece','حزمة':'Pack','صندوق':'Box','كيلو':'Kg','لتر':'Litre'}[u]||u||'');
+ const deptLabel=v=>{const p=String(v||'').split('/');return LANG==='en'?(p[1]||p[0]).trim():(p[0]||'').trim()};
+ function setLanguage(next){LANG=next;LS('worker-lang',LANG);document.documentElement.lang=LANG;document.documentElement.dir=LANG==='en'?'ltr':'rtl';const b=$('#langToggle');if(b)b.textContent=LANG==='en'?'العربية':'English';if(o)renderIssue();renderSaved()}
+ $('#langToggle').onclick=()=>setLanguage(LANG==='ar'?'en':'ar');
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
 const HK=(()=>{try{const u=new URL(location.href);const parts=u.pathname.split('/').filter(Boolean);const slug=(parts[0]||'').toLowerCase()==='store-system'?parts[1]||'':parts[0]||'';if(/^[a-z0-9-]{2,24}$/i.test(slug))return slug.toUpperCase();const v=u.searchParams.get('h');if(v)return v}catch(e){}return LS('hk')||'EBR'})();
@@ -705,16 +711,16 @@ function renderIssue(){
  ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
  const UN=['قطعة','حزمة','صندوق','كيلو'];
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
-  if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(c.n)}</b><small class="worker-unit">${escHtml(c.u||it.unit||'')}</small></td><td><b>${it.req}</b> <small>${escHtml(it.unit)}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" ${o.submitted?'disabled':''} aria-label="الكمية المصروفة من ${escHtml(c.n)}"></td></tr>`;
+   if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(LANG==='en'?(c.u||c.n):c.n)}</b><small class="worker-unit">${escHtml(LANG==='en'?(c.u?c.n:unitLabel(it.unit)):(c.u||unitLabel(it.unit)))}</small></td><td><b>${it.req}</b> <small>${escHtml(unitLabel(it.unit))}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" ${o.submitted?'disabled':''} aria-label="${escHtml(L('الكمية المصروفة من','Issued quantity for'))} ${escHtml(c.n)}"></td></tr>`;
   const unSel=`<select data-un="${id}" disabled>${UN.map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select>`;
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${escHtml(c.n)}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${escHtml(c.u)}</td><td>${it.req}</td><td><input type="number" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
  if(WM){
   const short=ids.filter(id=>o.items[id].iss<o.items[id].req).length;
-  $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">طلب رقم <b>${escHtml(o.no)}</b></div><label class="worker-dept-edit">القسم / Department <select id="workerDept" ${o.submitted?'disabled':''}>${Object.entries(D).map(([k,v])=>`<option value="${escHtml(k)}" ${k===o.dept?'selected':''}>${escHtml(v)}</option>`).join('')}</select></label><div class="worker-order-status">${miss?'باقي أجزاء من الطلب — امسحها أولاً':short?short+' أصناف بها نقص':'كل الكميات متوفرة'}</div></div>
-  <table class="worker-order-table"><thead><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th></tr></thead><tbody>${rows}</tbody></table>
-  <p class="st ${miss?'bad':''}">${miss?'لا يمكن تسجيل الصرف قبل تحميل جميع أجزاء الطلب.':'الكميات المصروفة تبدأ مساوية للمطلوب. غيّر الصنف الذي لم تتوفر كميته فقط.'}</p>
-  <div class="row" style="margin-top:12px"><button class="btn ok" id="fc" ${FINAL_SAVING||miss||o.submitted?'disabled':''}>${o.submitted?'تم تسجيل الصرف ✓':'تأكيد الصرف'}</button></div>
-  ${o.submitted?`<div class="receipt-panel st"><b>باركود تأكيد الاستلام / Recipient Receipt QR</b><p>اعرض هذا الباركود للشيف أو مسؤول القسم ليمسحه بكاميرا جواله ويؤكد استلام الأصناف.</p><div id="receiptQr" class="qrs"></div><div class="row"><button class="btn alt" id="receiptRetry">إظهار الباركود / Generate QR</button><button class="btn alt" id="receiptCopy" ${o.receiptToken?'':'disabled'}>نسخ رابط التأكيد / Copy link</button></div><div id="receiptStatus" class="st" hidden></div></div>`:''}`;
+  $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">${L('طلب رقم','Order No.')} <b>${escHtml(o.no)}</b></div><label class="worker-dept-edit">${L('القسم','Department')} <select id="workerDept" ${o.submitted?'disabled':''}>${Object.entries(D).map(([k,v])=>`<option value="${escHtml(k)}" ${k===o.dept?'selected':''}>${escHtml(deptLabel(v))}</option>`).join('')}</select></label><div class="worker-order-status">${miss?L('باقي أجزاء من الطلب — امسحها أولاً','More order parts are missing — scan them first'):short?L(short+' أصناف بها نقص',short+' items short'):L('كل الكميات متوفرة','All quantities available')}</div></div>
+  <table class="worker-order-table"><thead><tr><th>${L('الصنف','Item')}</th><th>${L('المطلوب','Requested')}</th><th>${L('المصروف','Issued')}</th></tr></thead><tbody>${rows}</tbody></table>
+  <p class="st ${miss?'bad':''}">${miss?L('لا يمكن تسجيل الصرف قبل تحميل جميع أجزاء الطلب.','Issuing cannot be confirmed until all order parts are loaded.'):L('الكميات المصروفة تبدأ مساوية للمطلوب. غيّر الصنف الذي لم تتوفر كميته فقط.','Issued quantities start equal to requested. Change only items that are unavailable.')}</p>
+  <div class="row" style="margin-top:12px"><button class="btn ok" id="fc" ${FINAL_SAVING||miss||o.submitted?'disabled':''}>${o.submitted?L('تم تسجيل الصرف ✓','Issue recorded ✓'):L('تأكيد الصرف','Confirm issue')}</button></div>
+  ${o.submitted?`<div class="receipt-panel st"><b>${L('باركود تأكيد الاستلام','Recipient Receipt QR')}</b><p>${L('اعرض هذا الباركود للشيف أو مسؤول القسم ليمسحه بكاميرا جواله ويؤكد استلام الأصناف.','Show this QR code to the chef or department manager so they can scan it and confirm receipt.')}</p><div id="receiptQr" class="qrs"></div><div class="row"><button class="btn alt" id="receiptRetry">${L('إظهار الباركود','Generate QR')}</button><button class="btn alt" id="receiptCopy" ${o.receiptToken?'':'disabled'}>${L('نسخ رابط التأكيد','Copy confirmation link')}</button></div><div id="receiptStatus" class="st" hidden></div></div>`:''}`;
   if(o.submitted&&o.receiptToken)renderReceiptQr().catch(()=>{});
   return;
  }
