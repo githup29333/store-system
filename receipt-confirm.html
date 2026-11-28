@@ -1,135 +1,166 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>تأكيد استلام الطلب — Store System</title>
+<title>Department Receipt Confirmation</title>
 <script src="hotel-theme.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#090a0c;--card:#151515;--ink:#f4f0e7;--mut:#b7ad9b;--line:#39342a;--gold:#c9a45c;--gold2:#e5c477}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 Tajawal,Tahoma,Arial,sans-serif;padding:18px}
-header,main{width:min(900px,100%);margin:0 auto}
-header{padding:18px 20px;background:linear-gradient(120deg,#11100d,#151515);border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:18px 18px 0 0}
+header,main{width:min(940px,100%);margin:0 auto}
+header{padding:18px 20px;background:linear-gradient(120deg,#11100d,#151515);border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:18px 18px 0 0;display:flex;justify-content:space-between;align-items:center;gap:12px}
 h1{font-size:21px;margin:0;color:var(--gold2)}
 main{padding:18px;background:var(--card);border:1px solid var(--line);border-top:0;border-radius:0 0 18px 18px;min-height:60vh}
 .panel{padding:16px;border:1px solid var(--line);border-radius:14px;margin-bottom:14px;background:#101113}
-.meta{display:flex;gap:10px;flex-wrap:wrap}
-.meta span{padding:7px 11px;border:1px solid var(--line);border-radius:10px;background:#171717}
-.muted{color:var(--mut)}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:right}
-th{color:var(--gold2);background:#201d17}
-tr:last-child td{border-bottom:0}
-.qty{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
-.review{width:22px;height:22px;accent-color:var(--gold);cursor:pointer}
-input[type=text]{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0c1118;color:var(--ink);font:inherit}
-button{border:1px solid var(--gold);border-radius:11px;background:linear-gradient(120deg,var(--gold),var(--gold2));color:#17130b;padding:12px 18px;font:700 16px Tajawal,Arial,sans-serif;cursor:pointer}
-button:disabled{opacity:.45;cursor:not-allowed}
+.meta{display:flex;gap:10px;flex-wrap:wrap}.meta span{padding:7px 11px;border:1px solid var(--line);border-radius:10px;background:#171717}
+.muted{color:var(--mut)}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:start}
+th{color:var(--gold2);background:#201d17}tr:last-child td{border-bottom:0}
+.qty{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums}
+input[type=text],input[type=number]{width:100%;min-width:76px;padding:9px;border:1px solid var(--line);border-radius:9px;background:#0c1118;color:var(--ink);font:inherit}
+input[type=checkbox]{width:21px;height:21px;accent-color:var(--gold);cursor:pointer}
+button{border:1px solid var(--gold);border-radius:11px;background:linear-gradient(120deg,var(--gold),var(--gold2));color:#17130b;padding:10px 17px;font:700 15px Tajawal,Arial,sans-serif;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#171717;color:var(--gold2)}
 .note{padding:12px;border-radius:11px;background:#201d17;border:1px solid #69552e;color:#ead6a9}
 .status{padding:15px;border:1px solid #557e63;background:#14251a;border-radius:12px;color:#d8f2df}
 .error{padding:12px;border:1px solid #854c44;background:#2a1715;border-radius:11px;color:#ffd4cc}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.signature{width:100%;height:170px;border:1px dashed var(--gold);border-radius:11px;background:#fff;touch-action:none;display:block}
+.signature-tools{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:8px 0}
+.done-sign{max-width:340px;max-height:120px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px}
 [hidden]{display:none!important}
-@media(max-width:600px){body{padding:9px}header{padding:14px}main{padding:12px}h1{font-size:18px}th,td{padding:9px 5px;font-size:14px}.qty{font-size:16px}}
+@media(max-width:600px){body{padding:9px}header{padding:14px}main{padding:12px}h1{font-size:18px}th,td{padding:8px 5px;font-size:13px}.qty{font-size:15px}.signature{height:145px}}
 </style>
 </head>
 <body>
-<header><h1>تأكيد استلام طلب القسم</h1><div class="muted">Department Order Receipt Confirmation</div></header>
+<header><div><h1 data-i18n="title">Department Receipt Confirmation</h1><div class="muted">Store System</div></div><button class="secondary" id="langToggle" type="button">العربية</button></header>
 <main>
-<div id="loading" class="panel">جارٍ تحميل بيانات الطلب…</div>
+<div id="loading" class="panel" data-i18n="loading">Loading order details…</div>
 <div id="error" class="error" hidden></div>
 <div id="content" hidden>
  <section class="panel">
   <div class="meta">
-   <span>الفندق: <b id="hotel"></b></span>
-   <span>رقم الطلب: <b id="orderNo"></b></span>
-   <span>القسم: <b id="dept"></b></span>
-   <span>التاريخ: <b id="orderDate"></b></span>
+   <span><b data-i18n="hotel">Hotel</b>: <strong id="hotel"></strong></span>
+   <span><b data-i18n="order">Order</b>: <strong id="orderNo"></strong></span>
+   <span><b data-i18n="department">Department</b>: <strong id="dept"></strong></span>
+   <span><b data-i18n="date">Date</b>: <strong id="orderDate"></strong></span>
   </div>
-  <p class="note">راجع كل صنف والكمية التي استلمتها فعلياً مقارنة بالمطلوب والكمية التي سلّمها العامل، ثم ضع علامة أمام كل صنف بعد التأكد منه.</p>
+  <p class="note" data-i18n="reviewNote">Check each item against the requested and issued quantities. Enter the quantity you actually received, then tick the review box.</p>
   <div style="overflow:auto">
-   <table><thead><tr><th>الصنف</th><th>المطلوب</th><th>المستلم</th><th>تمت المراجعة</th></tr></thead><tbody id="items"></tbody></table>
+   <table><thead><tr><th data-i18n="item">Item</th><th data-i18n="requested">Requested</th><th data-i18n="issued">Issued</th><th data-i18n="received">Received</th><th data-i18n="checked">Checked</th></tr></thead><tbody id="items"></tbody></table>
   </div>
  </section>
  <section id="confirmPanel" class="panel">
-  <label for="recipientName"><b>اسم الشيف / مستلم القسم (إجباري)</b></label>
-  <input id="recipientName" type="text" required minlength="2" maxlength="80" autocomplete="name" placeholder="اكتب اسمك الكامل">
-  <div class="actions"><button id="confirmBtn" disabled>تأكيد الاستلام</button><span class="muted" id="checkHint">راجع جميع الأصناف واكتب اسمك لتفعيل التأكيد.</span></div>
+  <label for="recipientName"><b data-i18n="recipient">Recipient full name (required)</b></label>
+  <input id="recipientName" type="text" required minlength="2" maxlength="80" autocomplete="name" placeholder="Enter your full name">
+  <div style="margin-top:15px"><b data-i18n="signature">Recipient signature (required)</b></div>
+  <p class="muted" data-i18n="signatureHint">Sign inside the box using your finger or mouse.</p>
+  <canvas id="signature" class="signature" width="640" height="180"></canvas>
+  <div class="signature-tools"><span class="muted" id="signatureStatus" data-i18n="noSignature">No signature added</span><button class="secondary" id="clearSignature" type="button" data-i18n="clear">Clear signature</button></div>
+  <div class="actions"><button id="confirmBtn" disabled data-i18n="confirm">Confirm receipt</button><span class="muted" id="checkHint">Review every item, enter your name and sign to continue.</span></div>
  </section>
  <div id="done" class="status" hidden></div>
 </div>
 </main>
 <script>
 const SB_URL="https://xthhojjcblknukwgksxw.supabase.co";
-const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98";
 const token=new URLSearchParams(location.hash.replace(/^#/,"")).get("t")||new URL(location.href).searchParams.get("t")||"";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const TXT={
+ en:{title:"Department Receipt Confirmation",loading:"Loading order details…",hotel:"Hotel",order:"Order",department:"Department",date:"Date",reviewNote:"Check each item against the requested and issued quantities. Enter the quantity you actually received, then tick the review box.",item:"Item",requested:"Requested",issued:"Issued",received:"Received",checked:"Checked",recipient:"Recipient full name (required)",signature:"Recipient signature (required)",signatureHint:"Sign inside the box using your finger or mouse.",noSignature:"No signature added",clear:"Clear signature",confirm:"Confirm receipt",reviewHint:"Review every item, enter your name and sign to continue.",allChecked:"All items reviewed. Enter your name and sign to confirm.",loadingError:"Unable to load this order.",invalidLink:"This receipt QR link is invalid.",success:"Receipt confirmed successfully.",already:"This order was already received.",name:"Recipient",time:"Confirmed at",signed:"Signed receipt",qtyError:"Enter a valid received quantity for every item.",sigError:"Please add your signature before confirming.",confirming:"Confirming receipt…",retry:"Try again"},
+ ar:{title:"تأكيد استلام طلب القسم",loading:"جارٍ تحميل بيانات الطلب…",hotel:"الفندق",order:"الطلب",department:"القسم",date:"التاريخ",reviewNote:"راجع كل صنف مقارنة بالكمية المطلوبة والمصروفة. أدخل الكمية التي استلمتها فعليًا ثم ضع علامة المراجعة.",item:"الصنف",requested:"المطلوب",issued:"المصروف",received:"المستلم فعليًا",checked:"تمت المراجعة",recipient:"اسم المستلم الكامل (إجباري)",signature:"توقيع المستلم (إجباري)",signatureHint:"وقّع داخل المربع بإصبعك أو باستخدام الماوس.",noSignature:"لم تتم إضافة توقيع",clear:"مسح التوقيع",confirm:"تأكيد الاستلام",reviewHint:"راجع جميع الأصناف واكتب اسمك ووقّع للمتابعة.",allChecked:"تمت مراجعة جميع الأصناف. اكتب اسمك ووقّع للتأكيد.",loadingError:"تعذّر تحميل الطلب.",invalidLink:"رابط باركود الاستلام غير صالح.",success:"تم تأكيد الاستلام بنجاح.",already:"تم استلام هذا الطلب مسبقًا.",name:"المستلم",time:"وقت التأكيد",signed:"توقيع الاستلام",qtyError:"أدخل كمية مستلمة صحيحة لكل صنف.",sigError:"يرجى إضافة توقيعك قبل التأكيد.",confirming:"جارٍ تأكيد الاستلام…",retry:"حاول مرة أخرى"}
+};
+let lang="en",orderItems=[],signatureDrawn=false,receivedSnapshot=null;
+function tr(k){return TXT[lang][k]||k}
+function applyLang(){
+ document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";
+ document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;el.textContent=tr(k)});
+ $("langToggle").textContent=lang==="en"?"العربية":"English";
+ $("recipientName").placeholder=lang==="en"?"Enter your full name":"اكتب اسمك الكامل";
+ if(orderItems.length)renderItems();
+ refreshButton();
+}
+$("langToggle").addEventListener("click",()=>{lang=lang==="en"?"ar":"en";applyLang()});
 async function call(action,extra={}){
  const r=await fetch(SB_URL+"/functions/v1/hotel-portal",{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({action,t:token,...extra}),cache:"no-store"});
  const j=await r.json().catch(()=>({}));
- if(!r.ok)throw new Error(j.error||"تعذّر الاتصال بالخادم");
+ if(!r.ok)throw new Error(j.error||(lang==="en"?"Server request failed":"تعذّر الاتصال بالخادم"));
  return j;
 }
 function showError(msg){$("loading").hidden=true;$("error").hidden=false;$("error").textContent=msg}
-function parseOrder(data){
- const f=String(data.code||"").split("|");
- if(f.length<10||f[0]!=="EBR1F")throw new Error("بيانات الطلب غير مكتملة");
- const names={};
- String(f[9]||"").split(";").filter(Boolean).forEach(line=>{const p=line.split("~");if(p.length>=2)names[p[0]]={name:p[1],unit:p[2]||""}});
- const items=String(f[6]||"").split(",").filter(Boolean).map(line=>{
-  const m=line.match(/^(\d+):(\d+(?:\.\d+)?):(\d+(?:\.\d+)?):(.*)$/);
-  if(!m)throw new Error("تعذّرت قراءة أحد الأصناف");
-  return{id:m[1],requested:Number(m[2]),issued:Number(m[3]),unit:m[4],name:names[m[1]]?.name||("صنف "+m[1])};
- });
- if(!items.length)throw new Error("الطلب لا يحتوي على أصناف");
- return{f,items};
+function renderItems(){
+ $("items").innerHTML=orderItems.map((x,i)=>{
+  const name=lang==="ar"?(x.name_ar||x.name_en):(x.name_en||x.name_ar);
+  return "<tr><td><b>"+esc(name)+"</b>"+(x.unit?"<div class='muted'>"+esc(x.unit)+"</div>":"")+"</td><td class='qty'>"+x.requested+"</td><td class='qty'>"+x.issued+"</td><td><input type='number' min='0' max='999999999' step='0.5' value='"+x.received+"' data-qty='"+i+"' aria-label='"+esc(tr("received"))+"'></td><td><input type='checkbox' data-review='"+i+"' "+(x.reviewed?"checked":"")+" aria-label='"+esc(tr("checked"))+"'></td></tr>";
+ }).join("");
+ document.querySelectorAll("[data-qty]").forEach(el=>el.addEventListener("input",()=>{const x=orderItems[Number(el.dataset.qty)];x.received=el.value;refreshButton()}));
+ document.querySelectorAll("[data-review]").forEach(el=>el.addEventListener("change",()=>{orderItems[Number(el.dataset.review)].reviewed=el.checked;refreshButton()}));
 }
-let allChecked=false,orderData=null;
 function refreshButton(){
- const checks=[...document.querySelectorAll("[data-review]")];
- allChecked=checks.length>0&&checks.every(x=>x.checked);
- $("confirmBtn").disabled=!allChecked||$("recipientName").value.trim().length<2;
- $("checkHint").textContent=allChecked?"تمت مراجعة جميع الأصناف. اكتب اسمك ثم أكد الاستلام.":"راجع جميع الأصناف واكتب اسمك لتفعيل التأكيد.";
+ if(!$("confirmBtn"))return;
+ const all=orderItems.length>0&&orderItems.every(x=>x.reviewed&&String(x.received).trim()!==""&&Number.isFinite(Number(x.received))&&Number(x.received)>=0);
+ const name=$("recipientName").value.trim().length>=2;
+ $("confirmBtn").disabled=!all||!name||!signatureDrawn;
+ $("checkHint").textContent=!all?tr("reviewHint"):(!name?tr("recipient"):(!signatureDrawn?tr("sigError"):tr("allChecked")));
+ $("signatureStatus").textContent=signatureDrawn?(lang==="en"?"Signature added":"تم إضافة التوقيع"):tr("noSignature");
 }
-function showReceived(name,at,already){
- $("confirmPanel").hidden=true;
- $("done").hidden=false;
- const when=at?new Date(at).toLocaleString("ar-LY"):"";
- $("done").innerHTML=(already?"تم تأكيد استلام هذا الطلب مسبقاً.":"تم تأكيد الاستلام بنجاح.")+"<br><b>اسم المستلم: "+esc(name)+"</b>"+(when?"<br>وقت التأكيد: "+esc(when):"");
+const canvas=$("signature"),ctx=canvas.getContext("2d");
+ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#171717";
+let drawing=false,last=null;
+function point(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
+canvas.addEventListener("pointerdown",e=>{drawing=true;last=point(e);canvas.setPointerCapture(e.pointerId);signatureDrawn=true;refreshButton()});
+canvas.addEventListener("pointermove",e=>{if(!drawing)return;const p=point(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p});
+function stopDraw(){drawing=false;last=null}
+canvas.addEventListener("pointerup",stopDraw);canvas.addEventListener("pointercancel",stopDraw);canvas.addEventListener("pointerleave",e=>{if(e.buttons===0)stopDraw()});
+$("clearSignature").addEventListener("click",()=>{ctx.clearRect(0,0,canvas.width,canvas.height);signatureDrawn=false;refreshButton()});
+function showReceived(receipt,name,at,already){
+ $("confirmPanel").hidden=true;$("done").hidden=false;
+ const items=receipt?.items||orderItems;
+ if(receipt?.items){orderItems=receipt.items.map(x=>({...x,reviewed:true}));renderItems();document.querySelectorAll("[data-qty],[data-review]").forEach(x=>x.disabled=true)}
+ const signature=receipt?.signature_png?'<p><b>'+esc(tr("signed"))+'</b></p><img class="done-sign" alt="Signature" src="'+esc(receipt.signature_png)+'">':"";
+ const lines=items.map(x=>'<li>'+esc(lang==="ar"?(x.name_ar||x.name_en):(x.name_en||x.name_ar))+': '+esc(x.received)+' / '+esc(x.issued)+'</li>').join("");
+ $("done").innerHTML='<b>'+esc(already?tr("already"):tr("success"))+'</b><br>'+esc(tr("name"))+': <b>'+esc(name||"—")+'</b><br>'+esc(tr("time"))+': '+esc(at?new Date(at).toLocaleString(lang==="ar"?"ar-LY":"en-GB"):"—")+'<ul>'+lines+'</ul>'+signature;
 }
 async function init(){
- if(!/^[a-f0-9]{64}$/.test(token))return showError("رابط الباركود غير صالح.");
+ applyLang();
+ if(!/^[a-f0-9]{64}$/.test(token))return showError(tr("invalidLink"));
  try{
   const data=await call("receipt_get");
-  const {f,items}=parseOrder(data);orderData=data;
   if(window.applyHotelTheme)window.applyHotelTheme(data.hotel_code||"EBR");
   $("hotel").textContent=data.hotel_name||"";
-  $("orderNo").textContent=data.no||f[2]||"";
-  $("dept").textContent=f[7]||data.dept||"";
-  const ds=f[3]||"";$("orderDate").textContent=ds.length===6?"20"+ds.slice(0,2)+"-"+ds.slice(2,4)+"-"+ds.slice(4):"";
-  $("items").innerHTML=items.map(x=>"<tr><td><b>"+esc(x.name)+"</b>"+(x.unit?"<div class='muted'>"+esc(x.unit)+"</div>":"")+"</td><td class='qty'>"+x.requested+"</td><td class='qty'>"+x.issued+"</td><td><input class='review' type='checkbox' data-review aria-label='تمت مراجعة "+esc(x.name)+"'></td></tr>").join("");
-  $("loading").hidden=true;$("content").hidden=false;
-  if(data.received_at){showReceived(data.received_by,data.received_at,true);return}
-  document.querySelectorAll("[data-review]").forEach(x=>x.addEventListener("change",refreshButton));
+  $("orderNo").textContent=data.no||"";
+  $("dept").textContent=data.dept||"";
+  $("orderDate").textContent=data.created_at?new Date(data.created_at).toLocaleDateString("en-CA"):"";
+  orderItems=(data.items||[]).map(x=>({...x,received:x.issued,reviewed:false}));
+  if(!orderItems.length)throw new Error(tr("loadingError"));
+  if(data.receipt?.items){
+   orderItems=data.receipt.items.map(x=>({...x,reviewed:true}));
+   $("loading").hidden=true;$("content").hidden=false;renderItems();
+   showReceived(data.receipt,data.received_by,data.received_at,true);return;
+  }
+  $("loading").hidden=true;$("content").hidden=false;renderItems();
+  if(data.received_at){showReceived(null,data.received_by,data.received_at,true);return}
   $("recipientName").addEventListener("input",refreshButton);
   $("confirmBtn").addEventListener("click",confirmReceipt);
   refreshButton();
- }catch(e){showError(e.message||"تعذّر تحميل الطلب")}
+ }catch(e){showError(e.message||tr("loadingError"))}
 }
 async function confirmReceipt(){
  const name=$("recipientName").value.trim();
- if(!allChecked||name.length<2)return refreshButton();
- $("confirmBtn").disabled=true;$("confirmBtn").textContent="جارٍ تأكيد الاستلام…";
+ if(orderItems.some(x=>!x.reviewed||!Number.isFinite(Number(x.received))||Number(x.received)<0))return showError(tr("qtyError"));
+ if(name.length<2)return refreshButton();
+ if(!signatureDrawn)return showError(tr("sigError"));
+ $("confirmBtn").disabled=true;$("confirmBtn").textContent=tr("confirming");
+ const items=orderItems.map(x=>({id:x.id,received:Number(x.received),reviewed:x.reviewed}));
  try{
-  const result=await call("receipt_confirm",{name});
-  showReceived(result.received_by||name,result.received_at,result.already_received);
- }catch(e){
-  $("confirmBtn").disabled=false;$("confirmBtn").textContent="تأكيد الاستلام";
-  showError(e.message||"تعذّر تأكيد الاستلام");
- }
+  const result=await call("receipt_confirm",{name,items,signature:canvas.toDataURL("image/png")});
+  const receipt={items:result.items,signature_png:result.signature_png};
+  showReceived(receipt,result.received_by||name,result.received_at,result.already_received);
+ }catch(e){$("confirmBtn").disabled=false;$("confirmBtn").textContent=tr("confirm");showError(e.message||tr("loadingError"))}
 }
 init();
 </script>
