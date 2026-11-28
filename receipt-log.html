@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" dir="ltr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<script src="hotel-theme.js"></script><title>Receipt Confirmation Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090a0c;--card:#151515;--ink:#f4f0e7;--mut:#b7ad9b;--line:#39342a;--gold:#c9a45c;--gold2:#e5c477}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 Tajawal,Tahoma,Arial,sans-serif;padding:14px}
+.wrap{max-width:1200px;margin:18px auto}.hero{background:linear-gradient(120deg,#11100d,#1b1a16);border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:17px;padding:18px 22px}
+.hero h1{margin:0;color:var(--gold2)}.hero p{margin:3px 0;color:var(--mut)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px;margin-top:13px}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.row>*{flex:1;min-width:130px}
+button,.btn{font:inherit;border:1px solid var(--gold);border-radius:10px;padding:9px 14px;background:linear-gradient(120deg,var(--gold),var(--gold2));color:#17130b;font-weight:700;cursor:pointer;text-decoration:none;text-align:center}
+.secondary{background:#171717;color:var(--gold2)}input{font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0c1118;color:var(--ink);min-width:0}
+.muted{color:var(--mut);font-size:13px}.error{color:#ffb4a9}.hidden{display:none!important}
+#login{max-width:430px;margin:9vh auto;text-align:center}#login input,#login button{width:100%;margin:5px 0}
+.tableWrap{overflow:auto;margin-top:12px}table{width:100%;min-width:850px;border-collapse:collapse;font-size:13px}
+td,th{text-align:start;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#201d17;color:var(--gold2);position:sticky;top:0}
+.count{font-weight:800;color:var(--gold2)}details{border:1px solid var(--line);border-radius:9px;padding:7px 10px;min-width:220px}
+details summary{cursor:pointer;color:var(--gold2);font-weight:700}
+.items{margin:8px 0;padding-inline-start:22px}.items li{margin:3px 0}
+.signature{max-width:190px;max-height:70px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:3px}
+@media(max-width:600px){body{padding:8px}.wrap{margin:8px auto}.panel{padding:11px}.hero{padding:15px}}
+</style></head><body><div class="wrap">
+<div id="login" class="panel"><div style="font-size:32px">✍️</div><h2 data-i18n="loginTitle">Receipt Confirmation Log</h2><p class="muted" data-i18n="loginHint">Sign in with an authorized hotel account.</p><input id="email" type="email" placeholder="Email" autocomplete="username"><input id="password" type="password" placeholder="Password" autocomplete="current-password"><button id="loginBtn" data-i18n="signIn">Sign in</button><button id="langToggle" class="secondary">العربية</button><div id="loginErr" class="error"></div></div>
+<div id="app" class="hidden"><header class="hero"><div class="row"><div><h1 data-i18n="title">Receipt Confirmation Log</h1><p data-i18n="subtitle">Complete audit trail of signed departmental receipts</p></div><button class="secondary" id="logout" data-i18n="logout">Log out</button></div></header>
+<section class="panel"><div class="row"><b id="hotelLabel">Hotel</b><span class="count" id="count">0 receipts</span><button class="secondary" id="refresh" data-i18n="refresh">Refresh</button><button id="export" data-i18n="export">Export CSV</button><button class="secondary" id="langToggleApp">العربية</button></div>
+<div class="row" style="margin-top:10px"><input id="search" type="search" placeholder="Search order, department, recipient or item"><input id="from" type="date" aria-label="From date"><input id="to" type="date" aria-label="To date"></div>
+<div id="status" class="muted" style="margin-top:8px">Loading…</div><div class="tableWrap" id="rows"></div></section></div></div>
+<script>
+const SB='https://xthhojjcblknukwgksxw.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
+const T={
+ en:{loginTitle:"Receipt Confirmation Log",loginHint:"Sign in with an authorized hotel account.",signIn:"Sign in",title:"Receipt Confirmation Log",subtitle:"Complete audit trail of signed departmental receipts",logout:"Log out",refresh:"Refresh",export:"Export CSV",search:"Search order, department, recipient or item",from:"From date",to:"To date",loading:"Loading receipt records…",loaded:"Receipt log updated",none:"No matching receipt records.",date:"Confirmed at",order:"Order",department:"Department",recipient:"Received by",items:"Received items",signature:"Signature",hotel:"Hotel",count:"receipts",permission:"You do not have permission to view receipt confirmations.",badAccount:"Account is inactive or not assigned to a hotel.",loginError:"Sign-in failed"},
+ ar:{loginTitle:"سجل تأكيد الاستلام",loginHint:"سجّل الدخول بحساب مصرح له في الفندق.",signIn:"دخول",title:"سجل تأكيد الاستلام",subtitle:"سجل تدقيق كامل لتأكيدات استلام الأقسام الموقعة",logout:"خروج",refresh:"تحديث",export:"تصدير CSV",search:"ابحث برقم الطلب أو القسم أو المستلم أو الصنف",from:"من تاريخ",to:"إلى تاريخ",loading:"جارٍ تحميل سجلات الاستلام…",loaded:"تم تحديث سجل الاستلام",none:"لا توجد سجلات مطابقة.",date:"وقت التأكيد",order:"الطلب",department:"القسم",recipient:"المستلم",items:"الأصناف المستلمة",signature:"التوقيع",hotel:"الفندق",count:"عملية استلام",permission:"لا تملك صلاحية عرض تأكيدات الاستلام.",badAccount:"الحساب غير نشط أو غير مرتبط بفندق.",loginError:"فشل تسجيل الدخول"}
+};
+let lang="en",session=null,user=null,HOTEL="",allRows=[];
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tr=k=>T[lang][k]||k;
+function applyLang(){
+ document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";
+ document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=tr(el.dataset.i18n));
+ $("#langToggle").textContent=lang==="en"?"العربية":"English";$("#langToggleApp").textContent=lang==="en"?"العربية":"English";
+ $("#search").placeholder=tr("search");render();
+}
+function toggleLang(){lang=lang==="en"?"ar":"en";applyLang()}
+$("#langToggle").onclick=toggleLang;$("#langToggleApp").onclick=toggleLang;
+async function auth(body,grant){const r=await fetch(SB+"/auth/v1/token?grant_type="+grant,{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(body)}),j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error_description||j.msg||j.message||tr("loginError"));session={access:j.access_token,refresh:j.refresh_token};user=j.user}
+async function api(path,opts={},retry=true){opts.headers={apikey:KEY,Authorization:"Bearer "+(session?.access||""),"Content-Type":"application/json",...(opts.headers||{})};const r=await fetch(SB+"/rest/v1/"+path,opts);if(r.status===401&&retry&&session?.refresh){await auth({refresh_token:session.refresh},"refresh_token");return api(path,opts,false)}const t=await r.text();if(!r.ok)throw Error(t.slice(0,260)||"HTTP "+r.status);return t?JSON.parse(t):null}
+async function loadMyHotel(){
+ const r=await fetch(SB+"/functions/v1/sbfenv",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+session.access,"Content-Type":"application/json"},body:JSON.stringify({action:"my_status"})});
+ const j=await r.json().catch(()=>({}));if(!r.ok||!j.user)throw Error(j.error||tr("badAccount"));
+ if(!j.user.is_active||j.user.is_paralyzed)throw Error(tr("badAccount"));
+ const p=j.user.permissions?.orders||{};if(p.read!==true)throw Error(tr("permission"));
+ HOTEL=String(j.user.hotel_code||"").toUpperCase();if(window.applyHotelTheme)window.applyHotelTheme(HOTEL);if(!HOTEL)throw Error(tr("badAccount"));
+}
+async function load(){
+ try{
+  $("#status").textContent=tr("loading");
+  allRows=await api("receipt_confirmations?select=id,hotel_code,order_no,department,recipient_name,confirmed_at,items,signature_png&hotel_code=eq."+encodeURIComponent(HOTEL)+"&order=confirmed_at.desc&limit=2000");
+  render();$("#status").textContent=tr("loaded");
+ }catch(e){$("#status").textContent=e.message;$("#status").className="error"}
+}
+function filtered(){
+ const q=$("#search").value.trim().toLowerCase(),from=$("#from").value,to=$("#to").value;
+ return allRows.filter(x=>{
+  const d=new Date(x.confirmed_at).toISOString().slice(0,10),items=Array.isArray(x.items)?x.items:[];
+  const hay=[x.order_no,x.department,x.recipient_name,...items.flatMap(i=>[i.name_ar,i.name_en])].join(" ").toLowerCase();
+  return (!q||hay.includes(q))&&(!from||d>=from)&&(!to||d<=to);
+ });
+}
+function render(){
+ if(!$("#rows"))return;
+ const rows=filtered();$("#count").textContent=rows.length+" "+tr("count");
+ $("#rows").innerHTML=rows.length?'<table><thead><tr><th>'+tr("date")+'</th><th>'+tr("order")+'</th><th>'+tr("department")+'</th><th>'+tr("recipient")+'</th><th>'+tr("items")+'</th><th>'+tr("signature")+'</th></tr></thead><tbody>'+
+ rows.map(x=>{
+  const list=(Array.isArray(x.items)?x.items:[]).map(i=>'<li>'+esc(lang==="ar"?(i.name_ar||i.name_en):(i.name_en||i.name_ar))+' — '+tr("requested")+': '+esc(i.requested)+' / '+tr("issued")+': '+esc(i.issued)+' / '+tr("received")+': '+esc(i.received)+' '+esc(i.unit||"")+'</li>').join("");
+  return '<tr><td>'+new Date(x.confirmed_at).toLocaleString(lang==="ar"?"ar-LY":"en-GB")+'</td><td><b>'+esc(x.order_no)+'</b></td><td>'+esc(x.department)+'</td><td>'+esc(x.recipient_name)+'</td><td><details><summary>'+tr("items")+' ('+(x.items||[]).length+')</summary><ul class="items">'+list+'</ul></details></td><td><img class="signature" alt="Signature" src="'+esc(x.signature_png)+'"></td></tr>';
+ }).join("")+'</tbody></table>':'<p class="muted">'+tr("none")+'</p>';
+}
+$("#loginBtn").onclick=async()=>{const b=$("#loginBtn");b.disabled=true;$("#loginErr").textContent="";try{await auth({email:$("#email").value.trim(),password:$("#password").value},"password");await loadMyHotel();$("#login").classList.add("hidden");$("#app").classList.remove("hidden");$("#hotelLabel").textContent=tr("hotel")+": "+HOTEL;await load()}catch(e){$("#loginErr").textContent=e.message}finally{b.disabled=false}};
+$("#password").onkeydown=e=>{if(e.key==="Enter")$("#loginBtn").click()};
+$("#refresh").onclick=load;["search","from","to"].forEach(id=>$("#"+id).addEventListener("input",render));
+$("#export").onclick=()=>{
+ const rows=filtered(),head=["Hotel","Order","Department","Recipient","Confirmed At","Item ID","Item Arabic","Item English","Requested","Issued","Received","Unit"];
+ const data=rows.flatMap(x=>(x.items||[]).map(i=>[HOTEL,x.order_no,x.department,x.recipient_name,new Date(x.confirmed_at).toISOString(),i.id,i.name_ar,i.name_en,i.requested,i.issued,i.received,i.unit]));
+ const csv="\ufeff"+[head,...data].map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="receipt-confirmations-"+HOTEL+".csv";a.click();URL.revokeObjectURL(a.href);
+};
+$("#logout").onclick=()=>{session=null;user=null;allRows=[];$("#app").classList.add("hidden");$("#login").classList.remove("hidden");$("#password").value=""};
+applyLang();
+</script></body></html>
