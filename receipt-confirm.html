@@ -55,7 +55,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
  </section>
  <section id="confirmPanel" class="panel">
   <label for="recipientName"><b>اسم الشيف / مستلم القسم (إجباري)</b></label>
-  <input id="recipientName" type="text" maxlength="80" autocomplete="name" placeholder="اكتب اسمك الكامل">
+  <input id="recipientName" type="text" required minlength="2" maxlength="80" autocomplete="name" placeholder="اكتب اسمك الكامل">
   <div class="actions"><button id="confirmBtn" disabled>تأكيد الاستلام</button><span class="muted" id="checkHint">راجع جميع الأصناف واكتب اسمك لتفعيل التأكيد.</span></div>
  </section>
  <div id="done" class="status" hidden></div>
