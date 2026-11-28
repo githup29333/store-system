@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const length = Number(req.headers.get("content-length") || "0");
-    if (length > 40000) return respond({ error: "Request too large" }, 413);
+    if (length > 80000) return respond({ error: "Request too large" }, 413);
 
     const body = await req.json();
     const action = String(body.action || "");
@@ -35,14 +35,54 @@ Deno.serve(async (req: Request) => {
       if (action === "receipt_get") {
         const { data, error } = await admin.rpc("hotel_receipt_get", { p_token_hash: tokenHash });
         if (error || !data) return respond({ error: "Receipt link not found or expired" }, 404);
-        return respond(data);
+        const fields = String(data.code || "").split("|");
+        if (fields.length < 10 || fields[0] !== "EBR1F") return respond({ error: "Invalid order data" }, 404);
+        const custom = new Map();
+        String(fields[9] || "").split(";").filter(Boolean).forEach(line => {
+          const p = line.split("~");
+          if (p.length >= 2) custom.set(p[0], { ar: p[1] || "", unit: p[2] || "" });
+        });
+        const rawLines = String(fields[6] || "").split(",").filter(Boolean).map(line => {
+          const p = line.split(":");
+          if (p.length < 4 || !/^\\d+$/.test(p[0])) return null;
+          return { id: Number(p[0]), requested: Number(p[1]), issued: Number(p[2]), unit: p[3] || "" };
+        });
+        if (!rawLines.length || rawLines.some(x => !x || !Number.isSafeInteger(x.id) ||
+          !Number.isFinite(x.requested) || !Number.isFinite(x.issued))) {
+          return respond({ error: "Invalid order items" }, 404);
+        }
+        const { data: catalog } = await admin.from("items").select("id,ar,en").in("id", rawLines.map(x => x.id));
+        const byId = new Map((catalog || []).map(x => [Number(x.id), x]));
+        const items = rawLines.map(x => {
+          const base = byId.get(x.id) || {}, extra = custom.get(String(x.id)) || {};
+          return { ...x, name_ar: extra.ar || base.ar || ("Item " + x.id),
+            name_en: base.en || "", unit: extra.unit || x.unit };
+        });
+        return respond({ ...data, items });
       }
       const name = String(body.name || "").trim();
       if (name.length < 2 || name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) {
         return respond({ error: "Enter a valid recipient name" }, 400);
       }
+      if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 500) {
+        return respond({ error: "Review every item before confirming" }, 400);
+      }
+      const items = [];
+      for (const row of body.items) {
+        const id = Number(row?.id), received = Number(row?.received);
+        if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(received) ||
+            received < 0 || received > 999999999 || row?.reviewed !== true) {
+          return respond({ error: "Invalid or unreviewed receipt item" }, 400);
+        }
+        items.push({ id: String(id), received: String(received), reviewed: true });
+      }
+      const signature = String(body.signature || "");
+      if (signature.length > 60000 ||
+          !/^data:image\\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(signature)) {
+        return respond({ error: "A valid drawn signature is required" }, 400);
+      }
       const { data, error } = await admin.rpc("hotel_receipt_confirm", {
-        p_token_hash: tokenHash, p_name: name,
+        p_token_hash: tokenHash, p_name: name, p_items: items, p_signature: signature,
       });
       if (error || !data) return respond({ error: "Unable to confirm receipt" }, 400);
       return respond(data);
