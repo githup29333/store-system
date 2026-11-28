@@ -164,8 +164,8 @@ async function sendBatch(group, to, cc, hotelName, ctx){
   const orderNos=claimed.map(d=>d.no).filter(Boolean);
   const info=await transport.sendMail({
    from:FROM,to,cc,
-   subject:(hotelName?'['+hotelName+'] ':'')+'تقرير الصرف والتكلفة المجمّع / Consolidated Issue & Cost — '+claimed.length+' طلب',
-   text:'مرفق ملف الصرف وملف التكلفة المجمّعان. يحتوي كل ملف على ورقة مستقلة لكل قسم، وجُمعت طلبات القسم الواحد في ورقته. عدد الطلبات: '+claimed.length+'. أرقام الطلبات: '+orderNos.join('، ')+'.\n\nAttached are the consolidated issue and cost workbooks. Each department has its own worksheet, with its orders grouped together.',
+   subject:(hotelName?'['+hotelName+'] ':'')+'تقارير الصرف والتكلفة والاستلام الموقّع / Consolidated Issue, Cost & Signed Receipts — '+claimed.length+' طلب',
+   text:'مرفق ثلاثة ملفات Excel: الصرف والتكلفة وتأكيدات الاستلام الموقعة، وكل ملف مقسّم حسب الأقسام. لا يُرسل الطلب قبل تأكيد المستلم وتوقيعه. عدد الطلبات: '+claimed.length+'. أرقام الطلبات: '+orderNos.join('، ')+'.\n\nAttached are three consolidated Excel workbooks: issue, cost, and signed receipt confirmations. Each workbook has a separate worksheet per department. Orders are emailed only after the recipient confirms and signs.',
    attachments:[
     {filename:'Issue_Departments.xlsx',content:files.issue,contentType:XL},
     {filename:'Cost_Departments.xlsx',content:files.cost,contentType:XL},
