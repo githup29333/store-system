@@ -134,6 +134,16 @@ async function sendOne(d,to,cc,hotelName){
 
 
 async function sendBatch(group, to, cc, hotelName, ctx){
+ const hotelCode=group[0]?.hotel;
+ const receiptRows=await rest('receipt_confirmations?select=hotel_code,order_no,department,recipient_name,confirmed_at,items,signature_png&hotel_code=eq.'+enc(hotelCode)+'&order=confirmed_at.desc&limit=5000');
+ const receiptMap=new Map();
+ for(const r of receiptRows||[]){
+  if(r.signature_png&&Array.isArray(r.items)&&!receiptMap.has(String(r.order_no)))receiptMap.set(String(r.order_no),r);
+ }
+ const waiting=group.filter(d=>!receiptMap.has(String(d.no)));
+ if(waiting.length)console.log('Waiting for recipient signature; approved orders remain unsent: '+waiting.map(d=>d.no).join(', '));
+ group=group.filter(d=>receiptMap.has(String(d.no)));
+ if(!group.length){console.log('No signed receipts available for '+hotelCode+'; nothing sent');return true;}
  const claimed=[];
  for(const d of group){
   const got=await rest('deliveries?key=eq.'+enc(d.key)+'&rev=eq.'+d.rev+'&status=eq.approved',{
