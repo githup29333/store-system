@@ -83,6 +83,7 @@ function applyLang(){
  $("recipientName").placeholder=lang==="en"?"Enter your full name":"اكتب اسمك الكامل";
  if(orderItems.length)renderItems();
  refreshButton();
+ if(doneState)renderDone();
 }
 $("langToggle").addEventListener("click",()=>{lang=lang==="en"?"ar":"en";applyLang()});
 async function call(action,extra={}){
@@ -117,13 +118,19 @@ canvas.addEventListener("pointermove",e=>{if(!drawing)return;const p=point(e);ct
 function stopDraw(){drawing=false;last=null}
 canvas.addEventListener("pointerup",stopDraw);canvas.addEventListener("pointercancel",stopDraw);canvas.addEventListener("pointerleave",e=>{if(e.buttons===0)stopDraw()});
 $("clearSignature").addEventListener("click",()=>{ctx.clearRect(0,0,canvas.width,canvas.height);signatureDrawn=false;refreshButton()});
-function showReceived(receipt,name,at,already){
- $("confirmPanel").hidden=true;$("done").hidden=false;
+let doneState=null;
+function renderDone(){
+ if(!doneState)return;
+ const {receipt,name,at,already}=doneState;
  const items=receipt?.items||orderItems;
- if(receipt?.items){orderItems=receipt.items.map(x=>({...x,reviewed:true}));renderItems();document.querySelectorAll("[data-qty],[data-review]").forEach(x=>x.disabled=true)}
  const signature=receipt?.signature_png?'<p><b>'+esc(tr("signed"))+'</b></p><img class="done-sign" alt="Signature" src="'+esc(receipt.signature_png)+'">':"";
  const lines=items.map(x=>'<li>'+esc(lang==="ar"?(x.name_ar||x.name_en):(x.name_en||x.name_ar))+': '+esc(x.received)+' / '+esc(x.issued)+'</li>').join("");
  $("done").innerHTML='<b>'+esc(already?tr("already"):tr("success"))+'</b><br>'+esc(tr("name"))+': <b>'+esc(name||"—")+'</b><br>'+esc(tr("time"))+': '+esc(at?new Date(at).toLocaleString(lang==="ar"?"ar-LY":"en-GB"):"—")+'<ul>'+lines+'</ul>'+signature;
+}
+function showReceived(receipt,name,at,already){
+ $("confirmPanel").hidden=true;$("done").hidden=false;
+ if(receipt?.items){orderItems=receipt.items.map(x=>({...x,reviewed:true}));renderItems();document.querySelectorAll("[data-qty],[data-review]").forEach(x=>x.disabled=true)}
+ doneState={receipt,name,at,already};renderDone();
 }
 async function init(){
  applyLang();
@@ -134,7 +141,7 @@ async function init(){
   $("hotel").textContent=data.hotel_name||"";
   $("orderNo").textContent=data.no||"";
   $("dept").textContent=data.department||data.dept||"";
-  $("orderDate").textContent=data.created_at?new Date(data.created_at).toLocaleDateString("en-CA"):"";
+  $("orderDate").textContent=data.created_at?new Date(data.created_at).toLocaleDateString(lang==="ar"?"ar-LY":"en-CA"):"";
   orderItems=(data.items||[]).map(x=>({...x,received:x.issued,reviewed:false}));
   if(!orderItems.length)throw new Error(tr("loadingError"));
   if(data.receipt?.items){
