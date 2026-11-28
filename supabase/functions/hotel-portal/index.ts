@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
           return { ...x, name_ar: extra.ar || base.ar || ("Item " + x.id),
             name_en: base.en || "", unit: extra.unit || x.unit };
         });
-        return respond({ ...data, items });
+        return respond({ ...data, items, department: fields[7] || data.dept });
       }
       const name = String(body.name || "").trim();
       if (name.length < 2 || name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) {
