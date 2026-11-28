@@ -931,6 +931,7 @@ async function renderReceiptQr(){
 }
 async function createReceiptLink(){
  if(!chk()||!o||!o.submitted||RECEIPT_CREATING)return;
+ if(o.receiptToken){await renderReceiptQr();return o.receiptToken;}
  RECEIPT_CREATING=true;
  try{
   const r=await rpc("hotel_receipt_issue",{k:HK,p_no:o.no}),j=await r.json().catch(()=>({}));
