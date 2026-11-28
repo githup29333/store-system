@@ -34,6 +34,6 @@ const {generateBatchWorkbooks,generateReceiptWorkbook}=require('./batch-workbook
  assert.equal(receiptWb.worksheets.length,2);
  assert.equal(receiptWb.getWorksheet('Restaurant').getCell('F6').value,2);
  assert.equal(receiptWb.getWorksheet('Restaurant').getImages().length,2,'one signature image per order');
- assert.equal(receiptWb.getWorksheet('Housekeeping').getCell('C5').value,'Milk');
+ assert.equal(receiptWb.getWorksheet('Housekeeping').getCell('C6').value,'Milk');
  console.log('Batch workbook tests passed: three files, one worksheet per department, orders grouped by department.');
 })().catch(e=>{console.error(e);process.exit(1);});
