@@ -916,7 +916,7 @@ addEventListener('online',flushLog);setInterval(flushLog,60000);
 let RECEIPT_CREATING=false;
 function receiptLink(){
  if(!o||!o.receiptToken)return "";
- const u=new URL("receipt-confirm.html",location.href);u.search="";u.searchParams.set("t",o.receiptToken);return u.href;
+ const u=new URL("receipt-confirm.html",location.href);u.search="";u.hash="t="+encodeURIComponent(o.receiptToken);return u.href;
 }
 async function renderReceiptQr(){
  const box=$("#receiptQr");if(!box||!o||!o.receiptToken)return;
