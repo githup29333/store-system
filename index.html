@@ -699,7 +699,7 @@ function ingest(txt){if(!chk())return;
  toast(bad?'تنبيه: قائمة الأصناف تختلف عن قائمة القسم / Warning: item list differs from the department\'s':'تم تحميل الطلب / Order loaded');
 }
 function renderIssue(){
- if(!o)return;save();$('#addItem').hidden=WM;
+ if(!o)return;save();$('#addItem').hidden=!!(WM&&o.submitted);
  const got=Object.keys(o.parts).length,miss=got<o.total;
  const ids=Object.keys(o.items).map(Number).sort((a,b)=>a-b);
  ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
@@ -710,7 +710,7 @@ function renderIssue(){
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${escHtml(c.n)}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${escHtml(c.u)}</td><td>${it.req}</td><td><input type="number" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
  if(WM){
   const short=ids.filter(id=>o.items[id].iss<o.items[id].req).length;
-  $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">طلب رقم <b>${escHtml(o.no)}</b></div><div>${escHtml(D[o.dept]||o.dept)}</div><div class="worker-order-status">${miss?'باقي أجزاء من الطلب — امسحها أولاً':short?short+' أصناف بها نقص':'كل الكميات متوفرة'}</div></div>
+  $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">طلب رقم <b>${escHtml(o.no)}</b></div><label class="worker-dept-edit">القسم / Department <select id="workerDept" ${o.submitted?'disabled':''}>${Object.entries(D).map(([k,v])=>`<option value="${escHtml(k)}" ${k===o.dept?'selected':''}>${escHtml(v)}</option>`).join('')}</select></label><div class="worker-order-status">${miss?'باقي أجزاء من الطلب — امسحها أولاً':short?short+' أصناف بها نقص':'كل الكميات متوفرة'}</div></div>
   <table class="worker-order-table"><thead><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th></tr></thead><tbody>${rows}</tbody></table>
   <p class="st ${miss?'bad':''}">${miss?'لا يمكن تسجيل الصرف قبل تحميل جميع أجزاء الطلب.':'الكميات المصروفة تبدأ مساوية للمطلوب. غيّر الصنف الذي لم تتوفر كميته فقط.'}</p>
   <div class="row" style="margin-top:12px"><button class="btn ok" id="fc" ${FINAL_SAVING||miss||o.submitted?'disabled':''}>${o.submitted?'تم تسجيل الصرف ✓':'تأكيد الصرف'}</button></div>`;
@@ -720,7 +720,7 @@ function renderIssue(){
  <table><tr><th>صُرف<br>Issue?</th><th>الصنف</th><th>Item</th><th>المطلوب<br>Qty</th><th>المصروف<br>Issued</th><th>الوحدة<br>Unit</th></tr>${rows}</table>
  <div class="row" style="margin-top:12px"><button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button></div>`;
 }
-$('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){const x=o.items[t.dataset.iss];x.iss=Math.min(x.req,Math.max(0,Number(t.value)||0));x.on=x.iss>0}else if(t.dataset.un){o.items[t.dataset.un].unit=t.value}else if(t.id==='odept'){o.dept=t.value}renderIssue()};
+$('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){const x=o.items[t.dataset.iss];x.iss=Math.min(x.req,Math.max(0,Number(t.value)||0));x.on=x.iss>0}else if(t.dataset.un){o.items[t.dataset.un].unit=t.value}else if(t.id==='odept'||t.id==='workerDept'){if(!Object.prototype.hasOwnProperty.call(D,t.value))return toast('القسم غير معتمد / Invalid department');o.dept=t.value;save()}renderIssue()};
 $('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc'){if(WM)issueOrder();else copyFinal()}};
 $('#load').onclick=()=>ingest($('#paste').value);
 
@@ -1027,7 +1027,7 @@ $('#xName').oninput=()=>{
 };
 $('#xSug').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;XID=+b.dataset.pick;$('#xName').value=cat[XID-1].n;$('#xSug').innerHTML=''};
 $('#xAdd').onclick=async()=>{
- if(!o)return;
+ if(!o||o.submitted)return toast('لا يمكن تعديل طلب تم تأكيده / Submitted orders cannot be edited');
  const t=cn($('#xName').value.trim()),rq=+$('#xReq').value||0,is=+$('#xIss').value||0;
  if(!t)return toast('اكتب اسم الصنف / Enter the item name');
  if(!Number.isFinite(rq)||!Number.isFinite(is)||rq<=0||is<0||is>rq)return toast('الكمية غير صحيحة: المطلوب أكبر من صفر والمصروف بين صفر والمطلوب / Invalid quantities');
