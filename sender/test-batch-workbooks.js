@@ -23,7 +23,7 @@ const {generateBatchWorkbooks,generateReceiptWorkbook}=require('./batch-workbook
  const cost=new ExcelJS.Workbook();await cost.xlsx.load(out.cost);
  assert.equal(cost.worksheets.length,2);
  assert.equal(cost.getWorksheet('Restaurant').getCell('I7').value,20);
- const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pS8AAAAASUVORK5CYII=';
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=';
  const receipts=new Map([
   ['R-1',{recipient_name:'Chef One',confirmed_at:'2026-11-28T10:30:00Z',items:[{id:1,requested:5,issued:3,received:2,unit:'كيلو'}],signature_png:'data:image/png;base64,'+png}],
   ['R-2',{recipient_name:'Chef Two',confirmed_at:'2026-11-28T10:35:00Z',items:[{id:1,requested:2,issued:2,received:2,unit:'كيلو'}],signature_png:'data:image/png;base64,'+png}],
