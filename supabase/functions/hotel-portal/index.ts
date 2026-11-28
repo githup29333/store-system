@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const cors = {
-  "Access-Control-Allow-Origin": "https://githup29333.github.io",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json",
@@ -27,20 +27,71 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     const action = String(body.action || "");
-    const key = String(body.k || "");
-    if (!["hotel_info", "hotel_items", "hotel_add_item", "hotel_log"].includes(action)) {
+    if (action === "receipt_get" || action === "receipt_confirm") {
+      const rawToken = String(body.t || "");
+      if (!/^[a-f0-9]{64}$/.test(rawToken)) return respond({ error: "Invalid receipt link" }, 400);
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawToken));
+      const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+      if (action === "receipt_get") {
+        const { data, error } = await admin.rpc("hotel_receipt_get", { p_token_hash: tokenHash });
+        if (error || !data) return respond({ error: "Receipt link not found or expired" }, 404);
+        return respond(data);
+      }
+      const name = String(body.name || "").trim();
+      if (name.length < 2 || name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) {
+        return respond({ error: "Enter a valid recipient name" }, 400);
+      }
+      const { data, error } = await admin.rpc("hotel_receipt_confirm", {
+        p_token_hash: tokenHash, p_name: name,
+      });
+      if (error || !data) return respond({ error: "Unable to confirm receipt" }, 400);
+      return respond(data);
+    }
+
+    const supplied = String(body.k || "");
+    if (!["hotel_info", "hotel_items", "hotel_add_item", "hotel_log", "hotel_receipt_issue", "receipt_get", "receipt_confirm"].includes(action)) {
       return respond({ error: "Unknown action" }, 400);
     }
-    if (!/^[A-Za-z0-9_-]{32}$/.test(key)) return respond({ error: "Invalid hotel key" }, 401);
+    let key = "";
+    if (/^[A-Za-z0-9_-]{32}$/.test(supplied)) {
+      // Backward compatibility for existing full-key links.
+      key = supplied;
+    } else if (/^[A-Za-z0-9_-]{2,24}$/.test(supplied)) {
+      // Short path slug (e.g. /ebr) resolves to the private hotel key server-side.
+      const { data: row, error: lookupError } = await admin
+        .from("hotels").select("key").eq("code", supplied.toUpperCase()).eq("active", true).maybeSingle();
+      if (lookupError) {
+        console.error("hotel slug lookup failed");
+        return respond({ error: "Unable to validate hotel access" }, 503);
+      }
+      key = String(row?.key || "");
+    }
+    if (!/^[A-Za-z0-9_-]{32}$/.test(key)) return respond({ error: "Invalid hotel link" }, 401);
 
-    // The hotel key is a 32-character bearer credential. Validate it server-side
-    // before using the service-role client for any hotel-scoped operation.
+    // Resolve and validate the private hotel credential server-side.
     const { data: hotel, error: hotelError } = await admin.rpc("hotel_info", { k: key });
     if (hotelError) {
       console.error("hotel portal key check failed");
       return respond({ error: "Unable to validate hotel access" }, 503);
     }
     if (!hotel) return respond({ error: "Invalid or expired hotel access" }, 401);
+    if (action === "hotel_receipt_issue") {
+      const no = String(body.p_no || "");
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(no)) return respond({ error: "Invalid order number" }, 400);
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      const token = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+      const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+      const { error } = await admin.rpc("hotel_receipt_issue", {
+        k: key, p_no: no, p_token_hash: tokenHash,
+      });
+      if (error) {
+        console.warn("hotel_receipt_issue rejected a request");
+        return respond({ error: "Unable to create receipt link" }, 400);
+      }
+      return respond({ ok: true, token });
+    }
     if (action === "hotel_info") return respond(hotel);
 
     if (action === "hotel_items") {
