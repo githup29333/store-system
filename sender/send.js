@@ -158,7 +158,8 @@ async function sendBatch(group, to, cc, hotelName, ctx){
    text:'مرفق ملف الصرف وملف التكلفة المجمّعان. يحتوي كل ملف على ورقة مستقلة لكل قسم، وجُمعت طلبات القسم الواحد في ورقته. عدد الطلبات: '+claimed.length+'. أرقام الطلبات: '+orderNos.join('، ')+'.\n\nAttached are the consolidated issue and cost workbooks. Each department has its own worksheet, with its orders grouped together.',
    attachments:[
     {filename:'Issue_Departments.xlsx',content:files.issue,contentType:XL},
-    {filename:'Cost_Departments.xlsx',content:files.cost,contentType:XL}
+    {filename:'Cost_Departments.xlsx',content:files.cost,contentType:XL},
+    {filename:'Receipt_Confirmations.xlsx',content:receiptWorkbook,contentType:XL}
    ]
   });
   const rejected=(info.rejected||[]).map(x=>x.address||x);
