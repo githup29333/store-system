@@ -705,7 +705,7 @@ function renderIssue(){
  ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
  const UN=['قطعة','حزمة','صندوق','كيلو'];
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
-  if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(c.n)}</b><small class="worker-unit">${escHtml(c.u||it.unit||'')}</small></td><td><b>${it.req}</b> <small>${escHtml(it.unit)}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" aria-label="الكمية المصروفة من ${escHtml(c.n)}"></td></tr>`;
+  if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(c.n)}</b><small class="worker-unit">${escHtml(c.u||it.unit||'')}</small></td><td><b>${it.req}</b> <small>${escHtml(it.unit)}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" ${o.submitted?'disabled':''} aria-label="الكمية المصروفة من ${escHtml(c.n)}"></td></tr>`;
   const unSel=`<select data-un="${id}" disabled>${UN.map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select>`;
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${escHtml(c.n)}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${escHtml(c.u)}</td><td>${it.req}</td><td><input type="number" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
  if(WM){
@@ -713,7 +713,9 @@ function renderIssue(){
   $('#issue').innerHTML=`<div class="worker-order-head"><div class="worker-order-number">طلب رقم <b>${escHtml(o.no)}</b></div><label class="worker-dept-edit">القسم / Department <select id="workerDept" ${o.submitted?'disabled':''}>${Object.entries(D).map(([k,v])=>`<option value="${escHtml(k)}" ${k===o.dept?'selected':''}>${escHtml(v)}</option>`).join('')}</select></label><div class="worker-order-status">${miss?'باقي أجزاء من الطلب — امسحها أولاً':short?short+' أصناف بها نقص':'كل الكميات متوفرة'}</div></div>
   <table class="worker-order-table"><thead><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th></tr></thead><tbody>${rows}</tbody></table>
   <p class="st ${miss?'bad':''}">${miss?'لا يمكن تسجيل الصرف قبل تحميل جميع أجزاء الطلب.':'الكميات المصروفة تبدأ مساوية للمطلوب. غيّر الصنف الذي لم تتوفر كميته فقط.'}</p>
-  <div class="row" style="margin-top:12px"><button class="btn ok" id="fc" ${FINAL_SAVING||miss||o.submitted?'disabled':''}>${o.submitted?'تم تسجيل الصرف ✓':'تأكيد الصرف'}</button></div>`;
+  <div class="row" style="margin-top:12px"><button class="btn ok" id="fc" ${FINAL_SAVING||miss||o.submitted?'disabled':''}>${o.submitted?'تم تسجيل الصرف ✓':'تأكيد الصرف'}</button></div>
+  ${o.submitted?`<div class="receipt-panel st"><b>باركود تأكيد الاستلام / Recipient Receipt QR</b><p>اعرض هذا الباركود للشيف أو مسؤول القسم ليمسحه بكاميرا جواله ويؤكد استلام الأصناف.</p><div id="receiptQr" class="qrs"></div><div class="row"><button class="btn alt" id="receiptRetry">إظهار الباركود / Generate QR</button><button class="btn alt" id="receiptCopy" ${o.receiptToken?'':'disabled'}>نسخ رابط التأكيد / Copy link</button></div><div id="receiptStatus" class="st" hidden></div></div>`:''}`;
+  if(o.submitted&&o.receiptToken)renderReceiptQr().catch(()=>{});
   return;
  }
  $('#issue').innerHTML=`<div class="st ${miss?'bad':''}">${escHtml(D[o.dept]||o.dept)} — طلب / Order ${escHtml(o.no)} — الأجزاء المستلمة / Parts received: ${got} / ${o.total}${o.worker?' — العامل / Worker: '+escHtml(o.worker):''}${miss?' (امسح باقي الأجزاء قبل التصدير / scan the remaining parts before export)':''}</div>
@@ -721,7 +723,7 @@ function renderIssue(){
  <div class="row" style="margin-top:12px"><button class="btn" id="xl">تصدير Excel / Export Excel</button><button class="btn ok" id="em">تجهيز إيميل Outlook / Prepare Outlook Email</button><button class="btn alt" id="fc">نسخ كود الرد للقسم / Copy reply code for department</button></div>`;
 }
 $('#issue').onchange=e=>{const t=e.target;if(t.dataset.on){o.items[t.dataset.on].on=t.checked}else if(t.dataset.iss){const x=o.items[t.dataset.iss];x.iss=Math.min(x.req,Math.max(0,Number(t.value)||0));x.on=x.iss>0}else if(t.dataset.un){o.items[t.dataset.un].unit=t.value}else if(t.id==='odept'||t.id==='workerDept'){if(!Object.prototype.hasOwnProperty.call(D,t.value))return toast('القسم غير معتمد / Invalid department');o.dept=t.value;save()}renderIssue()};
-$('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc'){if(WM)issueOrder();else copyFinal()}};
+$('#issue').onclick=e=>{const xd=e.target.closest('[data-xdel]');if(xd){delete o.items[xd.dataset.xdel];renderIssue();return}if(e.target.id==='xl')dlXlsx();if(e.target.id==='em')dlEml();if(e.target.id==='fc'){if(WM)issueOrder();else copyFinal()}if(e.target.closest('#receiptRetry'))createReceiptLink().catch(err=>toast(err.message||'تعذّر إنشاء الباركود'));if(e.target.closest('#receiptCopy')){const u=receiptLink();if(u)navigator.clipboard.writeText(u).then(()=>toast('تم نسخ رابط الاستلام / Receipt link copied'),()=>prompt('انسخ الرابط / Copy link',u))}};
 $('#load').onclick=()=>ingest($('#paste').value);
 
 const lines=()=>Object.keys(o.items).map(Number).sort((a,b)=>a-b).filter(id=>o.items[id].on&&o.items[id].iss>0).map(id=>({id,req:o.items[id].req,iss:o.items[id].iss}));
@@ -911,6 +913,32 @@ async function flushLog(){
  flushing=false;
 }
 addEventListener('online',flushLog);setInterval(flushLog,60000);
+let RECEIPT_CREATING=false;
+function receiptLink(){
+ if(!o||!o.receiptToken)return "";
+ const u=new URL("receipt-confirm.html",location.href);u.search="";u.searchParams.set("t",o.receiptToken);return u.href;
+}
+async function renderReceiptQr(){
+ const box=$("#receiptQr");if(!box||!o||!o.receiptToken)return;
+ await ensureQRCode();
+ const url=receiptLink(),qr=qrcode(0,"M");qr.addData(url);qr.make();
+ box.innerHTML=`<figure>${qr.createSvgTag({cellSize:5,margin:2,scalable:true})}<code>${escHtml(url)}</code></figure>`;
+ try{
+  const r=await rpc("receipt_get",{t:o.receiptToken}),j=await r.json();
+  const st=$("#receiptStatus");
+  if(st&&r.ok&&j.received_at){st.hidden=false;st.textContent="تم تأكيد الاستلام بواسطة "+(j.received_by||"")+" — "+new Date(j.received_at).toLocaleString("ar-LY");}
+ }catch(e){}
+}
+async function createReceiptLink(){
+ if(!chk()||!o||!o.submitted||RECEIPT_CREATING)return;
+ RECEIPT_CREATING=true;
+ try{
+  const r=await rpc("hotel_receipt_issue",{k:HK,p_no:o.no}),j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.token)throw new Error(j.error||"تعذّر إنشاء باركود الاستلام");
+  o.receiptToken=j.token;save();renderIssue();await renderReceiptQr();
+  return j.token;
+ }finally{RECEIPT_CREATING=false}
+}
 async function issueOrder(){
  if(!chk()||!o||o.submitted||FINAL_SAVING)return;
  if(Object.keys(o.parts).length<o.total)return toast('امسح جميع أجزاء الطلب أولاً / Scan all order parts first');
@@ -924,7 +952,8 @@ async function issueOrder(){
   const r=await rpc('hotel_log',{k:HK,p_kind:'final',p_code:code,p_dept:o.dept,p_no:o.no,p_device:LS('dev')||''});
   if(!r.ok){const msg=await r.text().catch(()=> '');throw new Error(msg||('HTTP '+r.status))}
   o.submitted=true;save();renderIssue();
-  toast('تم تسجيل الصرف بنجاح — الطلب جاهز للإرسال / Issuance recorded — order queued for delivery');
+  try{await createReceiptLink()}catch(qrError){toast('تم تسجيل الصرف، لكن تعذّر إنشاء باركود الاستلام. اضغط إظهار الباركود لإعادة المحاولة. / Issued; retry QR generation.');}
+  if(o.receiptToken)toast('تم تسجيل الصرف وإنشاء باركود الاستلام / Issuance and receipt QR created');
  }catch(e){
   toast('تعذّر تسجيل الصرف: '+String(e.message||e).slice(0,150)+' / Could not record issuance');
  }finally{FINAL_SAVING=false;renderIssue()}
@@ -933,7 +962,7 @@ function copyFinal(){
  if(!chk()||!o)return;
  if(Object.keys(o.parts).length<o.total&&!confirm('الطلب غير مكتمل (أجزاء ناقصة). متابعة؟ / Order incomplete (missing parts). Continue?'))return;
  const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)+':'+(x.unit||'')}).join(',');
- const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
+ const code=['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
  logOrder('final',code);
  navigator.clipboard.writeText(code).then(()=>toast('تم نسخ الكود النهائي — أرسله للمشرف / Final code copied — send it to the supervisor'),()=>prompt('انسخ الكود / Copy the code:',code));
 }
@@ -953,7 +982,7 @@ let RES=null;
 const LAB=[['غير متوفر','Not available','#b4231a','#fbe9e7'],['جزئي','Partial','#b4531a','#fff4e5'],['تم','Fulfilled','#1d7a4f','#ffffff']];
 function finalCode(){
  const it=Object.keys(o.items).sort((a,b)=>a-b).map(id=>{const x=o.items[id];return id+':'+x.req+':'+(x.on?x.iss:0)+':'+(x.unit||'')}).join(',');
- return ['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).filter(id=>id>BASE_N).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
+ return ['EBR1F',o.dept,o.no,o.ds,o.total,hash(),it,D[o.dept]||o.dept,LS('dev')||'',Object.keys(o.items).map(id=>{const c=item(id);return id+'~'+cn(c.n)+'~'+cn(c.u)}).join(';')].join('|');
 }
 function showResult(){
  if(!chk())return;
