@@ -534,9 +534,9 @@ TCL Ovac 20 Kg|TCL Ovac 20 Kg
 const WM=/[?&]m=worker/.test(location.search);
  let LANG=LS('worker-lang')||'ar';
  const L=(ar,en)=>LANG==='en'?en:ar;
- const unitLabel=u=>({'قطعة':'Piece','حزمة':'Pack','صندوق':'Box','كيلو':'Kg','لتر':'Litre'}[u]||u||'');
+ const unitLabel=u=>{const m={'قطعة':['قطعة','Piece'],'حزمة':['حزمة','Pack'],'صندوق':['صندوق','Box'],'كيلو':['كيلو','Kg'],'لتر':['لتر','Litre']};return m[u]?(LANG==='en'?m[u][1]:m[u][0]):(u||'')};
  const deptLabel=v=>{const p=String(v||'').split('/');return LANG==='en'?(p[1]||p[0]).trim():(p[0]||'').trim()};
- function setLanguage(next){LANG=next;LS('worker-lang',LANG);document.documentElement.lang=LANG;document.documentElement.dir=LANG==='en'?'ltr':'rtl';const b=$('#langToggle');if(b)b.textContent=LANG==='en'?'العربية':'English';if(o)renderIssue();renderSaved()}
+ function setLanguage(next){LANG=next;LS('worker-lang',LANG);document.documentElement.lang=LANG;document.documentElement.dir=LANG==='en'?'ltr':'rtl';const b=$('#langToggle');if(b)b.textContent=LANG==='en'?'العربية':'English';if(WM){const h=document.querySelector('#p2 h3');if(h)h.textContent=L('الطلبات المحفوظة','Saved orders');const s=$('#ordSrch');if(s)s.placeholder=L('ابحث برقم الطلب','Search order number');const add=$('#addItem');if(add){const title=add.querySelector('b');if(title)title.textContent=L('إضافة صنف للطلب (خارجي أو غير مكتوب)','Add item to order (external or unlisted)')}}if(o)renderIssue();renderSaved()}
  $('#langToggle').onclick=()=>setLanguage(LANG==='ar'?'en':'ar');
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
@@ -711,7 +711,7 @@ function renderIssue(){
  ids.forEach(id=>o.items[id].unit=o.items[id].unit||'قطعة');
  const UN=['قطعة','حزمة','صندوق','كيلو'];
  const rows=ids.map(id=>{const it=o.items[id],c=item(id);
-   if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(LANG==='en'?(c.u||c.n):c.n)}</b><small class="worker-unit">${escHtml(LANG==='en'?(c.u?c.n:unitLabel(it.unit)):(c.u||unitLabel(it.unit)))}</small></td><td><b>${it.req}</b> <small>${escHtml(unitLabel(it.unit))}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" ${o.submitted?'disabled':''} aria-label="${escHtml(L('الكمية المصروفة من','Issued quantity for'))} ${escHtml(c.n)}"></td></tr>`;
+   if(WM)return `<tr class="${it.iss<it.req?'worker-shortage':''}"><td><b>${escHtml(LANG==='en'?(c.u||c.n):c.n)}</b><small class="worker-unit">${escHtml(unitLabel(it.unit))}</small></td><td><b>${it.req}</b> <small>${escHtml(unitLabel(it.unit))}</small></td><td><input class="worker-qty" type="number" inputmode="decimal" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}" ${o.submitted?'disabled':''} aria-label="${escHtml(L('الكمية المصروفة من','Issued quantity for'))} ${escHtml(c.n)}"></td></tr>`;
   const unSel=`<select data-un="${id}" disabled>${UN.map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select>`;
   return `<tr class="${it.on?'':'off'}"><td><input type="checkbox" data-on="${id}" ${it.on?'checked':''}>${it.ext?` <button class="btn alt" data-xdel="${id}" style="padding:1px 7px">×</button>`:''}</td><td>${escHtml(c.n)}${it.ext?' <small>(خارجي / external)</small>':''}</td><td>${escHtml(c.u)}</td><td>${it.req}</td><td><input type="number" min="0" max="${it.req}" step="any" value="${it.iss}" data-iss="${id}"></td><td>${unSel}</td></tr>`}).join('');
  if(WM){
