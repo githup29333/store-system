@@ -64,7 +64,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <script>
 const SB_URL="https://xthhojjcblknukwgksxw.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98";
-const token=new URL(location.href).searchParams.get("t")||"";
+const token=new URLSearchParams(location.hash.replace(/^#/,"")).get("t")||new URL(location.href).searchParams.get("t")||"";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function call(action,extra={}){
