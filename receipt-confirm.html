@@ -66,7 +66,7 @@ button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#171717;col
 </main>
 <script>
 const SB_URL="https://xthhojjcblknukwgksxw.supabase.co";
-const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98";
 const token=new URLSearchParams(location.hash.replace(/^#/,"")).get("t")||new URL(location.href).searchParams.get("t")||"";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -112,8 +112,8 @@ const canvas=$("signature"),ctx=canvas.getContext("2d");
 ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#171717";
 let drawing=false,last=null;
 function point(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
-canvas.addEventListener("pointerdown",e=>{drawing=true;last=point(e);canvas.setPointerCapture(e.pointerId);signatureDrawn=true;refreshButton()});
-canvas.addEventListener("pointermove",e=>{if(!drawing)return;const p=point(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p});
+canvas.addEventListener("pointerdown",e=>{drawing=true;last=point(e);canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener("pointermove",e=>{if(!drawing)return;const p=point(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;signatureDrawn=true;refreshButton()});
 function stopDraw(){drawing=false;last=null}
 canvas.addEventListener("pointerup",stopDraw);canvas.addEventListener("pointercancel",stopDraw);canvas.addEventListener("pointerleave",e=>{if(e.buttons===0)stopDraw()});
 $("clearSignature").addEventListener("click",()=>{ctx.clearRect(0,0,canvas.width,canvas.height);signatureDrawn=false;refreshButton()});
@@ -133,7 +133,7 @@ async function init(){
   if(window.applyHotelTheme)window.applyHotelTheme(data.hotel_code||"EBR");
   $("hotel").textContent=data.hotel_name||"";
   $("orderNo").textContent=data.no||"";
-  $("dept").textContent=data.dept||"";
+  $("dept").textContent=data.department||data.dept||"";
   $("orderDate").textContent=data.created_at?new Date(data.created_at).toLocaleDateString("en-CA"):"";
   orderItems=(data.items||[]).map(x=>({...x,received:x.issued,reviewed:false}));
   if(!orderItems.length)throw new Error(tr("loadingError"));
