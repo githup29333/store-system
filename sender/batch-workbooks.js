@@ -68,4 +68,60 @@ async function generateBatchWorkbooks(deliveries, ctx) {
   const [issue,cost]=await Promise.all([issueWb.xlsx.writeBuffer(),costWb.xlsx.writeBuffer()]);
   return {issue:Buffer.from(issue),cost:Buffer.from(cost),departments:[...groups.keys()],orders:orders.length};
 }
-module.exports={generateBatchWorkbooks};
+async function generateReceiptWorkbook(deliveries, ctx, receipts) {
+  if(!deliveries.length) throw new Error('No signed receipts to combine');
+  const orders=deliveries.map(d=>({raw:d,...parseDelivery(d,ctx)}));
+  const wb=new ExcelJS.Workbook();
+  wb.creator='Store System';
+  wb.subject='Signed departmental receipt confirmations';
+  wb.title='Receipt Confirmations';
+  const groups=new Map();
+  for(const o of orders) {
+    const receipt=receipts.get(String(o.no));
+    if(!receipt || !receipt.signature_png || !Array.isArray(receipt.items)) throw new Error('Missing signed receipt for order '+o.no);
+    const k=o.dept||receipt.department||'أخرى';
+    if(!groups.has(k)) groups.set(k,[]);
+    groups.get(k).push({...o,receipt});
+  }
+  const used=new Set();
+  for(const [dept,list] of groups) {
+    const ws=wb.addWorksheet(safeSheet(dept,used));
+    ws.columns=[{width:7},{width:29},{width:27},{width:17},{width:15},{width:15},{width:16},{width:20}];
+    title(ws,list[0].hotel,'تأكيدات الاستلام الموقعة / SIGNED RECEIPT CONFIRMATIONS — '+dept,8);
+    let row=4;
+    for(const o of list) {
+      const receipt=o.receipt;
+      const byId=new Map(receipt.items.map(x=>[Number(x.id),x]));
+      ws.mergeCells(row,1,row,8);
+      put(ws.getCell(row,1),'الطلب / ORDER: '+o.no+'    |    المستلم / RECEIVED BY: '+receipt.recipient_name+'    |    الوقت / CONFIRMED: '+new Date(receipt.confirmed_at).toLocaleString('en-GB',{timeZone:'Africa/Tripoli'}),{bold:true,color:'FFFFFF',bg:'0B5C7A',align:'right'});
+      ws.getRow(row).height=31; row++;
+      ['#','الصنف بالعربية','ITEM NAME','المطلوب / REQUESTED','المصروف / ISSUED','المستلم / RECEIVED','الوحدة / UNIT','القسم / DEPARTMENT'].forEach((v,i)=>put(ws.getCell(row,i+1),v,{bold:true,color:'FFFFFF',bg:'C6A15B'}));
+      row++;
+      let n=1;
+      for(const line of o.lines) {
+        const actual=byId.get(Number(line.id));
+        if(!actual) throw new Error('Receipt item missing from signed snapshot: '+o.no+'/'+line.id);
+        [n++,line.ar,line.en,actual.requested,actual.issued,actual.received,actual.unit||line.unit||'—',o.dept].forEach((v,i)=>put(ws.getCell(row,i+1),v,{bg:row%2?'F5F8FA':'FFFFFF',bold:i===5}));
+        row++;
+      }
+      ws.mergeCells(row,1,row,2);put(ws.getCell(row,1),'اسم المستلم / RECIPIENT',{bold:true,bg:'E9DFC9',align:'right'});
+      ws.mergeCells(row,3,row,5);put(ws.getCell(row,3),receipt.recipient_name,{bold:true});
+      ws.mergeCells(row,6,row,8);put(ws.getCell(row,6),'تاريخ ووقت الاستلام / RECEIVED AT: '+new Date(receipt.confirmed_at).toLocaleString('en-GB',{timeZone:'Africa/Tripoli'}),{size:9});
+      row++;
+      ws.mergeCells(row,1,row,2);put(ws.getCell(row,1),'التوقيع / SIGNATURE',{bold:true,bg:'E9DFC9',align:'right'});
+      ws.mergeCells(row,3,row+3,5);
+      const match=String(receipt.signature_png).match(/^data:image\\/png;base64,([A-Za-z0-9+/]+={0,2})$/);
+      if(!match) throw new Error('Invalid PNG signature for order '+o.no);
+      const imageId=wb.addImage({base64:match[1],extension:'png'});
+      ws.addImage(imageId,{tl:{col:2,row:row-1},br:{col:5,row:row+3},editAs:'oneCell'});
+      ws.getRow(row).height=23;ws.getRow(row+1).height=23;ws.getRow(row+2).height=23;ws.getRow(row+3).height=23;
+      row+=5;
+      ws.mergeCells(row,1,row,8);put(ws.getCell(row,1),'— نهاية تأكيد الطلب / END OF RECEIPT '+o.no+' —',{size:9,color:'697586'});
+      row+=2;
+    }
+    ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+  }
+  const buffer=await wb.xlsx.writeBuffer();
+  return Buffer.from(buffer);
+}
+module.exports={generateBatchWorkbooks,generateReceiptWorkbook};
