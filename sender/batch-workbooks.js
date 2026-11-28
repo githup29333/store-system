@@ -110,9 +110,9 @@ async function generateReceiptWorkbook(deliveries, ctx, receipts) {
       row++;
       ws.mergeCells(row,1,row,2);put(ws.getCell(row,1),'التوقيع / SIGNATURE',{bold:true,bg:'E9DFC9',align:'right'});
       ws.mergeCells(row,3,row+3,5);
-      const match=String(receipt.signature_png).match(/^data:image\\/png;base64,([A-Za-z0-9+/]+={0,2})$/);
-      if(!match) throw new Error('Invalid PNG signature for order '+o.no);
-      const imageId=wb.addImage({base64:receipt.signature_png,extension:'png'});
+      const signatureData=String(receipt.signature_png);
+      if(!signatureData.startsWith('data:image/png;base64,') || !/^[A-Za-z0-9+/]+={0,2}$/.test(signatureData.slice('data:image/png;base64,'.length))) throw new Error('Invalid PNG signature for order '+o.no);
+      const imageId=wb.addImage({base64:signatureData,extension:'png'});
       ws.addImage(imageId,{tl:{col:2,row:row-1},br:{col:5,row:row+3},editAs:'oneCell'});
       ws.getRow(row).height=23;ws.getRow(row+1).height=23;ws.getRow(row+2).height=23;ws.getRow(row+3).height=23;
       row+=5;
