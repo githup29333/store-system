@@ -142,7 +142,12 @@ jobs:
           assert.ok(worker.includes('escHtml(x.c.n)'));
           assert.ok(worker.includes('escHtml(c.n)'));
           assert.ok(worker.includes('escHtml(x.n.n)'));
-          assert.ok(worker.includes('history.replaceState'));
+          const receipt = fs.readFileSync('receipt-confirm.html', 'utf8');
+          assert.ok(worker.includes('receipt-confirm.html') && worker.includes('hotel_receipt_issue') && worker.includes('renderReceiptQr'));
+          assert.ok(receipt.includes('receipt_get') && receipt.includes('receipt_confirm'));
+          assert.ok(receipt.includes('data-review') && receipt.includes('recipientName'));
+          assert.ok(workerEdge.includes('hotel_receipt_issue') && workerEdge.includes('receipt_get') && workerEdge.includes('receipt_confirm'));
+          assert.ok(migrations.includes('orders_receipt_token_hash_uidx') && migrations.includes('received_by'));
           assert.ok(worker.includes('rq<=0||is<0||is>rq'));
           assert.ok(worker.includes('iss>req'));
           assert.ok(worker.includes('/functions/v1/hotel-portal'));
