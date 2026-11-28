@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 const ExcelJS=require('exceljs');
-const {generateBatchWorkbooks}=require('./batch-workbooks');
+const {generateBatchWorkbooks,generateReceiptWorkbook}=require('./batch-workbooks');
 (async()=>{
  const base=(key,dept,no,code)=>({key,hotel:'EBR',rev:1,dept,code,no,ds:'261123'});
  const ctx={hotels:[{code:'EBR',name:'Hotel Test'}],items:[{id:1,ar:'أرز',en:'Rice'},{id:2,ar:'حليب',en:'Milk'}],
@@ -23,5 +23,17 @@ const {generateBatchWorkbooks}=require('./batch-workbooks');
  const cost=new ExcelJS.Workbook();await cost.xlsx.load(out.cost);
  assert.equal(cost.worksheets.length,2);
  assert.equal(cost.getWorksheet('Restaurant').getCell('I7').value,20);
- console.log('Batch workbook tests passed: two files, one worksheet per department, orders grouped by department.');
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pS8AAAAASUVORK5CYII=';
+ const receipts=new Map([
+  ['R-1',{recipient_name:'Chef One',confirmed_at:'2026-11-28T10:30:00Z',items:[{id:1,requested:5,issued:3,received:2,unit:'كيلو'}],signature_png:'data:image/png;base64,'+png}],
+  ['R-2',{recipient_name:'Chef Two',confirmed_at:'2026-11-28T10:35:00Z',items:[{id:1,requested:2,issued:2,received:2,unit:'كيلو'}],signature_png:'data:image/png;base64,'+png}],
+  ['H-1',{recipient_name:'Housekeeper',confirmed_at:'2026-11-28T10:40:00Z',items:[{id:2,requested:1,issued:1,received:1,unit:'قطعة'}],signature_png:'data:image/png;base64,'+png}]
+ ]);
+ const receiptBuf=await generateReceiptWorkbook(rows,ctx,receipts);
+ const receiptWb=new ExcelJS.Workbook();await receiptWb.xlsx.load(receiptBuf);
+ assert.equal(receiptWb.worksheets.length,2);
+ assert.equal(receiptWb.getWorksheet('Restaurant').getCell('F6').value,2);
+ assert.equal(receiptWb.getWorksheet('Restaurant').getImages().length,2,'one signature image per order');
+ assert.equal(receiptWb.getWorksheet('Housekeeping').getCell('C5').value,'Milk');
+ console.log('Batch workbook tests passed: three files, one worksheet per department, orders grouped by department.');
 })().catch(e=>{console.error(e);process.exit(1);});
