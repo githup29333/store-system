@@ -4,7 +4,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '2-59/5 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       mode:
