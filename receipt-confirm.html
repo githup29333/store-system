@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>تأكيد استلام الطلب — Ebreaze Hotel</title>
+<script src="hotel-theme.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#090a0c;--card:#151515;--ink:#f4f0e7;--mut:#b7ad9b;--line:#39342a;--gold:#c9a45c;--gold2:#e5c477}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 Tajawal,Tahoma,Arial,sans-serif;padding:18px}
+header,main{width:min(900px,100%);margin:0 auto}
+header{padding:18px 20px;background:linear-gradient(120deg,#11100d,#151515);border:1px solid var(--line);border-bottom:2px solid var(--gold);border-radius:18px 18px 0 0}
+h1{font-size:21px;margin:0;color:var(--gold2)}
+main{padding:18px;background:var(--card);border:1px solid var(--line);border-top:0;border-radius:0 0 18px 18px;min-height:60vh}
+.panel{padding:16px;border:1px solid var(--line);border-radius:14px;margin-bottom:14px;background:#101113}
+.meta{display:flex;gap:10px;flex-wrap:wrap}
+.meta span{padding:7px 11px;border:1px solid var(--line);border-radius:10px;background:#171717}
+.muted{color:var(--mut)}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:right}
+th{color:var(--gold2);background:#201d17}
+tr:last-child td{border-bottom:0}
+.qty{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.review{width:22px;height:22px;accent-color:var(--gold);cursor:pointer}
+input[type=text]{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#0c1118;color:var(--ink);font:inherit}
+button{border:1px solid var(--gold);border-radius:11px;background:linear-gradient(120deg,var(--gold),var(--gold2));color:#17130b;padding:12px 18px;font:700 16px Tajawal,Arial,sans-serif;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.note{padding:12px;border-radius:11px;background:#201d17;border:1px solid #69552e;color:#ead6a9}
+.status{padding:15px;border:1px solid #557e63;background:#14251a;border-radius:12px;color:#d8f2df}
+.error{padding:12px;border:1px solid #854c44;background:#2a1715;border-radius:11px;color:#ffd4cc}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+[hidden]{display:none!important}
+@media(max-width:600px){body{padding:9px}header{padding:14px}main{padding:12px}h1{font-size:18px}th,td{padding:9px 5px;font-size:14px}.qty{font-size:16px}}
+</style>
+</head>
+<body>
+<header><h1>تأكيد استلام طلب القسم</h1><div class="muted">Department Order Receipt Confirmation</div></header>
+<main>
+<div id="loading" class="panel">جارٍ تحميل بيانات الطلب…</div>
+<div id="error" class="error" hidden></div>
+<div id="content" hidden>
+ <section class="panel">
+  <div class="meta">
+   <span>الفندق: <b id="hotel"></b></span>
+   <span>رقم الطلب: <b id="orderNo"></b></span>
+   <span>القسم: <b id="dept"></b></span>
+   <span>التاريخ: <b id="orderDate"></b></span>
+  </div>
+  <p class="note">راجع كل صنف والكمية التي استلمتها فعلياً مقارنة بالمطلوب والمصروف، ثم ضع علامة أمام كل صنف بعد التأكد منه.</p>
+  <div style="overflow:auto">
+   <table><thead><tr><th>الصنف</th><th>المطلوب</th><th>المصروف</th><th>تمت المراجعة</th></tr></thead><tbody id="items"></tbody></table>
+  </div>
+ </section>
+ <section id="confirmPanel" class="panel">
+  <label for="recipientName"><b>اسم الشيف / مستلم القسم (إجباري)</b></label>
+  <input id="recipientName" type="text" maxlength="80" autocomplete="name" placeholder="اكتب اسمك الكامل">
+  <div class="actions"><button id="confirmBtn" disabled>تأكيد الاستلام</button><span class="muted" id="checkHint">راجع جميع الأصناف واكتب اسمك لتفعيل التأكيد.</span></div>
+ </section>
+ <div id="done" class="status" hidden></div>
+</div>
+</main>
+<script>
+const SB_URL="https://xthhojjcblknukwgksxw.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98";
+const token=new URL(location.href).searchParams.get("t")||"";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function call(action,extra={}){
+ const r=await fetch(SB_URL+"/functions/v1/hotel-portal",{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({action,t:token,...extra}),cache:"no-store"});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(j.error||"تعذّر الاتصال بالخادم");
+ return j;
+}
+function showError(msg){$("loading").hidden=true;$("error").hidden=false;$("error").textContent=msg}
+function parseOrder(data){
+ const f=String(data.code||"").split("|");
+ if(f.length<10||f[0]!=="EBR1F")throw new Error("بيانات الطلب غير مكتملة");
+ const names={};
+ String(f[9]||"").split(";").filter(Boolean).forEach(line=>{const p=line.split("~");if(p.length>=2)names[p[0]]={name:p[1],unit:p[2]||""}});
+ const items=String(f[6]||"").split(",").filter(Boolean).map(line=>{
+  const m=line.match(/^(\d+):(\d+(?:\.\d+)?):(\d+(?:\.\d+)?):(.*)$/);
+  if(!m)throw new Error("تعذّرت قراءة أحد الأصناف");
+  return{id:m[1],requested:Number(m[2]),issued:Number(m[3]),unit:m[4],name:names[m[1]]?.name||("صنف "+m[1])};
+ });
+ if(!items.length)throw new Error("الطلب لا يحتوي على أصناف");
+ return{f,items};
+}
+let allChecked=false,orderData=null;
+function refreshButton(){
+ const checks=[...document.querySelectorAll("[data-review]")];
+ allChecked=checks.length>0&&checks.every(x=>x.checked);
+ $("confirmBtn").disabled=!allChecked||$("recipientName").value.trim().length<2;
+ $("checkHint").textContent=allChecked?"تمت مراجعة جميع الأصناف. اكتب اسمك ثم أكد الاستلام.":"راجع جميع الأصناف واكتب اسمك لتفعيل التأكيد.";
+}
+function showReceived(name,at,already){
+ $("confirmPanel").hidden=true;
+ $("done").hidden=false;
+ const when=at?new Date(at).toLocaleString("ar-LY"):"";
+ $("done").innerHTML=(already?"تم تأكيد استلام هذا الطلب مسبقاً.":"تم تأكيد الاستلام بنجاح.")+"<br><b>اسم المستلم: "+esc(name)+"</b>"+(when?"<br>وقت التأكيد: "+esc(when):"");
+}
+async function init(){
+ if(!/^[a-f0-9]{64}$/.test(token))return showError("رابط الباركود غير صالح.");
+ try{
+  const data=await call("receipt_get");
+  const {f,items}=parseOrder(data);orderData=data;
+  if(window.applyHotelTheme)window.applyHotelTheme(data.hotel_code||"EBR");
+  $("hotel").textContent=data.hotel_name||"";
+  $("orderNo").textContent=data.no||f[2]||"";
+  $("dept").textContent=f[7]||data.dept||"";
+  const ds=f[3]||"";$("orderDate").textContent=ds.length===6?"20"+ds.slice(0,2)+"-"+ds.slice(2,4)+"-"+ds.slice(4):"";
+  $("items").innerHTML=items.map(x=>"<tr><td><b>"+esc(x.name)+"</b>"+(x.unit?"<div class='muted'>"+esc(x.unit)+"</div>":"")+"</td><td class='qty'>"+x.requested+"</td><td class='qty'>"+x.issued+"</td><td><input class='review' type='checkbox' data-review aria-label='تمت مراجعة "+esc(x.name)+"'></td></tr>").join("");
+  $("loading").hidden=true;$("content").hidden=false;
+  if(data.received_at){showReceived(data.received_by,data.received_at,true);return}
+  document.querySelectorAll("[data-review]").forEach(x=>x.addEventListener("change",refreshButton));
+  $("recipientName").addEventListener("input",refreshButton);
+  $("confirmBtn").addEventListener("click",confirmReceipt);
+  refreshButton();
+ }catch(e){showError(e.message||"تعذّر تحميل الطلب")}
+}
+async function confirmReceipt(){
+ const name=$("recipientName").value.trim();
+ if(!allChecked||name.length<2)return refreshButton();
+ $("confirmBtn").disabled=true;$("confirmBtn").textContent="جارٍ تأكيد الاستلام…";
+ try{
+  const result=await call("receipt_confirm",{name});
+  showReceived(result.received_by||name,result.received_at,result.already_received);
+ }catch(e){
+  $("confirmBtn").disabled=false;$("confirmBtn").textContent="تأكيد الاستلام";
+  showError(e.message||"تعذّر تأكيد الاستلام");
+ }
+}
+init();
+</script>
+</body>
+</html>
