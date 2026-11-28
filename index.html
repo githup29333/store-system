@@ -538,6 +538,7 @@ const WM=/[?&]m=worker/.test(location.search);
  const deptLabel=v=>{const p=String(v||'').split('/');return LANG==='en'?(p[1]||p[0]).trim():(p[0]||'').trim()};
  function setLanguage(next){LANG=next;LS('worker-lang',LANG);document.documentElement.lang=LANG;document.documentElement.dir=LANG==='en'?'ltr':'rtl';const b=$('#langToggle');if(b)b.textContent=LANG==='en'?'العربية':'English';if(WM){const h=document.querySelector('#p2 h3');if(h)h.textContent=L('الطلبات المحفوظة','Saved orders');const s=$('#ordSrch');if(s)s.placeholder=L('ابحث برقم الطلب','Search order number');const add=$('#addItem');if(add){const title=add.querySelector('b');if(title)title.textContent=L('إضافة صنف للطلب (خارجي أو غير مكتوب)','Add item to order (external or unlisted)')}}if(o)renderIssue();renderSaved()}
  $('#langToggle').onclick=()=>setLanguage(LANG==='ar'?'en':'ar');
+ setLanguage(LANG);
 const CREDIT='© 2026 Theo — جميع الحقوق محفوظة / All rights reserved';
 const SB_URL='https://xthhojjcblknukwgksxw.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0aGhvampjYmxrbnVrd2drc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MzA3NTEsImV4cCI6MjEwMDEwNjc1MX0.CDE76L1A6szBp9kYlZD3O1FtBl4CFuAseaRlEjk_Z98';
 const HK=(()=>{try{const u=new URL(location.href);const parts=u.pathname.split('/').filter(Boolean);const slug=(parts[0]||'').toLowerCase()==='store-system'?parts[1]||'':parts[0]||'';if(/^[a-z0-9-]{2,24}$/i.test(slug))return slug.toUpperCase();const v=u.searchParams.get('h');if(v)return v}catch(e){}return LS('hk')||'EBR'})();
