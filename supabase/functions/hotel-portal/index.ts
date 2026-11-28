@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
       }
       const signature = String(body.signature || "");
       if (signature.length > 60000 ||
-          !/^data:image\\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(signature)) {
+          !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(signature)) {
         return respond({ error: "A valid drawn signature is required" }, 400);
       }
       const { data, error } = await admin.rpc("hotel_receipt_confirm", {
